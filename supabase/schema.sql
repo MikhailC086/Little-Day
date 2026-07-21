@@ -1,7 +1,6 @@
 -- LITTLE DAY — Supabase schema v1
--- Run this in your Supabase project: SQL Editor -> New query -> paste -> Run.
+-- Run this in your Supabase project: SQL Editor -> New query -> paste ALL -> Run.
 
--- Each user's profile (created automatically on signup via trigger below)
 create table public.profiles (
   id uuid primary key references auth.users on delete cascade,
   display_name text,
@@ -9,7 +8,6 @@ create table public.profiles (
   created_at timestamptz default now()
 );
 
--- Per-user app data (kids, sitters, favorites, saved days, passport) as JSON
 create table public.user_data (
   user_id uuid primary key references auth.users on delete cascade,
   kids jsonb default '[]',
@@ -21,7 +19,6 @@ create table public.user_data (
   updated_at timestamptz default now()
 );
 
--- Shared reviews (visible to everyone)
 create table public.reviews (
   id bigint generated always as identity primary key,
   place_id text not null,
@@ -32,7 +29,6 @@ create table public.reviews (
   created_at timestamptz default now()
 );
 
--- Friendships via invite codes
 create table public.friendships (
   a uuid references auth.users on delete cascade,
   b uuid references auth.users on delete cascade,
@@ -40,17 +36,15 @@ create table public.friendships (
   primary key (a, b)
 );
 
--- Shared play-date invites
 create table public.play_dates (
   id bigint generated always as identity primary key,
   from_user uuid references auth.users on delete cascade,
   to_user uuid references auth.users on delete cascade,
   day_plan jsonb,
-  status text default 'pending', -- pending | accepted | declined
+  status text default 'pending',
   created_at timestamptz default now()
 );
 
--- Auto-create a profile + data row on signup
 create or replace function public.handle_new_user()
 returns trigger language plpgsql security definer as $$
 begin
@@ -61,7 +55,6 @@ end $$;
 create trigger on_auth_user_created after insert on auth.users
   for each row execute function public.handle_new_user();
 
--- Row Level Security: users see their own data; reviews are public-read
 alter table public.profiles enable row level security;
 alter table public.user_data enable row level security;
 alter table public.reviews enable row level security;

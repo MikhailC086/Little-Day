@@ -1,4 +1,5 @@
-import React, { useState, useMemo, useEffect, useContext } from "react";
+import React, { useState, useMemo, useEffect, useContext, useRef } from "react";
+import { supabase, backendReady } from "./supabaseClient.js";
 import { GoogleMap, Marker, useJsApiLoader } from "@react-google-maps/api";
 import {
   Sun, MapPin, Clock, DollarSign, Heart, ChevronLeft, ChevronRight,
@@ -1004,7 +1005,33 @@ const INTERESTS = [
 ];
 
 // mock weather signal. rainRiskAfter = hour (24h) when rain may start; null = clear all day.
-const WEATHER = { condition: "sunny", tempF: 78, rainRiskAfter: 15 };
+const WEATHER = { condition: "sunny", tempF: 78, rainRiskAfter: null, live: false };
+
+async function fetchLiveWeather() {
+  try {
+    const url =
+      "https://api.open-meteo.com/v1/forecast?latitude=41.2587&longitude=-73.6854" +
+      "&hourly=precipitation_probability,weather_code&daily=temperature_2m_max" +
+      "&temperature_unit=fahrenheit&forecast_days=1&timezone=auto";
+    const r = await fetch(url);
+    const d = await r.json();
+    const probs = (d.hourly && d.hourly.precipitation_probability) || [];
+    const codes = (d.hourly && d.hourly.weather_code) || [];
+    const nowH = new Date().getHours();
+    let rainAfter = null;
+    for (let i = nowH; i < probs.length; i++) {
+      if (probs[i] >= 45) { rainAfter = i; break; }
+    }
+    let maxCode = 0;
+    for (let i = nowH; i < Math.min(codes.length, nowH + 12); i++) maxCode = Math.max(maxCode, codes[i] || 0);
+    const t = d.daily && d.daily.temperature_2m_max && d.daily.temperature_2m_max[0];
+    if (typeof t === "number") WEATHER.tempF = Math.round(t);
+    WEATHER.rainRiskAfter = rainAfter;
+    WEATHER.condition = maxCode >= 51 ? "rainy" : maxCode >= 45 ? "foggy" : maxCode >= 1 ? "cloudy" : "sunny";
+    WEATHER.live = true;
+    return true;
+  } catch (e) { return false; }
+}
 
 // Estimated opening hours per place (24h decimal). NOTE: these are approximate
 // placeholders until real hours come from a live source. Format: [open, close].
@@ -1050,7 +1077,7 @@ function placeHours(place) {
   return HOURS[place.id] || null;
 }
 
-// Kid-friendly perks (crayons, kids' menu, play areas, etc.). Curated \u2014 verify on the day.
+// Kid-friendly perks (crayons, kids' menu, play areas, etc.). Curated — verify on the day.
 const KID_PERKS = {
   "blue-dolphin": ["High chairs", "Kids' menu", "Crayons & coloring"],
   "mtkisco-diner": ["High chairs", "Kids' menu", "Crayons", "Big milkshakes"],
@@ -1726,7 +1753,7 @@ function PlaceCard({ place, onSelect, favorited, onToggleFavorite, nowHour }) {
           )}
           {placePerks(place).length > 0 && (
             <span className="text-[11px] px-2 py-0.5 rounded-full" style={{ backgroundColor: "#FFF3E6", color: "#B08A5A" }}>
-              \uD83D\uDD8D\uFE0F Kid perks
+              🖍️ Kid perks
             </span>
           )}
         </div>
@@ -2486,7 +2513,7 @@ function MapScreen({ setSelectedPlace, favorites, toggleFavorite, location, onRe
       <div className="px-5 mt-4 flex flex-col gap-2.5">
         {filtered.length === 0 && (
           <p className="text-[13px] text-[#8A8474] text-center py-4">
-            No places match{query ? ` \u201c${query}\u201d` : " that filter"}. Try a different search or filter.
+            No places match{query ? ` “${query}”` : " that filter"}. Try a different search or filter.
           </p>
         )}
         {filtered.map((p) => (
@@ -2562,12 +2589,34 @@ function FavoritesScreen({ favorites, setSelectedPlace, toggleFavorite, savedDay
   );
 }
 
-function ProfileScreen({ onOpenPremium, onOpenPassport, stats, earnedBadges, kids, activeKidId, onSetActive, onAddKid, onEditKid, sitters, onAddSitter, onEditSitter, onShareWithSitter }) {
+function ProfileScreen({ onOpenPremium, onOpenPassport, stats, session, onOpenAuth, onSignOut, earnedBadges, kids, activeKidId, onSetActive, onAddKid, onEditKid, sitters, onAddSitter, onEditSitter, onShareWithSitter }) {
   const activeKid = kids.find((k) => k.id === activeKidId) || kids[0] || null;
   return (
     <div className="pb-4">
       <TopBar title="Family profile" />
       <div className="px-5">
+        <div className="rounded-2xl p-4 bg-white border mb-3" style={{ borderColor: session ? "#CDE8D6" : "#EFEAE0", backgroundColor: session ? "#F4FBF6" : "#FFFFFF" }}>
+          {session ? (
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full flex items-center justify-center text-[18px]" style={{ backgroundColor: "#E4F4E9" }}>☁️</div>
+              <div className="flex-1 min-w-0">
+                <p className="text-[13.5px] font-semibold text-[#1B2A4A]">Synced to your account</p>
+                <p className="text-[11.5px] text-[#8A8474] truncate">{session.user.email} · kids, favorites & days follow you</p>
+              </div>
+              <button onClick={onSignOut} className="text-[12px] font-semibold shrink-0" style={{ color: "#8A8474" }}>Sign out</button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full flex items-center justify-center text-[18px]" style={{ backgroundColor: "#FFF3E6" }}>☁️</div>
+              <div className="flex-1">
+                <p className="text-[13.5px] font-semibold text-[#1B2A4A]">Back up & sync your family</p>
+                <p className="text-[11.5px] text-[#8A8474]">Sign in so kids & favorites follow you to any device</p>
+              </div>
+              <button onClick={onOpenAuth} className="text-[12px] font-bold px-3 py-2 rounded-full text-white shrink-0" style={{ background: "var(--cta)" }}>Sign in</button>
+            </div>
+          )}
+        </div>
+
         <div className="rounded-2xl p-4 bg-white border" style={{ borderColor: "#EFEAE0" }}>
           <div className="flex items-center justify-between mb-3">
             <p className="font-semibold text-[#1B2A4A]">Kids</p>
@@ -2670,12 +2719,12 @@ function PremiumScreen({ onBack, onUpgrade }) {
   const yearly = 19.99;
 
   const premiumFeatures = [
-    { icon: "\u2728", title: "Unlimited AI day planning", desc: "Plan as many days as you like, with smarter, more personalized picks." },
-    { icon: "\uD83E\uDDF3", title: "Vacation & multi-day mode", desc: "Plan a whole weekend or a trip \u2014 not just today." },
-    { icon: "\u2600\uFE0F", title: "Weather & traffic-aware plans", desc: "Real forecasts and drive times so \u2018home by nap\u2019 actually holds." },
-    { icon: "\uD83D\uDCF6", title: "Offline access", desc: "Your saved days and maps, even with no signal." },
-    { icon: "\uD83D\uDCD6", title: "Exclusive local guides", desc: "Seasonal roundups and curated itineraries from local parents." },
-    { icon: "\uD83C\uDF81", title: "Early access to new features", desc: "Be first to try things like reserving a gift for pickup." },
+    { icon: "✨", title: "Unlimited AI day planning", desc: "Plan as many days as you like, with smarter, more personalized picks." },
+    { icon: "🧳", title: "Vacation & multi-day mode", desc: "Plan a whole weekend or a trip — not just today." },
+    { icon: "☀️", title: "Weather & traffic-aware plans", desc: "Real forecasts and drive times so ‘home by nap’ actually holds." },
+    { icon: "📶", title: "Offline access", desc: "Your saved days and maps, even with no signal." },
+    { icon: "📖", title: "Exclusive local guides", desc: "Seasonal roundups and curated itineraries from local parents." },
+    { icon: "🎁", title: "Early access to new features", desc: "Be first to try things like reserving a gift for pickup." },
   ];
 
   return (
@@ -2690,7 +2739,7 @@ function PremiumScreen({ onBack, onUpgrade }) {
             Unlock the full adventure
           </h2>
           <p className="text-[13px] text-[#8A8474] mt-1.5 max-w-[290px] mx-auto">
-            Start with 7 days of the full experience, free. After that, keep the free basics forever \u2014 or go Premium for just $3.99/month.
+            Start with 7 days of the full experience, free. After that, keep the free basics forever — or go Premium for just $3.99/month.
           </p>
         </div>
 
@@ -2747,7 +2796,7 @@ function PremiumScreen({ onBack, onUpgrade }) {
         <div className="rounded-2xl p-3.5 mt-5 flex items-start gap-2.5" style={{ backgroundColor: "#F0EEE6" }}>
           <Sparkles size={15} color="#8A8474" className="mt-0.5 shrink-0" />
           <p className="text-[12px] text-[#8A8474] leading-snug">
-            This is a preview of how Premium will work \u2014 no payment is set up yet and you won't be charged. Subscriptions arrive once the app is live with accounts.
+            This is a preview of how Premium will work — no payment is set up yet and you won't be charged. Subscriptions arrive once the app is live with accounts.
           </p>
         </div>
       </div>
@@ -2918,7 +2967,7 @@ function PlaceDetailScreen({ place, onBack, favorited, onToggleFavorite, checkIn
         {placePerks(place).length > 0 && (
           <div className="rounded-2xl p-4 mt-3" style={{ backgroundColor: "#FFF3E6" }}>
             <div className="flex items-center gap-1.5 mb-2">
-              <span className="text-[14px]">\uD83D\uDD8D\uFE0F</span>
+              <span className="text-[14px]">🖍️</span>
               <span className="text-[12px] font-semibold" style={{ color: "#B08A5A" }}>For the kids</span>
             </div>
             <div className="flex gap-2 flex-wrap">
@@ -3047,7 +3096,7 @@ function WelcomeScreen({ onStart }) {
           Every other app gives you a piece of the day.
         </p>
         <p className="text-[14px] text-[#8A8474] mt-2.5 leading-relaxed max-w-[290px]">
-          Little Day is the first to plan the <span className="font-semibold text-[#5C5648]">whole</span> day with the kids \u2014 where to go, eat, play, potty, and everything in between. One app. One tap. One less thing to figure out.
+          Little Day is the first to plan the <span className="font-semibold text-[#5C5648]">whole</span> day with the kids — where to go, eat, play, potty, and everything in between. One app. One tap. One less thing to figure out.
         </p>
       </div>
       <div className="px-6 pb-10">
@@ -3936,9 +3985,73 @@ function BetaGate({ onUnlock }) {
         <button onClick={tryUnlock} className="w-full rounded-2xl py-3.5 mt-3 text-white font-semibold text-[15px]" style={{ background: "linear-gradient(135deg, #FF8C61, #FFC857)" }}>
           Let's go
         </button>
-        <p className="text-[11px] mt-5" style={{ color: "#B8B0A0" }}>Don't have a code? Little Day opens wider soon. {"\u2600\uFE0F"}</p>
+        <p className="text-[11px] mt-5" style={{ color: "#B8B0A0" }}>Don't have a code? Little Day opens wider soon. {"☀️"}</p>
       </div>
       <style>{`@keyframes shakeX { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-8px)} 75%{transform:translateX(8px)} }`}</style>
+    </div>
+  );
+}
+
+function AuthSheet({ open, onClose, session }) {
+  const [email, setEmail] = useState("");
+  const [code, setCode] = useState("");
+  const [stage, setStage] = useState("email"); // email -> code
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState("");
+  if (!open) return null;
+  const sendCode = async () => {
+    if (!email.includes("@")) { setMsg("Enter a valid email"); return; }
+    setBusy(true); setMsg("");
+    const { error } = await supabase.auth.signInWithOtp({ email: email.trim(), options: { shouldCreateUser: true } });
+    setBusy(false);
+    if (error) { setMsg(error.message); return; }
+    setStage("code"); setMsg("");
+  };
+  const verify = async () => {
+    setBusy(true); setMsg("");
+    const { error } = await supabase.auth.verifyOtp({ email: email.trim(), token: code.trim(), type: "email" });
+    setBusy(false);
+    if (error) { setMsg("That code didn't match — check the email and try again."); return; }
+    onClose();
+  };
+  return (
+    <div className="absolute inset-0 z-40 flex items-end" onClick={onClose}>
+      <div className="absolute inset-0 bg-black/30" />
+      <div className="relative w-full rounded-t-3xl bg-white p-6 pb-8" onClick={(e) => e.stopPropagation()} style={{ animation: "sheetUp 0.22s ease-out" }}>
+        <div className="w-10 h-1 rounded-full bg-[#E7E1D4] mx-auto mb-4" />
+        <p className="text-[17px] font-bold text-[#1B2A4A] text-center" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+          {stage === "email" ? "Sign in or create your account" : "Enter your code"}
+        </p>
+        <p className="text-[13px] text-[#8A8474] text-center mt-1 mb-4 max-w-[300px] mx-auto">
+          {stage === "email"
+            ? "Your kids, favorites and saved days will sync to any device you sign in on."
+            : `We emailed a 6-digit code to ${email}. It can take a minute — check spam too.`}
+        </p>
+        {stage === "email" ? (
+          <>
+            <input value={email} onChange={(e) => setEmail(e.target.value)} inputMode="email" autoCapitalize="none" placeholder="you@example.com"
+              className="w-full rounded-2xl px-4 py-3.5 text-[15px] border-2 outline-none text-center" style={{ borderColor: "#F0E4D4" }} />
+            <button onClick={sendCode} disabled={busy}
+              className="w-full rounded-2xl py-3.5 mt-3 text-white font-semibold text-[14px]" style={{ background: "var(--cta)", opacity: busy ? 0.6 : 1 }}>
+              {busy ? "Sending…" : "Email me a sign-in code"}
+            </button>
+          </>
+        ) : (
+          <>
+            <input value={code} onChange={(e) => setCode(e.target.value)} inputMode="numeric" placeholder="123456"
+              className="w-full rounded-2xl px-4 py-3.5 text-[19px] tracking-[0.4em] border-2 outline-none text-center font-bold" style={{ borderColor: "#F0E4D4", color: "#1B2A4A" }} />
+            <button onClick={verify} disabled={busy}
+              className="w-full rounded-2xl py-3.5 mt-3 text-white font-semibold text-[14px]" style={{ background: "var(--cta)", opacity: busy ? 0.6 : 1 }}>
+              {busy ? "Checking…" : "Sign in"}
+            </button>
+            <button onClick={() => { setStage("email"); setCode(""); }} className="w-full py-2.5 mt-1 text-[13px] font-medium" style={{ color: "#8A8474" }}>
+              Use a different email
+            </button>
+          </>
+        )}
+        {msg && <p className="text-[12px] text-center mt-2" style={{ color: "#C6564B" }}>{msg}</p>}
+        <p className="text-[11px] text-[#B8B0A0] text-center mt-3">No passwords — we email you a code each time.</p>
+      </div>
     </div>
   );
 }
@@ -3965,6 +4078,48 @@ export default function LittleDayApp() {
   const [lastPrefs, setLastPrefs] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [showHowTo, setShowHowTo] = useState(false);
+  const [, setWeatherV] = useState(0);
+  useEffect(() => { fetchLiveWeather().then(() => setWeatherV((v) => v + 1)); }, []);
+
+  // ---- Accounts & cloud sync (Stage 1) ----
+  const [session, setSession] = useState(null);
+  const [authOpen, setAuthOpen] = useState(false);
+  const cloudLoaded = useRef(false);
+  useEffect(() => {
+    if (!backendReady()) return;
+    supabase.auth.getSession().then(({ data }) => setSession(data.session || null));
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, sess) => setSession(sess || null));
+    return () => sub.subscription.unsubscribe();
+  }, []);
+  useEffect(() => {
+    if (!backendReady() || !session) { cloudLoaded.current = false; return; }
+    (async () => {
+      const { data } = await supabase.from("user_data").select("*").eq("user_id", session.user.id).maybeSingle();
+      if (data) {
+        const has = (v) => Array.isArray(v) ? v.length > 0 : v && Object.keys(v).length > 0;
+        if (has(data.kids)) { setKids(data.kids); setActiveKidId(data.kids[0].id); }
+        if (has(data.sitters)) setSitters(data.sitters);
+        if (has(data.favorites)) setFavorites(data.favorites);
+        if (has(data.saved_days)) setSavedDays(data.saved_days);
+        if (has(data.check_ins)) setCheckIns(data.check_ins);
+        if (has(data.completed_days)) setCompletedDays(data.completed_days);
+      }
+      cloudLoaded.current = true;
+    })();
+  }, [session]);
+  useEffect(() => {
+    if (!backendReady() || !session || !cloudLoaded.current) return;
+    const t = setTimeout(() => {
+      supabase.from("user_data").upsert({
+        user_id: session.user.id,
+        kids, sitters, favorites,
+        saved_days: savedDays, check_ins: checkIns, completed_days: completedDays,
+        updated_at: new Date().toISOString(),
+      }).then(() => {});
+    }, 1200);
+    return () => clearTimeout(t);
+  }, [session, kids, sitters, favorites, savedDays, checkIns, completedDays]);
+  const signOut = async () => { if (backendReady()) await supabase.auth.signOut(); showToast("Signed out — this device keeps its local copy"); };
   const [kids, setKids] = usePersistentState("kids", [{ id: "k1", name: "Little one", birthday: "2022-06-15", emoji: "🧒" }]);
   const [activeKidId, setActiveKidId] = usePersistentState("activeKidId", "k1");
   const [kidEditor, setKidEditor] = useState(null);
@@ -4296,13 +4451,13 @@ export default function LittleDayApp() {
       />
     );
   } else if (screen === "profile") {
-    content = <ProfileScreen onOpenPremium={() => goTo("premium")} onOpenPassport={() => goTo("passport")} stats={stats} earnedBadges={earnedBadges} kids={kids} activeKidId={activeKidId} onSetActive={setActiveKidId} onAddKid={openAddKid} onEditKid={openEditKid} sitters={sitters} onAddSitter={openAddSitter} onEditSitter={openEditSitter} onShareWithSitter={shareWithSitter} />;
+    content = <ProfileScreen onOpenPremium={() => goTo("premium")} onOpenPassport={() => goTo("passport")} stats={stats} session={session} onOpenAuth={() => setAuthOpen(true)} onSignOut={signOut} earnedBadges={earnedBadges} kids={kids} activeKidId={activeKidId} onSetActive={setActiveKidId} onAddKid={openAddKid} onEditKid={openEditKid} sitters={sitters} onAddSitter={openAddSitter} onEditSitter={openEditSitter} onShareWithSitter={shareWithSitter} />;
   } else if (screen === "safety") {
     content = <SafetyScreen />;
   } else if (screen === "activities") {
     content = <ActivitiesScreen setSelectedPlace={handleSelectPlace} />;
   } else if (screen === "premium") {
-    content = <PremiumScreen onBack={() => goTo("profile")} onUpgrade={() => showToast("Preview only \u2014 no charge. Subscriptions come with accounts.")} />;
+    content = <PremiumScreen onBack={() => goTo("profile")} onUpgrade={() => showToast("Preview only — no charge. Subscriptions come with accounts.")} />;
   } else if (screen === "passport") {
     content = (
       <PassportScreen
@@ -4391,6 +4546,7 @@ export default function LittleDayApp() {
         {sitterEditor && (
           <SitterEditorSheet key={sitterEditor.id || "snew"} data={sitterEditor} onSave={saveSitter} onDelete={deleteSitter} onClose={() => setSitterEditor(null)} />
         )}
+        <AuthSheet open={authOpen} onClose={() => setAuthOpen(false)} session={session} />
         <InviteSheet open={inviteOpen} onClose={() => setInviteOpen(false)} onShared={() => { setInviteOpen(false); showToast("Invite sent — preview only for now"); }} />
       </div>
     </div>

@@ -1,8 +1,6 @@
-// LITTLE DAY — "Real AI planning" edge function.
-// Deploy with: supabase functions deploy plan-day
-// Set the secret: supabase secrets set ANTHROPIC_API_KEY=sk-ant-...
-// The Claude key lives ONLY here on the server — never in the app.
-
+// LITTLE DAY — AI planning edge function. The Claude key lives ONLY on the server.
+// Deploy: supabase functions deploy plan-day
+// Secret: supabase secrets set ANTHROPIC_API_KEY=sk-ant-...
 Deno.serve(async (req) => {
   const cors = {
     "Access-Control-Allow-Origin": "*",
@@ -24,9 +22,9 @@ Deno.serve(async (req) => {
         messages: [{
           role: "user",
           content:
-            `You are Little Day's planner. Given these preferences: ${JSON.stringify(prefs)} ` +
-            `and these candidate places: ${JSON.stringify(places)}, choose an ordered itinerary ` +
-            `of 2-4 stops with times. Respond ONLY with JSON: {"stops":[{"placeId":"...","time":9.5,"why":"..."}],"note":"..."}`,
+            `You are Little Day's planner. Preferences: ${JSON.stringify(prefs)}. ` +
+            `Candidate places: ${JSON.stringify(places)}. Choose an ordered itinerary of 2-4 stops. ` +
+            `Respond ONLY with JSON: {"stops":[{"placeId":"...","time":9.5,"why":"..."}],"note":"..."}`,
         }],
       }),
     });
