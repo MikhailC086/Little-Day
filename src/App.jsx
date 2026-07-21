@@ -1004,7 +1004,35 @@ const INTERESTS = [
 ];
 
 // mock weather signal. rainRiskAfter = hour (24h) when rain may start; null = clear all day.
-const WEATHER = { condition: "sunny", tempF: 78, rainRiskAfter: 15 };
+// Live weather for Katonah via Open-Meteo (free, no key). Defaults show until the
+// fetch completes; if the network call fails we keep honest mild defaults.
+const WEATHER = { condition: "sunny", tempF: 78, rainRiskAfter: null, live: false };
+
+async function fetchLiveWeather() {
+  try {
+    const url =
+      "https://api.open-meteo.com/v1/forecast?latitude=41.2587&longitude=-73.6854" +
+      "&hourly=precipitation_probability,weather_code&daily=temperature_2m_max" +
+      "&temperature_unit=fahrenheit&forecast_days=1&timezone=auto";
+    const r = await fetch(url);
+    const d = await r.json();
+    const probs = (d.hourly && d.hourly.precipitation_probability) || [];
+    const codes = (d.hourly && d.hourly.weather_code) || [];
+    const nowH = new Date().getHours();
+    let rainAfter = null;
+    for (let i = nowH; i < probs.length; i++) {
+      if (probs[i] >= 45) { rainAfter = i; break; }
+    }
+    let maxCode = 0;
+    for (let i = nowH; i < Math.min(codes.length, nowH + 12); i++) maxCode = Math.max(maxCode, codes[i] || 0);
+    const t = d.daily && d.daily.temperature_2m_max && d.daily.temperature_2m_max[0];
+    if (typeof t === "number") WEATHER.tempF = Math.round(t);
+    WEATHER.rainRiskAfter = rainAfter;
+    WEATHER.condition = maxCode >= 51 ? "rainy" : maxCode >= 45 ? "foggy" : maxCode >= 1 ? "cloudy" : "sunny";
+    WEATHER.live = true;
+    return true;
+  } catch (e) { return false; }
+}
 
 // Estimated opening hours per place (24h decimal). NOTE: these are approximate
 // placeholders until real hours come from a live source. Format: [open, close].
@@ -2666,7 +2694,7 @@ function ProfileScreen({ onOpenPremium, onOpenPassport, stats, earnedBadges, kid
 
 function PremiumScreen({ onBack, onUpgrade }) {
   const [plan, setPlan] = useState("year");
-  const monthly = 1.99;
+  const monthly = 3.99;
   const yearly = 19.99;
 
   const premiumFeatures = [
@@ -2690,7 +2718,7 @@ function PremiumScreen({ onBack, onUpgrade }) {
             Unlock the full adventure
           </h2>
           <p className="text-[13px] text-[#8A8474] mt-1.5 max-w-[290px] mx-auto">
-            Start with 7 days of the full experience, free. After that, keep the free basics forever \u2014 or go Premium for just $1.99/month.
+            Start with 7 days of the full experience, free. After that, keep the free basics forever \u2014 or go Premium for just $3.99/month.
           </p>
         </div>
 
@@ -3965,6 +3993,8 @@ export default function LittleDayApp() {
   const [lastPrefs, setLastPrefs] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [showHowTo, setShowHowTo] = useState(false);
+  const [, setWeatherV] = useState(0);
+  useEffect(() => { fetchLiveWeather().then(() => setWeatherV((v) => v + 1)); }, []);
   const [kids, setKids] = usePersistentState("kids", [{ id: "k1", name: "Little one", birthday: "2022-06-15", emoji: "🧒" }]);
   const [activeKidId, setActiveKidId] = usePersistentState("activeKidId", "k1");
   const [kidEditor, setKidEditor] = useState(null);
