@@ -3,7 +3,7 @@ import { supabase, backendReady } from "./supabaseClient.js";
 import { GoogleMap, Marker, useJsApiLoader } from "@react-google-maps/api";
 import {
   Sun, MapPin, Clock, DollarSign, Heart, ChevronLeft, ChevronRight,
-  Home, Map as MapIcon, List as ListIcon, Clock, User, Sparkles, Droplets, Trees, Baby,
+  Home, Map as MapIcon, List as ListIcon, User, Sparkles, Droplets, Trees, Baby,
   ParkingCircle, ToggleLeft as Accessible, Utensils, Star, Navigation,
   Users, CheckCircle2, Cloud, CloudRain, UserPlus, Share2, Check, X, CalendarDays, Send, Shuffle, Bookmark, Moon, MessageCircle, Search, Flame, Plus, Trash2, HelpCircle, Phone, Shield
 } from "lucide-react";
@@ -4400,62 +4400,114 @@ function BetaGate({ onUnlock }) {
 function AuthSheet({ open, onClose, session }) {
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
-  const [stage, setStage] = useState("email"); // email -> code
+  const [stage, setStage] = useState("email"); // email -> sent -> code
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
   if (!open) return null;
-  const sendCode = async () => {
+
+  const sendLink = async () => {
     if (!email.includes("@")) { setMsg("Enter a valid email"); return; }
     setBusy(true); setMsg("");
-    const { error } = await supabase.auth.signInWithOtp({ email: email.trim(), options: { shouldCreateUser: true } });
+    const { error } = await supabase.auth.signInWithOtp({
+      email: email.trim(),
+      options: {
+        shouldCreateUser: true,
+        emailRedirectTo: window.location.origin + window.location.pathname,
+      },
+    });
     setBusy(false);
     if (error) { setMsg(error.message); return; }
-    setStage("code"); setMsg("");
+    setStage("sent");
   };
-  const verify = async () => {
+
+  const verifyCode = async () => {
     setBusy(true); setMsg("");
     const { error } = await supabase.auth.verifyOtp({ email: email.trim(), token: code.trim(), type: "email" });
     setBusy(false);
     if (error) { setMsg("That code didn't match — check the email and try again."); return; }
     onClose();
   };
+
   return (
     <div className="absolute inset-0 z-40 flex items-end" onClick={onClose}>
       <div className="absolute inset-0 bg-black/30" />
       <div className="relative w-full rounded-t-3xl bg-white p-6 pb-8" onClick={(e) => e.stopPropagation()} style={{ animation: "sheetUp 0.22s ease-out" }}>
         <div className="w-10 h-1 rounded-full bg-[#E7E1D4] mx-auto mb-4" />
-        <p className="text-[17px] font-bold text-[#1B2A4A] text-center" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-          {stage === "email" ? "Sign in or create your account" : "Enter your code"}
-        </p>
-        <p className="text-[13px] text-[#8A8474] text-center mt-1 mb-4 max-w-[300px] mx-auto">
-          {stage === "email"
-            ? "Your kids, favorites and saved days will sync to any device you sign in on."
-            : `We emailed a 6-digit code to ${email}. It can take a minute — check spam too.`}
-        </p>
-        {stage === "email" ? (
+
+        {stage === "email" && (
           <>
-            <input value={email} onChange={(e) => setEmail(e.target.value)} inputMode="email" autoCapitalize="none" placeholder="you@example.com"
-              className="w-full rounded-2xl px-4 py-3.5 text-[15px] border-2 outline-none text-center" style={{ borderColor: "#F0E4D4" }} />
-            <button onClick={sendCode} disabled={busy}
-              className="w-full rounded-2xl py-3.5 mt-3 text-white font-semibold text-[14px]" style={{ background: "var(--cta)", opacity: busy ? 0.6 : 1 }}>
-              {busy ? "Sending…" : "Email me a sign-in code"}
+            <p className="text-[17px] font-bold text-[#1B2A4A] text-center" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+              Sign in or create your account
+            </p>
+            <p className="text-[13px] text-[#8A8474] text-center mt-1 mb-4 max-w-[300px] mx-auto">
+              Your children, caregivers and favorites will sync to any device you sign in on.
+            </p>
+            <input
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && sendLink()}
+              inputMode="email"
+              autoCapitalize="none"
+              placeholder="you@example.com"
+              className="w-full rounded-2xl px-4 py-3.5 text-[15px] border-2 outline-none text-center"
+              style={{ borderColor: "#F0E4D4" }}
+            />
+            <button onClick={sendLink} disabled={busy}
+              className="w-full rounded-2xl py-3.5 mt-3 text-white font-semibold text-[14px]"
+              style={{ background: "var(--cta)", opacity: busy ? 0.6 : 1 }}>
+              {busy ? "Sending…" : "Email me a sign-in link"}
             </button>
-          </>
-        ) : (
-          <>
-            <input value={code} onChange={(e) => setCode(e.target.value)} inputMode="numeric" placeholder="123456"
-              className="w-full rounded-2xl px-4 py-3.5 text-[19px] tracking-[0.4em] border-2 outline-none text-center font-bold" style={{ borderColor: "#F0E4D4", color: "#1B2A4A" }} />
-            <button onClick={verify} disabled={busy}
-              className="w-full rounded-2xl py-3.5 mt-3 text-white font-semibold text-[14px]" style={{ background: "var(--cta)", opacity: busy ? 0.6 : 1 }}>
-              {busy ? "Checking…" : "Sign in"}
-            </button>
-            <button onClick={() => { setStage("email"); setCode(""); }} className="w-full py-2.5 mt-1 text-[13px] font-medium" style={{ color: "#8A8474" }}>
-              Use a different email
-            </button>
+            <p className="text-[11px] text-[#B8B0A0] text-center mt-3">No passwords — we email you a secure link.</p>
           </>
         )}
+
+        {stage === "sent" && (
+          <div className="text-center">
+            <div className="flex justify-center mb-2"><LittleDaySun size={48} /></div>
+            <p className="text-[17px] font-bold text-[#1B2A4A]" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Check your email</p>
+            <p className="text-[13.5px] text-[#5C5648] mt-2 max-w-[300px] mx-auto leading-snug">
+              We sent a sign-in link to <span className="font-semibold">{email}</span>. Open it on this device and you'll land right back here, signed in.
+            </p>
+            <div className="rounded-2xl p-3.5 mt-4 text-left" style={{ backgroundColor: "#FFF8EE" }}>
+              <p className="text-[12px]" style={{ color: "#B08A5A" }}>
+                Can't find it? Check spam or promotions — it can take a minute to arrive.
+              </p>
+            </div>
+            <button onClick={sendLink} disabled={busy} className="w-full rounded-2xl py-3 mt-3 font-semibold text-[13px] border" style={{ borderColor: "#E7E1D4", color: "#1B2A4A" }}>
+              {busy ? "Sending…" : "Resend the link"}
+            </button>
+            <button onClick={() => setStage("code")} className="w-full py-2.5 mt-1 text-[12.5px] font-medium" style={{ color: "#8A8474" }}>
+              My email has a 6-digit code instead
+            </button>
+            <button onClick={() => { setStage("email"); setMsg(""); }} className="w-full py-1 text-[12.5px] font-medium" style={{ color: "#8A8474" }}>
+              Use a different email
+            </button>
+          </div>
+        )}
+
+        {stage === "code" && (
+          <>
+            <p className="text-[17px] font-bold text-[#1B2A4A] text-center" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Enter your code</p>
+            <p className="text-[13px] text-[#8A8474] text-center mt-1 mb-4">Type the 6-digit code from the email.</p>
+            <input
+              value={code}
+              onChange={(e) => setCode(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && verifyCode()}
+              inputMode="numeric"
+              placeholder="123456"
+              className="w-full rounded-2xl px-4 py-3.5 text-[19px] tracking-[0.4em] border-2 outline-none text-center font-bold"
+              style={{ borderColor: "#F0E4D4", color: "#1B2A4A" }}
+            />
+            <button onClick={verifyCode} disabled={busy}
+              className="w-full rounded-2xl py-3.5 mt-3 text-white font-semibold text-[14px]"
+              style={{ background: "var(--cta)", opacity: busy ? 0.6 : 1 }}>
+              {busy ? "Checking…" : "Sign in"}
+            </button>
+            <button onClick={() => setStage("sent")} className="w-full py-2.5 mt-1 text-[13px] font-medium" style={{ color: "#8A8474" }}>Back</button>
+          </>
+        )}
+
         {msg && <p className="text-[12px] text-center mt-2" style={{ color: "#C6564B" }}>{msg}</p>}
-        <p className="text-[11px] text-[#B8B0A0] text-center mt-3">No passwords — we email you a code each time.</p>
       </div>
     </div>
   );
