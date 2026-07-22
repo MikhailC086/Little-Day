@@ -88,6 +88,9 @@ const COORDS = {
   "bedford-village-pool": [41.1970, -73.6420],
   "pleasantville-market": [41.1330, -73.7920], "chappaqua-market": [41.1570, -73.7690],
   "mtkisco-market": [41.2030, -73.7290], "tash-market": [41.0680, -73.8590], "roselle-park": [41.1420, -73.7830],
+  "katonah-playcare": [41.2570, -73.6870], "katonah-village-kids": [41.2600, -73.6860],
+  "little-feet-katonah": [41.2620, -73.6880], "mkccc": [41.2050, -73.7290],
+  "kids-world-preschool": [41.1980, -73.7440], "landmark-preschool": [41.2040, -73.6440],
 };
 function placeCoords(place) {
   const c = COORDS[place.id];
@@ -992,6 +995,61 @@ const PLACES = [
     blurb: "A neighborhood classic, freshly renovated in 2025 — multiple climbing structures with rock walls, a toddler structure, shade canopies, bucket and bench swings (plus a boat swing), and the beloved wooden house still standing. Ball fields, tree shade, and a friendly sandbox tradition where neighbors leave toys to share.",
     changingTable: UNRATED, stroller: true, food: false, crowd: UNRATED, shade: "Good (trees + canopies)", bathrooms: UNRATED, parking: "Free street",
   },
+  // ---------- DAYCARE & PRESCHOOL ----------
+  {
+    id: "katonah-playcare", name: "Katonah Playcare Early Learning Center", category: "Daycare & Preschool",
+    tags: ["indoor", "learning", "classes"], ring: "core",
+    town: "Katonah", address: "Katonah, NY 10536",
+    website: "katonahplaycare.com", ageRange: "2–5", price: "$$", distanceMi: 1,
+    photo: "🎒",
+    blurb: "An early learning center with a child-centered curriculum for Twos, Threes and Fours. Tours welcome year-round — a well-known first school for Katonah families.",
+    changingTable: true, stroller: true, food: false, crowd: UNRATED, shade: "N/A (indoor)", bathrooms: true, parking: "Lot",
+  },
+  {
+    id: "katonah-village-kids", name: "Katonah Village Kids", category: "Daycare & Preschool",
+    tags: ["indoor", "learning", "classes"], ring: "core",
+    town: "Katonah", address: "Katonah, NY 10536",
+    website: "katonahvillagekids.com", ageRange: "2–5", price: "$$", distanceMi: 1,
+    photo: "🧸",
+    blurb: "A play-based preschool built around children's natural love of play, fostering social, emotional and intellectual growth. Book a tour to visit.",
+    changingTable: true, stroller: true, food: false, crowd: UNRATED, shade: "N/A (indoor)", bathrooms: true, parking: "Village lot",
+  },
+  {
+    id: "little-feet-katonah", name: "Little Feet Childcare Center", category: "Daycare & Preschool",
+    tags: ["indoor", "learning"], ring: "core",
+    town: "Katonah", address: "131 Bedford Rd, Katonah, NY 10536",
+    website: "littlefeetchildcarecenterkatonahny.com", ageRange: "0–5", price: "$$", distanceMi: 1,
+    photo: "👣",
+    blurb: "Full childcare plus a preschool group that preps children for pre-K — pencil skills, crafts and plenty of creative play. Phone: 914-401-9230.",
+    changingTable: true, stroller: true, food: true, crowd: UNRATED, shade: "N/A (indoor)", bathrooms: true, parking: "Lot",
+  },
+  {
+    id: "mkccc", name: "Mount Kisco Child Care Center", category: "Daycare & Preschool",
+    tags: ["indoor", "learning", "classes"], ring: "core",
+    town: "Mount Kisco", address: "Mount Kisco, NY 10549",
+    website: "mkccc.org", ageRange: "0–10", price: "$$", distanceMi: 6,
+    photo: "🌱",
+    blurb: "Child care and early education from 3 months to 11 years, including preschool and a school-age program with homework help. Known for 'Feed Me Fresh' — a seed-to-table nutrition program with cooking classes.",
+    changingTable: true, stroller: true, food: true, crowd: UNRATED, shade: "N/A (indoor)", bathrooms: true, parking: "Lot",
+  },
+  {
+    id: "kids-world-preschool", name: "A Kid's World Preschool & Daycare", category: "Daycare & Preschool",
+    tags: ["indoor", "learning"], ring: "core",
+    town: "Mount Kisco", address: "325 West Patent Rd, Mount Kisco, NY 10549",
+    website: "akidsworldpreschool.com", ageRange: "0–5", price: "$$", distanceMi: 6,
+    photo: "🌍",
+    blurb: "A licensed bilingual preschool and daycare serving infants, toddlers and preschoolers in the Bedford school district. Phone: 914-244-8504.",
+    changingTable: true, stroller: true, food: true, crowd: UNRATED, shade: "N/A (indoor)", bathrooms: true, parking: "Lot",
+  },
+  {
+    id: "landmark-preschool", name: "Landmark Preschool", category: "Daycare & Preschool",
+    tags: ["indoor", "learning"], ring: "core",
+    town: "Bedford", address: "44 Village Green, Bedford, NY 10506",
+    website: "landmarkpreschool.org", ageRange: "2–5", price: "$$", distanceMi: 4,
+    photo: "🏫",
+    blurb: "A village preschool on Bedford's historic green, long a first-school choice for local families. Phone: 914-393-2293.",
+    changingTable: true, stroller: true, food: false, crowd: UNRATED, shade: "N/A (indoor)", bathrooms: true, parking: "Village green",
+  },
 ];
 
 
@@ -1071,6 +1129,8 @@ const HOURS = {
   "sprain-ridge-pool": [11, 18], "lewisboro-pool": [11, 19],
   "katonah-memorial-pool": [11, 19], "bedford-hills-pool": [11, 19], "bedford-village-pool": [11, 19],
   "pleasantville-market": [8, 13], "chappaqua-market": [8, 13], "mtkisco-market": [10, 15], "tash-market": [8, 14], "roselle-park": [8, 20],
+  "katonah-playcare": [7, 18], "katonah-village-kids": [8, 15], "little-feet-katonah": [7, 18],
+  "mkccc": [7, 18], "kids-world-preschool": [7, 18], "landmark-preschool": [8, 15],
 };
 
 function placeHours(place) {
@@ -1083,7 +1143,7 @@ const KID_PERKS = {
   "mtkisco-diner": ["High chairs", "Kids' menu", "Crayons", "Big milkshakes"],
   "belizzie": ["High chairs", "Kids' menu", "Arcade games", "Toddler play nook", "Game tokens"],
   "little-kebab": ["High chairs", "Fast service"],
-  "taco-street": ["High chairs", "Kid favorites", "Room to move around"],
+  "taco-street": ["High chairs", "Child favorites", "Room to move around"],
   "table-nine": ["High chairs", "Kids' menu", "Picky-eater & GF friendly"],
   "barnes-noble": ["Kids' storytimes", "Big kids' book & toy section", "Cafe"],
   "bedford-hills-diner": ["High chairs", "Kids' menu", "Tuesday character night"],
@@ -1116,8 +1176,54 @@ const CLASS_INFO = {
   "kids-in-sports": { classBased: true, freeTrial: null },
   "us-sports-institute": { classBased: true, freeTrial: null },
   "mtkisco-rec": { classBased: true, freeTrial: null },
+  "katonah-playcare": { classBased: true, freeTrial: null },
+  "katonah-village-kids": { classBased: true, freeTrial: null },
+  "little-feet-katonah": { classBased: true, freeTrial: null },
+  "mkccc": { classBased: true, freeTrial: null },
+  "kids-world-preschool": { classBased: true, freeTrial: null },
+  "landmark-preschool": { classBased: true, freeTrial: null },
 };
 function classInfo(place) { return CLASS_INFO[place.id] || null; }
+
+// Cuisine and dietary notes for food places. gf/veg/vegan: true = confirmed options,
+// null = ask (we don't guess). Always call ahead for serious allergies.
+const FOOD_INFO = {
+  "blue-dolphin": { cuisine: "Italian", dishes: "Pasta, pizza, seafood", gf: true, veg: true, vegan: null, note: "Gluten-free pasta available" },
+  "mtkisco-diner": { cuisine: "American diner", dishes: "Pancakes, burgers, milkshakes", gf: null, veg: true, vegan: null, note: "Huge menu — easy for picky eaters" },
+  "belizzie": { cuisine: "Pizza & Italian", dishes: "Pizza, gelato, arcade", gf: true, veg: true, vegan: null, note: "Gluten-free crust available" },
+  "little-kebab": { cuisine: "Turkish & Mediterranean", dishes: "Kebabs, rice bowls, hummus", gf: true, veg: true, vegan: true, note: "Naturally lots of GF & vegan options" },
+  "taco-street": { cuisine: "Mexican", dishes: "Tacos, quesadillas, rice bowls", gf: true, veg: true, vegan: true, note: "Corn tortillas are gluten-free" },
+  "table-nine": { cuisine: "American bistro", dishes: "Seasonal plates, burgers", gf: null, veg: true, vegan: null, note: "Ask about the day's options" },
+  "bedford-hills-diner": { cuisine: "American diner", dishes: "Breakfast all day, sandwiches", gf: null, veg: true, vegan: null, note: "Kids' menu; call for the Tuesday event" },
+  "king-kone": { cuisine: "Ice cream", dishes: "Soft serve, cones, sundaes", gf: null, veg: true, vegan: null, note: "Ask about dairy-free flavors" },
+  "lighthouse-ice-cream": { cuisine: "Ice cream", dishes: "Hard & soft serve", gf: null, veg: true, vegan: null, note: "Ask about dairy-free flavors" },
+  "blue-pig": { cuisine: "Ice cream", dishes: "Small-batch, local dairy", gf: null, veg: true, vegan: null, note: "Rotating flavors — ask what's dairy-free" },
+};
+function foodInfo(place) { return FOOD_INFO[place.id] || null; }
+
+// One consistent icon per category — used on map pins and category headers.
+const CATEGORY_ICON = {
+  "Park": "🌳", "Playground": "🛝", "Farm": "🐐", "Trail": "🥾", "Nature Center": "🦉",
+  "Pool": "🏊", "Beach": "🏖️", "Library": "📚", "Museum": "🏛️", "Historic Site": "🏛️",
+  "Restaurant": "🍽️", "Ice Cream": "🍦", "Farmers Market": "🥕",
+  "Toy Store": "🧸", "Store": "🛍️", "Gym & Classes": "🤸", "Martial Arts": "🥋",
+  "Dance Classes": "🩰", "Music Classes": "🎵", "Art Studio": "🎨",
+  "Sports Program": "⚽", "Afterschool": "🎒", "Kids' Studio": "🧩",
+  "Daycare & Preschool": "🏫", "Indoor Play": "🎪", "Theater": "🎭", "Aquarium": "🐠",
+};
+function categoryIcon(place) { return CATEGORY_ICON[place.category] || place.photo || "📍"; }
+
+
+// Which farmers markets have prepared-food vendors (not just produce).
+const MARKET_FOOD = {
+  "pleasantville-market": { vendors: true, note: "Prepared food & baked goods vendors — you can eat there" },
+  "chappaqua-market": { vendors: true, note: "Bakery & prepared-food vendors on site" },
+  "mtkisco-market": { vendors: null, note: "Mostly produce — call ahead if you're counting on lunch" },
+  "tash-market": { vendors: true, note: "Prepared food, coffee & cooking demos" },
+  "katonah-market-place": { vendors: null, note: "Produce-focused" },
+};
+function marketFood(place) { return MARKET_FOOD[place.id] || null; }
+
 
 function similarPlaces(place, count = 3) {
   if (!place) return [];
@@ -1143,6 +1249,7 @@ const ACTIVITY_GROUPS = [
   { label: "Music", cats: ["Music Classes"] },
   { label: "Art & Making", cats: ["Art Studio"] },
   { label: "Afterschool & Enrichment", cats: ["Afterschool", "Kids' Studio"] },
+  { label: "Daycare & Preschool", cats: ["Daycare & Preschool"] },
 ];
 
 function ageFromBirthday(bday) {
@@ -1568,13 +1675,15 @@ function TopBar({ title, onBack, right }) {
   );
 }
 
-function Pill({ children, active, onClick }) {
+function Pill({ children, active, onClick, disabled }) {
   return (
     <button
-      onClick={onClick}
+      onClick={disabled ? undefined : onClick}
+      disabled={disabled}
       className="px-3.5 py-2 rounded-full text-sm font-medium border transition-colors"
       style={{
         borderColor: active ? "#1B2A4A" : "#E7E1D4",
+        opacity: disabled ? 0.45 : 1,
         backgroundColor: active ? "#1B2A4A" : "#FFFFFF",
         color: active ? "#FFFBF5" : "#5C5648",
       }}
@@ -1587,7 +1696,7 @@ function Pill({ children, active, onClick }) {
 function BottomNav({ screen, setScreen }) {
   const items = [
     { key: "home", label: "Home", icon: Home },
-    { key: "map", label: "Map", icon: MapIcon },
+    { key: "map", label: "Categories", icon: MapIcon },
     { key: "friends", label: "Friends", icon: Users },
     { key: "favorites", label: "Saved", icon: Heart },
     { key: "safety", label: "Safety", icon: Shield },
@@ -1745,6 +1854,12 @@ function PlaceCard({ place, onSelect, favorited, onToggleFavorite, nowHour }) {
           </span>
           <PriceBadge price={place.price} />
           <OpenNowBadge place={place} nowHour={nh} showClosed={false} />
+          {foodInfo(place) && (
+            <span className="text-[11px] px-2 py-0.5 rounded-full" style={{ backgroundColor: "#FFF3E6", color: "#B08A5A" }}>{foodInfo(place).cuisine}</span>
+          )}
+          {foodInfo(place)?.gf === true && (
+            <span className="text-[11px] px-2 py-0.5 rounded-full" style={{ backgroundColor: "#E4F4E9", color: "#2E8B57" }}>GF</span>
+          )}
           {isClassBased(place) && (
             <span className="text-[11px] px-2 py-0.5 rounded-full" style={{ backgroundColor: "#EEF0F5", color: "#5B6B8C" }}>Sign-up</span>
           )}
@@ -1753,7 +1868,7 @@ function PlaceCard({ place, onSelect, favorited, onToggleFavorite, nowHour }) {
           )}
           {placePerks(place).length > 0 && (
             <span className="text-[11px] px-2 py-0.5 rounded-full" style={{ backgroundColor: "#FFF3E6", color: "#B08A5A" }}>
-              🖍️ Kid perks
+              🖍️ Child perks
             </span>
           )}
         </div>
@@ -1847,7 +1962,7 @@ function HomeScreen({ setScreen, favorites, toggleFavorite, setSelectedPlace, lo
                     </span>
                   </button>
                 ))}
-                <button onClick={() => setScreen("map")} className="w-full text-center text-[13px] font-semibold py-2.5" style={{ color: "var(--accent)" }}>See all on the map →</button>
+                <button onClick={() => setScreen("map")} className="w-full text-center text-[13px] font-semibold py-2.5" style={{ color: "var(--accent)" }}>See all in Categories List →</button>
               </>
             )}
           </div>
@@ -1879,6 +1994,15 @@ function HomeScreen({ setScreen, favorites, toggleFavorite, setSelectedPlace, lo
           <div className="flex-1">
             <p className="font-semibold text-[14px] text-[#1B2A4A]">Classes & Activities</p>
             <p className="text-[12px] text-[#8A8474]">Sports, dance, music, art & afterschool programs</p>
+          </div>
+          <ChevronRight size={18} color="#C9C2B2" />
+        </button>
+
+        <button onClick={() => setScreen("community")} className="w-full rounded-2xl p-4 flex items-center gap-3 border text-left mt-2.5" style={{ borderColor: "#EFEAE0", backgroundColor: "#fff" }}>
+          <div className="w-11 h-11 rounded-xl flex items-center justify-center text-[22px]" style={{ backgroundColor: "#FFF3E6" }}>🎪</div>
+          <div className="flex-1">
+            <p className="font-semibold text-[14px] text-[#1B2A4A]">Community Events</p>
+            <p className="text-[12px] text-[#8A8474]">Markets, story hours, festivals & family nights</p>
           </div>
           <ChevronRight size={18} color="#C9C2B2" />
         </button>
@@ -1965,7 +2089,9 @@ function PlannerScreen({ onBack, onGenerate, locationLabel, initialAge, activeKi
   const [age, setAge] = useState(initialAge || "2-4");
   const [budget, setBudget] = useState("any");
   const [distance, setDistance] = useState(15);
-  const [startMode, setStartMode] = useState("now"); // "now" | custom (future)
+  const [startMode, setStartMode] = useState("now");
+  const [dayOffset, setDayOffset] = useState(0);
+  const [pickedDate, setPickedDate] = useState(new Date().toISOString().slice(0, 10)); // "now" | custom (future)
   const [endHour, setEndHour] = useState(defaultEnd);
   const [setting, setSetting] = useState("any");
   const [interests, setInterests] = useState([]);
@@ -2031,15 +2157,49 @@ function PlannerScreen({ onBack, onGenerate, locationLabel, initialAge, activeKi
         </div>
 
         <div>
-          <p className="text-[13px] font-medium text-[#8A8474] mb-2">When are you starting?</p>
+          <p className="text-[13px] font-medium text-[#8A8474] mb-2">Which day?</p>
           <div className="flex gap-2 flex-wrap">
-            <Pill active={startMode === "now"} onClick={() => setStartMode("now")}>
-              Right now · {formatHour(nowHour)}
-            </Pill>
-            <Pill active={startMode === "morning"} onClick={() => setStartMode("morning")}>
-              This morning · 9:30 AM
+            {[0, 1, 2].map((off) => {
+              const dt = new Date();
+              dt.setDate(dt.getDate() + off);
+              const label = off === 0 ? "Today" : off === 1 ? "Tomorrow" : dt.toLocaleDateString(undefined, { weekday: "long" });
+              return (
+                <Pill key={off} active={dayOffset === off} onClick={() => setDayOffset(off)}>
+                  {label}{off > 0 ? ` · ${dt.toLocaleDateString(undefined, { month: "short", day: "numeric" })}` : ""}
+                </Pill>
+              );
+            })}
+            <Pill active={dayOffset === "pick"} onClick={() => setDayOffset("pick")}>
+              Another day…
             </Pill>
           </div>
+          {dayOffset === "pick" && (
+            <input
+              type="date"
+              value={pickedDate}
+              min={new Date().toISOString().slice(0, 10)}
+              onChange={(e) => setPickedDate(e.target.value)}
+              className="mt-2 w-full rounded-xl px-3.5 py-2.5 text-[14px] border outline-none"
+              style={{ borderColor: "#E7E1D4" }}
+            />
+          )}
+        </div>
+
+        <div>
+          <p className="text-[13px] font-medium text-[#8A8474] mb-2">When are you starting?</p>
+          <div className="flex gap-2 flex-wrap">
+            <Pill active={startMode === "now"} onClick={() => setStartMode("now")} disabled={dayOffset !== 0}>
+              {dayOffset === 0 ? `Right now · ${formatHour(nowHour)}` : "Right now"}
+            </Pill>
+            <Pill active={startMode === "morning"} onClick={() => setStartMode("morning")}>
+              Morning · 9:30 AM
+            </Pill>
+          </div>
+          {dayOffset !== 0 && (
+            <p className="text-[11.5px] mt-1.5" style={{ color: "#B08A5A" }}>
+              Planning ahead — we'll use opening hours for that day. Double-check seasonal spots before you go.
+            </p>
+          )}
         </div>
 
         <div>
@@ -2140,7 +2300,7 @@ function PlannerScreen({ onBack, onGenerate, locationLabel, initialAge, activeKi
 
         <button
           onClick={() =>
-            onGenerate({
+            onGenerate({ plannedDate: dayOffset === "pick" ? pickedDate : (() => { const d = new Date(); d.setDate(d.getDate() + dayOffset); return d.toISOString().slice(0, 10); })(),
               age,
               budget,
               distance,
@@ -2357,7 +2517,7 @@ function PlaceholderMap({ places, onSelect, note }) {
             className="absolute w-8 h-8 rounded-full flex items-center justify-center text-base shadow"
             style={{ left: `${left}%`, top: `${top}%`, backgroundColor: "var(--accent)" }}
           >
-            {p.photo}
+            {categoryIcon(p)}
           </button>
         );
       })}
@@ -2396,7 +2556,23 @@ function GoogleMapView({ places, located, userCoords, onSelect }) {
       {places.map((p) => {
         const pos = placeCoords(p);
         if (!pos) return null;
-        return <Marker key={p.id} position={pos} title={p.name} onClick={() => onSelect(p)} />;
+        return (
+          <Marker
+            key={p.id}
+            position={pos}
+            title={`${p.name} · ${p.category}`}
+            onClick={() => onSelect(p)}
+            label={{ text: categoryIcon(p), fontSize: "18px" }}
+            icon={{
+              path: window.google.maps.SymbolPath.CIRCLE,
+              scale: 16,
+              fillColor: "#FFFFFF",
+              fillOpacity: 1,
+              strokeColor: "#FF8C61",
+              strokeWeight: 2,
+            }}
+          />
+        );
       })}
       {located && userCoords && (
         <Marker
@@ -2433,7 +2609,17 @@ function MapScreen({ setSelectedPlace, favorites, toggleFavorite, location, onRe
   const [filter, setFilter] = useState("all");
   const [query, setQuery] = useState(initialQuery || "");
   const filtered = useMemo(() => {
-    let list = filter === "all" ? PLACES : PLACES.filter((p) => p.tags.includes(filter));
+    const GROUPS = {
+      play: (p) => ["Playground", "Park", "Pool", "Trail", "Beach", "Farm", "Indoor Play", "Nature Center"].includes(p.category)
+        || p.tags.includes("playground") || p.tags.includes("water"),
+      eat: (p) => ["Restaurant", "Ice Cream", "Farmers Market"].includes(p.category) || p.tags.includes("food"),
+      learn: (p) => ["Library", "Museum", "Historic Site", "Gym & Classes", "Martial Arts", "Dance Classes",
+        "Music Classes", "Art Studio", "Sports Program", "Afterschool", "Kids' Studio", "Daycare & Preschool", "Theater", "Aquarium"].includes(p.category),
+      shop: (p) => ["Toy Store", "Store"].includes(p.category) || p.tags.includes("shopping"),
+      free: (p) => p.tags.includes("free") || p.price === "Free",
+      indoor: (p) => p.tags.includes("indoor") || p.tags.includes("rain-friendly"),
+    };
+    let list = filter === "all" ? PLACES : PLACES.filter(GROUPS[filter] || ((p) => p.tags.includes(filter)));
     const q = query.trim().toLowerCase();
     if (q) {
       list = list.filter(
@@ -2448,7 +2634,7 @@ function MapScreen({ setSelectedPlace, favorites, toggleFavorite, location, onRe
   const located = location.status === "located";
   return (
     <div className="pb-4">
-      <TopBar title="Explore nearby" />
+      <TopBar title="Categories List" />
       <div className="px-5 mb-3">
         <div className="flex items-center gap-2 rounded-2xl px-3.5 py-2.5 border bg-white" style={{ borderColor: "#E7E1D4" }}>
           <Search size={17} color="#9C9484" />
@@ -2487,13 +2673,12 @@ function MapScreen({ setSelectedPlace, favorites, toggleFavorite, location, onRe
       <div className="px-5 mb-3 flex gap-2 overflow-x-auto">
         {[
           { k: "all", l: "All" },
-          { k: "outdoor", l: "Outdoor" },
-          { k: "indoor", l: "Indoor" },
+          { k: "play", l: "Play" },
+          { k: "eat", l: "Eat" },
+          { k: "learn", l: "Learn" },
+          { k: "shop", l: "Shop" },
           { k: "free", l: "Free" },
-          { k: "water", l: "Water" },
-          { k: "food", l: "Food" },
-          { k: "playground", l: "Playgrounds" },
-          { k: "gifts", l: "Gifts" },
+          { k: "indoor", l: "Rainy day" },
         ].map((f) => (
           <Pill key={f.k} active={filter === f.k} onClick={() => setFilter(f.k)}>
             {f.l}
@@ -2619,7 +2804,7 @@ function ProfileScreen({ onOpenPremium, onOpenPassport, stats, session, onOpenAu
 
         <div className="rounded-2xl p-4 bg-white border" style={{ borderColor: "#EFEAE0" }}>
           <div className="flex items-center justify-between mb-3">
-            <p className="font-semibold text-[#1B2A4A]">Kids</p>
+            <p className="font-semibold text-[#1B2A4A]">Children</p>
             <button onClick={onAddKid} className="text-[12px] font-semibold flex items-center gap-1" style={{ color: "var(--accent)" }}><Plus size={14} /> Add</button>
           </div>
           {kids.length === 0 ? (
@@ -2649,11 +2834,11 @@ function ProfileScreen({ onOpenPremium, onOpenPassport, stats, session, onOpenAu
 
         <div className="rounded-2xl p-4 bg-white border mt-3" style={{ borderColor: "#EFEAE0" }}>
           <div className="flex items-center justify-between mb-3">
-            <p className="font-semibold text-[#1B2A4A]">Babysitters</p>
+            <p className="font-semibold text-[#1B2A4A]">Caregivers</p>
             <button onClick={onAddSitter} className="text-[12px] font-semibold flex items-center gap-1" style={{ color: "var(--accent)" }}><Plus size={14} /> Add</button>
           </div>
           {sitters.length === 0 ? (
-            <p className="text-[13px] text-[#8A8474]">Keep your trusted sitters handy — tap Add to save one.</p>
+            <p className="text-[13px] text-[#8A8474]">Keep your trusted caregivers handy — tap Add to save one.</p>
           ) : (
             <div className="flex flex-col gap-2.5">
               {sitters.map((st) => (
@@ -2674,7 +2859,7 @@ function ProfileScreen({ onOpenPremium, onOpenPassport, stats, session, onOpenAu
                   <button onClick={() => onEditSitter(st)} className="text-[11px] font-medium shrink-0" style={{ color: "var(--accent)" }}>Edit</button>
                 </div>
               ))}
-              <p className="text-[11px] text-[#B8B0A0]">Tap ↪ to text today's plan — stops, nap time and home-by — to your sitter.</p>
+              <p className="text-[11px] text-[#B8B0A0]">Tap ↪ to text today's plan — stops, nap time and home-by — to your caregiver.</p>
             </div>
           )}
         </div>
@@ -2921,6 +3106,36 @@ function PlaceDetailScreen({ place, onBack, favorited, onToggleFavorite, checkIn
           </div>
         )}
 
+        {foodInfo(place) && (
+          <div className="rounded-2xl p-4 mt-3 border" style={{ borderColor: "#F0E4D4", backgroundColor: "#FFFDF8" }}>
+            <p className="text-[13px] font-semibold mb-2" style={{ color: "#B08A5A" }}>Food &amp; dietary</p>
+            <p className="text-[13px] text-[#1B2A4A] font-medium">{foodInfo(place).cuisine}</p>
+            <p className="text-[12px] text-[#8A8474] mb-2">{foodInfo(place).dishes}</p>
+            <div className="flex gap-1.5 flex-wrap">
+              {foodInfo(place).gf === true && <span className="text-[11px] px-2 py-0.5 rounded-full" style={{ backgroundColor: "#E4F4E9", color: "#2E8B57" }}>Gluten-free options</span>}
+              {foodInfo(place).veg === true && <span className="text-[11px] px-2 py-0.5 rounded-full" style={{ backgroundColor: "#E4F4E9", color: "#2E8B57" }}>Vegetarian</span>}
+              {foodInfo(place).vegan === true && <span className="text-[11px] px-2 py-0.5 rounded-full" style={{ backgroundColor: "#E4F4E9", color: "#2E8B57" }}>Vegan</span>}
+              {foodInfo(place).gf === null && <span className="text-[11px] px-2 py-0.5 rounded-full" style={{ backgroundColor: "#F0EEE6", color: "#5C5648" }}>Ask about gluten-free</span>}
+            </div>
+            {foodInfo(place).note && <p className="text-[12px] mt-2" style={{ color: "#8A8474" }}>{foodInfo(place).note}</p>}
+            <p className="text-[11px] mt-2" style={{ color: "#B8B0A0" }}>Parent-reported — always call ahead for serious allergies.</p>
+          </div>
+        )}
+
+        {marketFood(place) && (
+          <div className="rounded-2xl p-4 mt-3 border" style={{ borderColor: "#F0E4D4", backgroundColor: "#FFFDF8" }}>
+            <p className="text-[13px] font-semibold mb-1" style={{ color: "#B08A5A" }}>Food at this market</p>
+            <div className="flex gap-1.5 flex-wrap mb-1.5">
+              {marketFood(place).vendors === true ? (
+                <span className="text-[11px] px-2 py-0.5 rounded-full" style={{ backgroundColor: "#E4F4E9", color: "#2E8B57" }}>Prepared food vendors</span>
+              ) : (
+                <span className="text-[11px] px-2 py-0.5 rounded-full" style={{ backgroundColor: "#F0EEE6", color: "#5C5648" }}>Produce-focused</span>
+              )}
+            </div>
+            <p className="text-[12px]" style={{ color: "#8A8474" }}>{marketFood(place).note}</p>
+          </div>
+        )}
+
         <div className="rounded-2xl p-4 mt-3 border" style={{ borderColor: "#F0E4D4", backgroundColor: "#FFF8EE" }}>
           <div className="flex items-center justify-between mb-2.5">
             <p className="text-[13px] font-semibold text-[#1B2A4A]">Check in &amp; earn rewards</p>
@@ -2968,7 +3183,7 @@ function PlaceDetailScreen({ place, onBack, favorited, onToggleFavorite, checkIn
           <div className="rounded-2xl p-4 mt-3" style={{ backgroundColor: "#FFF3E6" }}>
             <div className="flex items-center gap-1.5 mb-2">
               <span className="text-[14px]">🖍️</span>
-              <span className="text-[12px] font-semibold" style={{ color: "#B08A5A" }}>For the kids</span>
+              <span className="text-[12px] font-semibold" style={{ color: "#B08A5A" }}>For children</span>
             </div>
             <div className="flex gap-2 flex-wrap">
               {placePerks(place).map((k) => (
@@ -3700,7 +3915,7 @@ function SitterEditorSheet({ data, onSave, onDelete, onClose }) {
       <div className="absolute inset-0 bg-black/30" />
       <div className="relative w-full rounded-t-3xl bg-white p-5 pb-8 max-h-[85%] overflow-y-auto" onClick={(e) => e.stopPropagation()} style={{ animation: "sheetUp 0.22s ease-out" }}>
         <div className="w-10 h-1 rounded-full bg-[#E7E1D4] mx-auto mb-4" />
-        <p className="text-[15px] font-semibold text-[#1B2A4A] mb-3">{data.isNew ? "Add a babysitter" : "Edit babysitter"}</p>
+        <p className="text-[15px] font-semibold text-[#1B2A4A] mb-3">{data.isNew ? "Add a caregiver" : "Edit caregiver"}</p>
 
         <p className="text-[12px] font-medium text-[#8A8474] mb-2">Avatar</p>
         <div className="flex gap-2 flex-wrap mb-4">
@@ -3730,11 +3945,11 @@ function SitterEditorSheet({ data, onSave, onDelete, onClose }) {
 
         <button onClick={() => onSave({ ...data, name, phone, rate, notes, emoji })}
           className="w-full rounded-2xl py-3.5 text-white font-semibold text-[14px]" style={{ background: "var(--cta)" }}>
-          {data.isNew ? "Add sitter" : "Save"}
+          {data.isNew ? "Add caregiver" : "Save"}
         </button>
         {!data.isNew && (
           <button onClick={() => onDelete(data.id)} className="w-full rounded-2xl py-3 mt-2 font-semibold text-[13px] flex items-center justify-center gap-1.5" style={{ color: "#C6564B" }}>
-            <Trash2 size={15} /> Remove sitter
+            <Trash2 size={15} /> Remove caregiver
           </button>
         )}
       </div>
@@ -3825,7 +4040,7 @@ function ActivitiesScreen({ setSelectedPlace }) {
 
 const HOWTO_STEPS = [
   { emoji: "🌅", title: "Welcome to Little Day", body: "The first app that plans your whole day out with the kids — where to go, eat, play, and everything in between. Here's a quick tour." },
-  { emoji: "🧒", title: "1. Add your kids", body: "In the Family tab, add each child with their name and birthday. Switch between them anytime — the planner tailors ideas to whoever you've selected." },
+  { emoji: "🧒", title: "1. Add your children", body: "In the Family tab, add each child with their name and birthday. Switch between them anytime — the planner tailors ideas to whoever you've selected." },
   { emoji: "✨", title: "2. Plan My Day", body: "Tap Plan My Day, then set the age, budget, time you have, and nap or 'home by' time. Little Day builds a full itinerary — with a lunch stop and a treat — in seconds." },
   { emoji: "🔍", title: "3. Search & explore", body: "Use the search bar on the home screen to find anything — a place, a town, or a category like 'playground' or 'ice cream.' Or open the Map to browse with filters." },
   { emoji: "🤸", title: "4. Classes & Activities", body: "Browse sports, dance, music, art, and afterschool programs. Look for the 'Free trial' tag, and note which need sign-up (no drop-ins)." },
@@ -3869,36 +4084,55 @@ function HowToOverlay({ open, onClose }) {
 
 const SAFETY_RESOURCES = [
   {
-    group: "Car seat checks", emoji: "🫶", intro: "Certified technicians check and install your car seat correctly — free, but appointments are required.",
+    group: "Emergency rooms & trauma centers", emoji: "🏥", intro: "For a true emergency, always call 911 first. These are the nearest hospitals with emergency care for children.",
     items: [
-      { name: "Bedford Police Department", town: "Bedford Hills", detail: "307 Bedford Rd · closest to Katonah", phone: "914-241-3111", note: "By appointment" },
-      { name: "Northern Westchester Hospital", town: "Mount Kisco", detail: "Free inspections by certified car seat techs", phone: "", website: "nwh.northwell.edu", note: "Call to schedule" },
-      { name: "Westchester County Public Safety", town: "Hawthorne", detail: "1 Saw Mill River Pkwy", phone: "914-864-7671", note: "By appointment" },
-      { name: "SAFE KIDS / Blythedale Children's Hospital", town: "Valhalla", detail: "95 Bradhurst Ave · weekdays midday", phone: "914-592-7555", note: "By appointment" },
-      { name: "Croton-on-Hudson Police", town: "Croton-on-Hudson", detail: "1 Van Wyck St", phone: "914-271-5177", note: "By appointment" },
-      { name: "Peekskill Police Department", town: "Peekskill", detail: "2 Nelson Ave · Community Policing Unit", phone: "914-737-8000", note: "By appointment" },
-      { name: "Eastchester Police Department", town: "Eastchester", detail: "40 Mill Rd · Mon–Sat 9–11 AM & 4–6 PM", phone: "914-961-3464", note: "By appointment" },
-      { name: "Dobbs Ferry Police Department", town: "Dobbs Ferry", detail: "112 Main St", phone: "914-693-5500", note: "By appointment" },
-      { name: "Yonkers Police Department", town: "Yonkers", detail: "36 Radford St · Mon–Fri 8 AM–4 PM", phone: "914-377-7375", note: "By appointment" },
-      { name: "Fairview Fire Department", town: "White Plains", detail: "19 Rosemont Blvd", phone: "914-949-2828", note: "By appointment" },
-      { name: "Greenburgh Police (Town Hall)", town: "White Plains", detail: "177 Hillside Ave · 1st & 3rd Saturdays 11 AM–2 PM", phone: "914-682-5334", note: "By appointment" },
-      { name: "NY State fitting-station directory", town: "Statewide", detail: "Official list of every certified inspection station", phone: "", website: "trafficsafety.ny.gov", note: "Find more near you" },
+      { name: "Northern Westchester Hospital ER", town: "Mount Kisco", detail: "400 E Main St · the closest ER to Katonah · open 24/7", phone: "914-666-1200", website: "nwh.northwell.edu", note: "Open 24/7" },
+      { name: "Maria Fareri Children's Hospital", town: "Valhalla", detail: "100 Woods Rd · the region's only Level I PEDIATRIC trauma center, with a pediatric ER and PICU", phone: "914-493-7000", website: "wmchealth.org", note: "Children's trauma center" },
+      { name: "Westchester Medical Center", town: "Valhalla", detail: "100 Woods Rd · Level I adult trauma & burn center; the Hudson Valley's referral hospital", phone: "914-493-7000", website: "wmchealth.org", note: "Level I trauma" },
+      { name: "White Plains Hospital ER", town: "White Plains", detail: "41 E Post Rd · 24-hour emergency department", phone: "914-681-0600", website: "wphospital.org", note: "Open 24/7" },
+      { name: "Phelps Hospital ER", town: "Sleepy Hollow", detail: "701 N Broadway · 24-hour emergency care", phone: "914-366-3000", website: "phelps.northwell.edu", note: "Open 24/7" },
+    ],
+  },
+  {
+    group: "Urgent care (not an emergency)", emoji: "🩹", intro: "For fevers, sprains, stitches and the after-hours ear infection — faster and cheaper than an ER visit.",
+    items: [
+      { name: "PM Pediatrics", town: "Yorktown Heights", detail: "Pediatric-only urgent care, open late every night", phone: "", website: "pmpediatrics.com", note: "Children only · walk in" },
+      { name: "Optum (CareMount) Urgent Care", town: "Mount Kisco", detail: "Walk-in urgent care close to home", phone: "", website: "optum.com", note: "Walk in" },
+      { name: "Northwell-GoHealth Urgent Care", town: "Multiple Westchester", detail: "Several county locations with evening & weekend hours", phone: "", website: "gohealthuc.com", note: "Check locations" },
+      { name: "Poison Control (24/7, free)", town: "Nationwide", detail: "Immediate expert advice for any swallowed or suspected poisoning", phone: "1-800-222-1222", note: "Save this number" },
+    ],
+  },
+  {
+    group: "Car seat checks", emoji: "🫶", intro: "Certified technicians check and install your car seat correctly — free, but you'll need to book a slot.",
+    items: [
+      { name: "Bedford Police Department", town: "Bedford Hills", detail: "307 Bedford Rd · closest to Katonah", phone: "914-241-3111", note: "Book ahead" },
+      { name: "Northern Westchester Hospital", town: "Mount Kisco", detail: "Free inspections by certified car seat techs", phone: "", website: "nwh.northwell.edu", note: "Free · call first" },
+      { name: "Westchester County Public Safety", town: "Hawthorne", detail: "1 Saw Mill River Pkwy", phone: "914-864-7671", note: "Book ahead" },
+      { name: "SAFE KIDS / Blythedale Children's Hospital", town: "Valhalla", detail: "95 Bradhurst Ave · weekdays midday", phone: "914-592-7555", note: "Book ahead" },
+      { name: "Croton-on-Hudson Police", town: "Croton-on-Hudson", detail: "1 Van Wyck St", phone: "914-271-5177", note: "Book ahead" },
+      { name: "Peekskill Police Department", town: "Peekskill", detail: "2 Nelson Ave · Community Policing Unit", phone: "914-737-8000", note: "Book ahead" },
+      { name: "Eastchester Police Department", town: "Eastchester", detail: "40 Mill Rd · Mon–Sat 9–11 AM & 4–6 PM", phone: "914-961-3464", note: "Book ahead" },
+      { name: "Dobbs Ferry Police Department", town: "Dobbs Ferry", detail: "112 Main St", phone: "914-693-5500", note: "Book ahead" },
+      { name: "Yonkers Police Department", town: "Yonkers", detail: "36 Radford St · Mon–Fri 8 AM–4 PM", phone: "914-377-7375", note: "Book ahead" },
+      { name: "Fairview Fire Department", town: "White Plains", detail: "19 Rosemont Blvd", phone: "914-949-2828", note: "Book ahead" },
+      { name: "Greenburgh Police (Town Hall)", town: "White Plains", detail: "177 Hillside Ave · 1st & 3rd Saturdays 11 AM–2 PM", phone: "914-682-5334", note: "Book ahead" },
+      { name: "NY State fitting-station directory", town: "Statewide", detail: "Official list of every certified inspection station", phone: "", website: "trafficsafety.ny.gov", note: "Full state list" },
     ],
   },
   {
     group: "CPR & first aid classes", emoji: "❤️", intro: "Pediatric CPR is one of the most valuable skills a parent or sitter can have.",
     items: [
-      { name: "American Red Cross", town: "White Plains", detail: "106 N Broadway · child & baby CPR, first aid", phone: "", website: "redcross.org", note: "Register online" },
-      { name: "CPRed", town: "White Plains", detail: "200 Mamaroneck Ave · Pediatric First Aid + CPR (AHA)", phone: "914-497-8998", website: "cpred.com", note: "Group classes available" },
-      { name: "White Plains Hospital", town: "White Plains", detail: "41 E Post Rd · CPR training site", phone: "", website: "wphospital.org", note: "Check schedule" },
-      { name: "Westchester County Emergency Services", town: "Valhalla", detail: "County CPR/AED training programs", phone: "", website: "emergencyservices.westchestercountyny.gov", note: "Register online" },
+      { name: "American Red Cross", town: "White Plains", detail: "106 N Broadway · child & baby CPR, first aid", phone: "", website: "redcross.org", note: "Sign up online" },
+      { name: "CPRed", town: "White Plains", detail: "200 Mamaroneck Ave · Pediatric First Aid + CPR (AHA)", phone: "914-497-8998", website: "cpred.com", note: "Groups welcome" },
+      { name: "White Plains Hospital", town: "White Plains", detail: "41 E Post Rd · CPR training site", phone: "", website: "wphospital.org", note: "See upcoming dates" },
+      { name: "Westchester County Emergency Services", town: "Valhalla", detail: "County CPR/AED training programs", phone: "", website: "emergencyservices.westchestercountyny.gov", note: "Sign up online" },
     ],
   },
   {
     group: "Child safety programs", emoji: "🛡️", intro: "Broader safety education for parents, sitters and older kids.",
     items: [
-      { name: "Safe Kids Westchester", town: "Valhalla", detail: "Child passenger, home & water safety programs (Blythedale)", phone: "914-592-7555", note: "Ongoing programs" },
-      { name: "Red Cross Babysitting & Child Care", town: "Online + local", detail: "Certifies sitters ages 11+ in safety basics", phone: "", website: "redcross.org", note: "Great for your sitters!" },
+      { name: "Safe Kids Westchester", town: "Valhalla", detail: "Child passenger, home & water safety programs (Blythedale)", phone: "914-592-7555", note: "Year-round" },
+      { name: "Red Cross Babysitting & Child Care", town: "Online + local", detail: "Certifies sitters ages 11+ in safety basics", phone: "", website: "redcross.org", note: "Perfect for caregivers" },
     ],
   },
 ];
@@ -3948,7 +4182,7 @@ function SafetyScreen({ onBack }) {
             </div>
           </div>
         ))}
-        <p className="text-[11px] text-[#B8B0A0] leading-snug">Details verified from county and hospital listings, but schedules and contacts change — always call ahead. Appointments are required for car seat checks. Resources cover Westchester County for now — built to expand region by region as Little Day grows.</p>
+        <p className="text-[11px] text-[#B8B0A0] leading-snug">Details verified from county and hospital listings, but schedules and contacts change — always call ahead. Car seat checks need a booked slot — call before you drive over. Resources cover Westchester County for now — built to expand region by region as Little Day grows.</p>
       </div>
     </div>
   );
@@ -4056,6 +4290,69 @@ function AuthSheet({ open, onClose, session }) {
   );
 }
 
+function CommunityScreen({ setSelectedPlace }) {
+  const todays = EVENTS_SEED.filter(isEventToday);
+  const rest = EVENTS_SEED.filter((e) => !isEventToday(e));
+  const Card = ({ ev }) => {
+    const pl = PLACES.find((p) => p.id === ev.placeId);
+    const today = isEventToday(ev);
+    return (
+      <button
+        onClick={() => pl && setSelectedPlace(pl)}
+        className="w-full text-left rounded-2xl p-4 border"
+        style={{
+          borderColor: today ? "#F5B71F" : "#EFEAE0",
+          borderWidth: today ? 2 : 1,
+          background: today ? "linear-gradient(160deg,#FFFBF0,#FFF3E6)" : "#FFFFFF",
+        }}
+      >
+        <div className="flex items-start gap-3">
+          <div className="text-[26px] shrink-0">{ev.emoji}</div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-1.5 flex-wrap mb-0.5">
+              <p className="text-[15px] font-semibold text-[#1B2A4A]">{ev.title}</p>
+              {today && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full text-white" style={{ background: "var(--cta)" }}>TODAY</span>}
+              {ev.free && <span className="text-[10.5px] px-2 py-0.5 rounded-full" style={{ backgroundColor: "#E4F4E9", color: "#2E8B57" }}>Free</span>}
+            </div>
+            <p className="text-[12.5px] text-[#8A8474]">{pl ? `${pl.town} · ` : ""}{ev.day} · {ev.time}</p>
+            <p className="text-[12.5px] text-[#5C5648] mt-1.5 leading-snug">{ev.blurb}</p>
+            {pl && <p className="text-[11.5px] mt-1.5" style={{ color: "#B08A5A" }}>{pl.distanceMi} mi away · tap for details</p>}
+          </div>
+        </div>
+      </button>
+    );
+  };
+  return (
+    <div className="pb-8">
+      <TopBar title="Community Events" />
+      <p className="px-5 -mt-1 mb-4 text-[13px] text-[#8A8474]">
+        Farmers markets, story hours, festivals and family nights around Westchester.
+      </p>
+      <div className="px-5 flex flex-col gap-5">
+        {todays.length > 0 && (
+          <div>
+            <p className="text-[14px] font-semibold text-[#1B2A4A] mb-2.5">Happening today</p>
+            <div className="flex flex-col gap-2.5">
+              {todays.map((ev) => <Card key={ev.id} ev={ev} />)}
+            </div>
+          </div>
+        )}
+        <div>
+          <p className="text-[14px] font-semibold text-[#1B2A4A] mb-2.5">This week &amp; recurring</p>
+          <div className="flex flex-col gap-2.5">
+            {rest.map((ev) => <Card key={ev.id} ev={ev} />)}
+          </div>
+        </div>
+        <div className="rounded-2xl p-4 border" style={{ borderColor: "#EFEAE0", backgroundColor: "#FFF8EE" }}>
+          <p className="text-[13px] font-semibold text-[#1B2A4A] mb-1">Know about an event?</p>
+          <p className="text-[12.5px] text-[#8A8474]">Fireworks, fairs, library programs, school carnivals — send them our way and we'll add them for every family here.</p>
+          <p className="text-[11px] mt-2" style={{ color: "#B8B0A0" }}>Curated for now — one-off dates like fireworks are added by hand until live event feeds arrive.</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ---------------------------------------------------------
    ROOT APP
 --------------------------------------------------------- */
@@ -4084,7 +4381,7 @@ export default function LittleDayApp() {
   const [kids, setKids] = usePersistentState("kids", [{ id: "k1", name: "Little one", birthday: "2022-06-15", emoji: "🧒" }]);
   const [activeKidId, setActiveKidId] = usePersistentState("activeKidId", "k1");
   const [kidEditor, setKidEditor] = useState(null);
-  const [sitters, setSitters] = usePersistentState("sitters", []);
+  const [sitters, setCaregivers] = usePersistentState("sitters", []);
   const [sitterEditor, setSitterEditor] = useState(null);
   const [inviteOpen, setInviteOpen] = useState(false);
 
@@ -4109,7 +4406,7 @@ export default function LittleDayApp() {
       if (data) {
         const has = (v) => Array.isArray(v) ? v.length > 0 : v && Object.keys(v).length > 0;
         if (has(data.kids)) { setKids(data.kids); setActiveKidId(data.kids[0].id); }
-        if (has(data.sitters)) setSitters(data.sitters);
+        if (has(data.sitters)) setCaregivers(data.sitters);
         if (has(data.favorites)) setFavorites(data.favorites);
         if (has(data.saved_days)) setSavedDays(data.saved_days);
         if (has(data.check_ins)) setCheckIns(data.check_ins);
@@ -4337,7 +4634,7 @@ export default function LittleDayApp() {
   const saveKid = (d) => {
     if (d.isNew) {
       const id = `k${Date.now()}`;
-      setKids((cur) => [...cur, { id, name: d.name || "New kid", birthday: d.birthday, emoji: d.emoji }]);
+      setKids((cur) => [...cur, { id, name: d.name || "New child", birthday: d.birthday, emoji: d.emoji }]);
       setActiveKidId(id);
       showToast("Child added");
     } else {
@@ -4360,16 +4657,16 @@ export default function LittleDayApp() {
   const openEditSitter = (st) => setSitterEditor({ ...st, isNew: false });
   const saveSitter = (d) => {
     if (d.isNew) {
-      setSitters((cur) => [...cur, { id: `s${Date.now()}`, name: d.name || "Sitter", phone: d.phone, rate: d.rate, notes: d.notes, emoji: d.emoji }]);
-      showToast("Sitter added");
+      setCaregivers((cur) => [...cur, { id: `s${Date.now()}`, name: d.name || "Sitter", phone: d.phone, rate: d.rate, notes: d.notes, emoji: d.emoji }]);
+      showToast("Caregiver added");
     } else {
-      setSitters((cur) => cur.map((s) => (s.id === d.id ? { ...s, name: d.name || s.name, phone: d.phone, rate: d.rate, notes: d.notes, emoji: d.emoji } : s)));
+      setCaregivers((cur) => cur.map((s) => (s.id === d.id ? { ...s, name: d.name || s.name, phone: d.phone, rate: d.rate, notes: d.notes, emoji: d.emoji } : s)));
       showToast("Saved");
     }
     setSitterEditor(null);
   };
   const deleteSitter = (id) => {
-    setSitters((cur) => cur.filter((s) => s.id !== id));
+    setCaregivers((cur) => cur.filter((s) => s.id !== id));
     setSitterEditor(null);
     showToast("Removed");
   };
@@ -4455,6 +4752,8 @@ export default function LittleDayApp() {
     content = <ProfileScreen onOpenPremium={() => goTo("premium")} onOpenPassport={() => goTo("passport")} stats={stats} session={session} onOpenAuth={() => setAuthOpen(true)} onSignOut={signOut} earnedBadges={earnedBadges} kids={kids} activeKidId={activeKidId} onSetActive={setActiveKidId} onAddKid={openAddKid} onEditKid={openEditKid} sitters={sitters} onAddSitter={openAddSitter} onEditSitter={openEditSitter} onShareWithSitter={shareWithSitter} />;
   } else if (screen === "safety") {
     content = <SafetyScreen />;
+  } else if (screen === "community") {
+    content = <CommunityScreen setSelectedPlace={handleSelectPlace} />;
   } else if (screen === "activities") {
     content = <ActivitiesScreen setSelectedPlace={handleSelectPlace} />;
   } else if (screen === "premium") {
