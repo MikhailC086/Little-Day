@@ -1820,7 +1820,58 @@ function SunriseArc({ items, onSelect }) {
 /* ---------------------------------------------------------
    SHARED UI BITS
 --------------------------------------------------------- */
-function LittleDaySun({ size = 40 }) {
+function SunriseSplash({ onDone }) {
+  const [leaving, setLeaving] = useState(false);
+  const finish = () => {
+    if (leaving) return;
+    setLeaving(true);
+    setTimeout(onDone, 420);
+  };
+  useEffect(() => {
+    const t = setTimeout(finish, 1900);
+    return () => clearTimeout(t);
+  }, []);
+  return (
+    <div
+      onClick={finish}
+      style={{
+        position: "fixed", inset: 0, zIndex: 9999,
+        display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+        overflow: "hidden",
+        background: "linear-gradient(180deg, #FFFBF5 0%, #FFF3E6 60%, #FFE8CF 100%)",
+        animation: leaving ? "splashOut 0.42s ease-in forwards" : "none",
+        fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif",
+      }}
+    >
+      <div
+        style={{
+          position: "absolute", left: "50%", bottom: -210, width: 420, height: 420,
+          marginLeft: -210, borderRadius: "50%",
+          background: "radial-gradient(circle, rgba(245,183,31,0.30) 0%, rgba(245,183,31,0) 70%)",
+          animation: "glowUp 1.5s ease-out forwards",
+        }}
+      />
+      <div style={{ animation: "sunRise 1.25s cubic-bezier(0.22, 1, 0.36, 1) forwards" }}>
+        <LittleDaySun size={132} animateRays />
+      </div>
+      <div style={{ marginTop: 12, textAlign: "center", animation: "fadeUp 0.7s ease-out 0.75s both" }}>
+        <p style={{ fontSize: 30, fontWeight: 800, color: "#1B2A4A", margin: 0 }}>little day</p>
+        <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.18em", color: "#F5B71F", marginTop: 4 }}>
+          BIG ADVENTURES. LITTLE DAYS.
+        </p>
+      </div>
+      <style>{`
+        @keyframes sunRise { from { transform: translateY(110px) scale(0.82); opacity: 0; } to { transform: translateY(0) scale(1); opacity: 1; } }
+        @keyframes rayPop { from { transform: scale(0.25); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        @keyframes fadeUp { from { transform: translateY(14px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        @keyframes glowUp { from { transform: translateY(90px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        @keyframes splashOut { to { opacity: 0; transform: translateY(-24px); } }
+      `}</style>
+    </div>
+  );
+}
+
+function LittleDaySun({ size = 40, animateRays = false }) {
   const cx = 50, cy = 56, rInner = 40, rOuter = 50;
   const angles = [18, 42, 66, 90, 114, 138, 162];
   return (
@@ -1837,6 +1888,7 @@ function LittleDaySun({ size = 40 }) {
             stroke="#F5B71F"
             strokeWidth="4.5"
             strokeLinecap="round"
+            style={animateRays ? { transformOrigin: `${cx}px ${cy}px`, animation: `rayPop 0.5s ease-out ${0.55 + i * 0.07}s both` } : undefined}
           />
         );
       })}
@@ -5131,6 +5183,15 @@ export default function LittleDayApp() {
   const showNav = ["home", "map", "friends", "favorites", "safety", "profile"].includes(screen);
 
   const [betaOk, setBetaOk] = usePersistentState("betaOk", false);
+  // Sunrise plays once per fresh open (not on tab switches within a session).
+  const [showSplash, setShowSplash] = useState(() => {
+    try {
+      if (window.sessionStorage.getItem("littleday.sawSunrise")) return false;
+      window.sessionStorage.setItem("littleday.sawSunrise", "1");
+      return true;
+    } catch (e) { return true; }
+  });
+  if (showSplash) return <SunriseSplash onDone={() => setShowSplash(false)} />;
   if (!betaOk) return <BetaGate onUnlock={() => setBetaOk(true)} />;
 
   return (
@@ -5151,6 +5212,11 @@ export default function LittleDayApp() {
         input[type="range"] { height: 4px; border-radius: 4px; background: #E7E1D4; }
         @keyframes sheetUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
         @keyframes sheetDown { from { transform: translateY(-100%); } to { transform: translateY(0); } }
+        @keyframes sunRise { from { transform: translateY(110px) scale(0.82); opacity: 0; } to { transform: translateY(0) scale(1); opacity: 1; } }
+        @keyframes rayPop { from { transform: scale(0.25); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        @keyframes fadeUp { from { transform: translateY(14px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        @keyframes glowUp { from { transform: translateY(90px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        @keyframes splashOut { to { opacity: 0; transform: translateY(-24px); } }
         @keyframes toastIn { from { opacity: 0; transform: translate(-50%, 8px); } to { opacity: 1; transform: translate(-50%, 0); } }
         @keyframes fadeSlide { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes sunFloat { from { opacity: 0; transform: translateY(18px) scale(0.85); } to { opacity: 1; transform: translateY(0) scale(1); } }
