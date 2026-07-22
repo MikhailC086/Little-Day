@@ -2430,7 +2430,8 @@ function PlannerScreen({ onBack, onGenerate, locationLabel, initialAge, activeKi
   const [distance, setDistance] = useState(15);
   const [startMode, setStartMode] = useState("now");
   const [dayOffset, setDayOffset] = useState(0);
-  const [pickedDate, setPickedDate] = useState(new Date().toISOString().slice(0, 10)); // "now" | custom (future)
+  const [pickedDate, setPickedDate] = useState(new Date().toISOString().slice(0, 10));
+  const [customStart, setCustomStart] = useState(9.5); // "now" | custom (future)
   const [endHour, setEndHour] = useState(defaultEnd);
   const [setting, setSetting] = useState("any");
   const [interests, setInterests] = useState([]);
@@ -2439,7 +2440,7 @@ function PlannerScreen({ onBack, onGenerate, locationLabel, initialAge, activeKi
   const [napAware, setNapAware] = useState(false);
   const [napHour, setNapHour] = useState(13);
 
-  const startHour = startMode === "now" ? nowHour : 9.5;
+  const startHour = startMode === "now" ? nowHour : startMode === "custom" ? customStart : 9.5;
   const windowHrs = Math.max(endHour - startHour, 0);
 
   const toggleInterest = (key) =>
@@ -2503,12 +2504,12 @@ function PlannerScreen({ onBack, onGenerate, locationLabel, initialAge, activeKi
               dt.setDate(dt.getDate() + off);
               const label = off === 0 ? "Today" : off === 1 ? "Tomorrow" : dt.toLocaleDateString(undefined, { weekday: "long" });
               return (
-                <Pill key={off} active={dayOffset === off} onClick={() => setDayOffset(off)}>
+                <Pill key={off} active={dayOffset === off} onClick={() => { setDayOffset(off); if (off !== 0 && startMode === "now") setStartMode("custom"); }}>
                   {label}{off > 0 ? ` · ${dt.toLocaleDateString(undefined, { month: "short", day: "numeric" })}` : ""}
                 </Pill>
               );
             })}
-            <Pill active={dayOffset === "pick"} onClick={() => setDayOffset("pick")}>
+            <Pill active={dayOffset === "pick"} onClick={() => { setDayOffset("pick"); if (startMode === "now") setStartMode("custom"); }}>
               Another day…
             </Pill>
           </div>
@@ -2527,16 +2528,43 @@ function PlannerScreen({ onBack, onGenerate, locationLabel, initialAge, activeKi
         <div>
           <p className="text-[13px] font-medium text-[#8A8474] mb-2">When are you starting?</p>
           <div className="flex gap-2 flex-wrap">
-            <Pill active={startMode === "now"} onClick={() => setStartMode("now")} disabled={dayOffset !== 0}>
-              {dayOffset === 0 ? `Right now · ${formatHour(nowHour)}` : "Right now"}
-            </Pill>
+            {dayOffset === 0 && (
+              <Pill active={startMode === "now"} onClick={() => setStartMode("now")}>
+                Right now · {formatHour(nowHour)}
+              </Pill>
+            )}
             <Pill active={startMode === "morning"} onClick={() => setStartMode("morning")}>
               Morning · 9:30 AM
             </Pill>
+            <Pill active={startMode === "custom"} onClick={() => setStartMode("custom")}>
+              Pick a time
+            </Pill>
           </div>
+
+          {startMode === "custom" && (
+            <div className="mt-3">
+              <p className="text-[13px] font-medium text-[#8A8474] mb-2">
+                Starting at <span className="text-[#1B2A4A] font-semibold">{formatHour(customStart)}</span>
+              </p>
+              <input
+                type="range"
+                min="6"
+                max="19"
+                step="0.5"
+                value={customStart}
+                onChange={(e) => setCustomStart(Number(e.target.value))}
+                className="w-full [accent-color:var(--accent)]"
+              />
+              <div className="flex justify-between mt-1">
+                <span className="text-[11px] text-[#9C9484]">6:00 AM</span>
+                <span className="text-[11px] text-[#9C9484]">7:00 PM</span>
+              </div>
+            </div>
+          )}
+
           {dayOffset !== 0 && (
             <p className="text-[11.5px] mt-1.5" style={{ color: "#B08A5A" }}>
-              Planning ahead — we'll use opening hours for that day. Double-check seasonal spots before you go.
+              Planning ahead — we'll use typical opening hours for that day. Double-check seasonal spots before you go.
             </p>
           )}
         </div>
@@ -4576,6 +4604,21 @@ function AuthSheet({ open, onClose, session }) {
   const [msg, setMsg] = useState("");
   if (!open) return null;
 
+  const signInWithGoogle = async () => {
+    setBusy(true); setMsg("");
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: window.location.origin + window.location.pathname },
+    });
+    setBusy(false);
+    if (error) {
+      setMsg(error.message.includes("not enabled")
+        ? "Google sign-in isn't switched on yet — use your email below for now."
+        : error.message);
+    }
+    // On success the browser redirects to Google, so nothing else to do here.
+  };
+
   const sendLink = async () => {
     if (!email.includes("@")) { setMsg("Enter a valid email"); return; }
     setBusy(true); setMsg("");
@@ -4613,6 +4656,28 @@ function AuthSheet({ open, onClose, session }) {
             <p className="text-[13px] text-[#8A8474] text-center mt-1 mb-4 max-w-[300px] mx-auto">
               Your children, caregivers and favorites will sync to any device you sign in on.
             </p>
+
+            <button
+              onClick={signInWithGoogle}
+              disabled={busy}
+              className="w-full rounded-2xl py-3.5 flex items-center justify-center gap-2.5 font-semibold text-[14px] border-2 bg-white"
+              style={{ borderColor: "#E7E1D4", color: "#1B2A4A", opacity: busy ? 0.6 : 1 }}
+            >
+              <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">
+                <path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9 3.6l6.7-6.7C35.6 2.6 30.2 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.8 6.1C12.3 13.2 17.6 9.5 24 9.5z"/>
+                <path fill="#4285F4" d="M46.9 24.5c0-1.6-.1-3.2-.4-4.7H24v9h12.9c-.6 3-2.3 5.5-4.8 7.2l7.6 5.9c4.4-4.1 7.2-10.2 7.2-17.4z"/>
+                <path fill="#FBBC05" d="M10.4 28.7c-.5-1.4-.8-2.9-.8-4.7s.3-3.3.8-4.7l-7.8-6.1C.9 16.5 0 20.1 0 24s.9 7.5 2.6 10.8l7.8-6.1z"/>
+                <path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.8-5.8l-7.6-5.9c-2.1 1.4-4.8 2.3-8.2 2.3-6.4 0-11.7-3.7-13.6-9.9l-7.8 6.1C6.5 42.6 14.6 48 24 48z"/>
+              </svg>
+              Continue with Google
+            </button>
+
+            <div className="flex items-center gap-3 my-3.5">
+              <span className="flex-1 h-px" style={{ backgroundColor: "#EFEAE0" }} />
+              <span className="text-[11.5px]" style={{ color: "#B8B0A0" }}>or use email</span>
+              <span className="flex-1 h-px" style={{ backgroundColor: "#EFEAE0" }} />
+            </div>
+
             <input
               value={email}
               onChange={(e) => setEmail(e.target.value)}
