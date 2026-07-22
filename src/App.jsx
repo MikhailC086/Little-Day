@@ -3,7 +3,7 @@ import { supabase, backendReady } from "./supabaseClient.js";
 import { GoogleMap, Marker, useJsApiLoader } from "@react-google-maps/api";
 import {
   Sun, MapPin, Clock, DollarSign, Heart, ChevronLeft, ChevronRight,
-  Home, Map as MapIcon, User, Sparkles, Droplets, Trees, Baby,
+  Home, Map as MapIcon, List as ListIcon, Clock, User, Sparkles, Droplets, Trees, Baby,
   ParkingCircle, ToggleLeft as Accessible, Utensils, Star, Navigation,
   Users, CheckCircle2, Cloud, CloudRain, UserPlus, Share2, Check, X, CalendarDays, Send, Shuffle, Bookmark, Moon, MessageCircle, Search, Flame, Plus, Trash2, HelpCircle, Phone, Shield
 } from "lucide-react";
@@ -1188,16 +1188,16 @@ function classInfo(place) { return CLASS_INFO[place.id] || null; }
 // Cuisine and dietary notes for food places. gf/veg/vegan: true = confirmed options,
 // null = ask (we don't guess). Always call ahead for serious allergies.
 const FOOD_INFO = {
-  "blue-dolphin": { cuisine: "Italian", dishes: "Pasta, pizza, seafood", gf: true, veg: true, vegan: null, note: "Gluten-free pasta available" },
-  "mtkisco-diner": { cuisine: "American diner", dishes: "Pancakes, burgers, milkshakes", gf: null, veg: true, vegan: null, note: "Huge menu — easy for picky eaters" },
-  "belizzie": { cuisine: "Pizza & Italian", dishes: "Pizza, gelato, arcade", gf: true, veg: true, vegan: null, note: "Gluten-free crust available" },
-  "little-kebab": { cuisine: "Turkish & Mediterranean", dishes: "Kebabs, rice bowls, hummus", gf: true, veg: true, vegan: true, note: "Naturally lots of GF & vegan options" },
-  "taco-street": { cuisine: "Mexican", dishes: "Tacos, quesadillas, rice bowls", gf: true, veg: true, vegan: true, note: "Corn tortillas are gluten-free" },
-  "table-nine": { cuisine: "American bistro", dishes: "Seasonal plates, burgers", gf: null, veg: true, vegan: null, note: "Ask about the day's options" },
-  "bedford-hills-diner": { cuisine: "American diner", dishes: "Breakfast all day, sandwiches", gf: null, veg: true, vegan: null, note: "Kids' menu; call for the Tuesday event" },
-  "king-kone": { cuisine: "Ice cream", dishes: "Soft serve, cones, sundaes", gf: null, veg: true, vegan: null, note: "Ask about dairy-free flavors" },
-  "lighthouse-ice-cream": { cuisine: "Ice cream", dishes: "Hard & soft serve", gf: null, veg: true, vegan: null, note: "Ask about dairy-free flavors" },
-  "blue-pig": { cuisine: "Ice cream", dishes: "Small-batch, local dairy", gf: null, veg: true, vegan: null, note: "Rotating flavors — ask what's dairy-free" },
+  "blue-dolphin": { cuisine: "Italian", dishes: "Pasta, pizza, chicken parm, seafood, garlic bread", gf: true, veg: true, vegan: null, note: "Gluten-free pasta available" },
+  "mtkisco-diner": { cuisine: "American diner", dishes: "Burgers, hot dogs, grilled cheese, chicken fingers, pancakes, milkshakes", gf: null, veg: true, vegan: null, note: "Huge menu — easy for picky eaters" },
+  "belizzie": { cuisine: "Pizza & Italian", dishes: "Pizza by the slice, garlic knots, pasta, gelato", gf: true, veg: true, vegan: null, note: "Gluten-free crust available" },
+  "little-kebab": { cuisine: "Turkish & Mediterranean", dishes: "Chicken & lamb kebabs, rice bowls, hummus, pita, salads, fries", gf: true, veg: true, vegan: true, note: "Naturally lots of GF & vegan options" },
+  "taco-street": { cuisine: "Mexican", dishes: "Tacos, quesadillas, burritos, rice bowls, chips & guac", gf: true, veg: true, vegan: true, note: "Corn tortillas are gluten-free" },
+  "table-nine": { cuisine: "American bistro", dishes: "Burgers, sandwiches, salads, pasta, seasonal plates", gf: null, veg: true, vegan: null, note: "Ask about the day's options" },
+  "bedford-hills-diner": { cuisine: "American diner", dishes: "Burgers, hot dogs, grilled cheese, chicken fingers, eggs & pancakes all day", gf: null, veg: true, vegan: null, note: "Kids' menu; call for the Tuesday event" },
+  "king-kone": { cuisine: "Ice cream", dishes: "Soft serve, cones, sundaes, milkshakes, hot dogs, fries", gf: null, veg: true, vegan: null, note: "Ask about dairy-free flavors" },
+  "lighthouse-ice-cream": { cuisine: "Ice cream", dishes: "Hard & soft serve, cones, sundaes, shakes", gf: null, veg: true, vegan: null, note: "Ask about dairy-free flavors" },
+  "blue-pig": { cuisine: "Ice cream", dishes: "Small-batch scoops, cones, rotating local flavors", gf: null, veg: true, vegan: null, note: "Rotating flavors — ask what's dairy-free" },
 };
 function foodInfo(place) { return FOOD_INFO[place.id] || null; }
 
@@ -1212,6 +1212,121 @@ const CATEGORY_ICON = {
   "Daycare & Preschool": "🏫", "Indoor Play": "🎪", "Theater": "🎭", "Aquarium": "🐠",
 };
 function categoryIcon(place) { return CATEGORY_ICON[place.category] || place.photo || "📍"; }
+
+/* ---------------------------------------------------------
+   GOOGLE PLACES SEARCH (fills gaps in our curated list)
+   Cost note: we only ask for Pro-tier fields (name, address,
+   location, types) and only when our own results are thin.
+--------------------------------------------------------- */
+const GMAPS_LIBRARIES = ["places"];
+
+// Map Google's place types onto our categories so icons/labels stay consistent.
+const GOOGLE_TYPE_MAP = [
+  [["amusement_park", "water_park"], "Indoor Play"],
+  [["aquarium"], "Aquarium"],
+  [["museum", "art_gallery"], "Museum"],
+  [["library"], "Library"],
+  [["park", "national_park"], "Park"],
+  [["playground"], "Playground"],
+  [["zoo"], "Farm"],
+  [["swimming_pool"], "Pool"],
+  [["restaurant", "cafe", "bakery", "meal_takeaway", "diner", "pizza_restaurant"], "Restaurant"],
+  [["ice_cream_shop", "dessert_shop"], "Ice Cream"],
+  [["book_store", "toy_store", "clothing_store", "store", "shopping_mall"], "Store"],
+  [["gym", "fitness_center", "sports_complex", "sports_club"], "Gym & Classes"],
+  [["preschool", "school", "primary_school"], "Daycare & Preschool"],
+  [["movie_theater", "performing_arts_theater"], "Theater"],
+  [["tourist_attraction", "historical_landmark"], "Historic Site"],
+];
+function googleCategory(types = []) {
+  for (const [keys, cat] of GOOGLE_TYPE_MAP) {
+    if (types.some((t) => keys.includes(t))) return cat;
+  }
+  return "Place";
+}
+
+// Turn a Google result into the shape our UI understands.
+function googleToPlace(g) {
+  const addr = g.formattedAddress || "";
+  const parts = addr.split(",");
+  const town = parts.length >= 2 ? parts[parts.length - 3]?.trim() || parts[0].trim() : addr;
+  const cat = googleCategory(g.types || []);
+  return {
+    id: "g_" + (g.id || g.place_id || Math.random().toString(36).slice(2)),
+    name: typeof g.displayName === "string" ? g.displayName : g.displayName?.text || g.name || "Place",
+    category: cat,
+    town: town || "Nearby",
+    address: addr,
+    tags: [],
+    photo: CATEGORY_ICON[cat] || "📍",
+    fromGoogle: true,
+    coords: g.location ? { lat: typeof g.location.lat === "function" ? g.location.lat() : g.location.lat,
+                           lng: typeof g.location.lng === "function" ? g.location.lng() : g.location.lng } : null,
+  };
+}
+
+// Debounced Google text search. Returns [] until Maps + Places are ready.
+function useGoogleSearch(query, curatedCount) {
+  const [results, setResults] = useState([]);
+  const [searching, setSearching] = useState(false);
+  useEffect(() => {
+    const q = (query || "").trim();
+    // Only reach for Google when our own list is thin — this keeps calls (and cost) low.
+    if (q.length < 3 || curatedCount >= 3) { setResults([]); setSearching(false); return; }
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      try {
+        const g = window.google;
+        if (!g?.maps?.places?.Place?.searchByText) { setResults([]); return; }
+        setSearching(true);
+        const { places } = await g.maps.places.Place.searchByText({
+          textQuery: q + " Westchester County NY",
+          fields: ["id", "displayName", "formattedAddress", "location", "types"],
+          maxResultCount: 6,
+          locationBias: { center: { lat: 41.2587, lng: -73.6854 }, radius: 40000 },
+        });
+        if (!cancelled) setResults((places || []).map(googleToPlace));
+      } catch (e) {
+        if (!cancelled) setResults([]);
+      } finally {
+        if (!cancelled) setSearching(false);
+      }
+    }, 600);
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, [query, curatedCount]);
+  return { results, searching };
+}
+
+function GooglePlaceSheet({ place, onClose }) {
+  if (!place) return null;
+  const mapsUrl = "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(place.name + " " + place.address);
+  return (
+    <div className="absolute inset-0 z-40 flex items-end" onClick={onClose}>
+      <div className="absolute inset-0 bg-black/30" />
+      <div className="relative w-full rounded-t-3xl bg-white p-6 pb-8" onClick={(e) => e.stopPropagation()} style={{ animation: "sheetUp 0.22s ease-out" }}>
+        <div className="w-10 h-1 rounded-full bg-[#E7E1D4] mx-auto mb-4" />
+        <div className="flex items-start gap-3">
+          <div className="w-12 h-12 rounded-xl flex items-center justify-center text-[24px] shrink-0" style={{ backgroundColor: "#FFF3E6" }}>{place.photo}</div>
+          <div className="flex-1 min-w-0">
+            <p className="text-[17px] font-bold text-[#1B2A4A]" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>{place.name}</p>
+            <p className="text-[13px] text-[#8A8474]">{place.category} · {place.town}</p>
+          </div>
+        </div>
+        {place.address && <p className="text-[13px] text-[#5C5648] mt-3">{place.address}</p>}
+        <div className="rounded-2xl p-3.5 mt-4" style={{ backgroundColor: "#F3F5F9" }}>
+          <p className="text-[12.5px] leading-snug" style={{ color: "#5B6B8C" }}>
+            Found on Google Maps — not yet parent-verified, so we don't have bathroom, stroller or kid-perk notes for it.
+          </p>
+        </div>
+        <a href={mapsUrl} target="_blank" rel="noopener noreferrer"
+          className="w-full rounded-2xl py-3.5 mt-4 flex items-center justify-center gap-2 text-white font-semibold text-[14px]" style={{ background: "var(--cta)" }}>
+          Open in Google Maps
+        </a>
+        <p className="text-[11px] text-[#B8B0A0] text-center mt-3">Love this spot? Tell us and we'll add it properly, with the details parents actually need.</p>
+      </div>
+    </div>
+  );
+}
 
 
 // Which farmers markets have prepared-food vendors (not just produce).
@@ -1355,6 +1470,7 @@ const REVIEWS_SEED = {
 };
 
 const ReviewsContext = React.createContext({ reviews: {}, addReview: () => {} });
+const NavContext = React.createContext({ goHome: () => {} });
 
 function reviewStats(reviews, placeId) {
   const list = reviews[placeId] || [];
@@ -1656,7 +1772,8 @@ function LittleDayLockup({ sunSize = 44, wordSize = 24, tagline = false }) {
   );
 }
 
-function TopBar({ title, onBack, right }) {
+function TopBar({ title, onBack, right, hideHome }) {
+  const { goHome } = useContext(NavContext);
   return (
     <div className="flex items-center gap-3 px-5 pt-6 pb-3">
       {onBack && (
@@ -1671,6 +1788,17 @@ function TopBar({ title, onBack, right }) {
         {title}
       </h1>
       {right}
+      {!hideHome && (
+        <button
+          onClick={goHome}
+          title="Back to home"
+          className="flex items-center gap-1 shrink-0 px-2.5 py-1.5 rounded-full"
+          style={{ backgroundColor: "#FFF3E6" }}
+        >
+          <LittleDaySun size={16} />
+          <span className="text-[12px] font-semibold" style={{ color: "#B08A5A" }}>Home</span>
+        </button>
+      )}
     </div>
   );
 }
@@ -1696,7 +1824,7 @@ function Pill({ children, active, onClick, disabled }) {
 function BottomNav({ screen, setScreen }) {
   const items = [
     { key: "home", label: "Home", icon: Home },
-    { key: "map", label: "Categories", icon: MapIcon },
+    { key: "map", label: "Categories", icon: ListIcon },
     { key: "friends", label: "Friends", icon: Users },
     { key: "favorites", label: "Saved", icon: Heart },
     { key: "safety", label: "Safety", icon: Shield },
@@ -1789,6 +1917,25 @@ function PriceBadge({ price, detail = false }) {
   );
 }
 
+function hoursLabel(place) {
+  const h = HOURS[place.id];
+  if (!h) return null;
+  return `${formatHour(h[0])} \u2013 ${formatHour(h[1])}`;
+}
+
+function HoursChip({ place, size = "sm" }) {
+  const label = hoursLabel(place);
+  if (!label) return null;
+  return (
+    <span
+      className={`inline-flex items-center gap-1 rounded-full ${size === "lg" ? "px-2.5 py-1 text-[12px]" : "px-2 py-0.5 text-[11px]"} font-medium`}
+      style={{ backgroundColor: "#F0EEE6", color: "#5C5648" }}
+    >
+      <Clock size={size === "lg" ? 12 : 10} /> {label}
+    </span>
+  );
+}
+
 function OpenNowBadge({ place, nowHour, showClosed = true }) {
   const open = isOpenNow(place, nowHour);
   if (open === null) return null;
@@ -1854,6 +2001,7 @@ function PlaceCard({ place, onSelect, favorited, onToggleFavorite, nowHour }) {
           </span>
           <PriceBadge price={place.price} />
           <OpenNowBadge place={place} nowHour={nh} showClosed={false} />
+          <HoursChip place={place} />
           {foodInfo(place) && (
             <span className="text-[11px] px-2 py-0.5 rounded-full" style={{ backgroundColor: "#FFF3E6", color: "#B08A5A" }}>{foodInfo(place).cuisine}</span>
           )}
@@ -1880,7 +2028,7 @@ function PlaceCard({ place, onSelect, favorited, onToggleFavorite, nowHour }) {
 /* ---------------------------------------------------------
    SCREENS
 --------------------------------------------------------- */
-function HomeScreen({ setScreen, favorites, toggleFavorite, setSelectedPlace, location, onRequestLocation, onSurprise, kids, activeKidId, onSetActive, searchQuery, setSearchQuery, onHowTo }) {
+function HomeScreen({ setScreen, favorites, toggleFavorite, setSelectedPlace, location, onRequestLocation, onSurprise, kids, activeKidId, onSetActive, searchQuery, setSearchQuery, onHowTo, onSelectGoogle }) {
   const nearby = PLACES.slice(0, 4);
   const hq = (searchQuery || "").trim().toLowerCase();
   const homeResults = hq
@@ -1891,6 +2039,7 @@ function HomeScreen({ setScreen, favorites, toggleFavorite, setSelectedPlace, lo
         (p.tags || []).some((t) => t.toLowerCase().includes(hq))
       ).slice(0, 8)
     : [];
+  const { results: gResults, searching: gSearching } = useGoogleSearch(searchQuery, homeResults.length);
   return (
     <div className="pb-4">
       <div className="px-5 pt-6 pb-2">
@@ -1949,8 +2098,10 @@ function HomeScreen({ setScreen, favorites, toggleFavorite, setSelectedPlace, lo
         </div>
         {hq && (
           <div className="mt-2 rounded-2xl border bg-white overflow-hidden" style={{ borderColor: "#EFEAE0" }}>
-            {homeResults.length === 0 ? (
-              <p className="text-[13px] text-[#8A8474] p-4">No matches for “{searchQuery}”. Try a place, town, or category like “playground.”</p>
+            {homeResults.length === 0 && gResults.length === 0 ? (
+              <p className="text-[13px] text-[#8A8474] p-4">
+                {gSearching ? "Searching nearby…" : "No matches for “" + searchQuery + "”. Try a place, town, or category like “playground.”"}
+              </p>
             ) : (
               <>
                 {homeResults.map((p) => (
@@ -1962,6 +2113,23 @@ function HomeScreen({ setScreen, favorites, toggleFavorite, setSelectedPlace, lo
                     </span>
                   </button>
                 ))}
+                {gResults.length > 0 && (
+                  <>
+                    <div className="px-3 py-2 flex items-center gap-1.5" style={{ backgroundColor: "#F7F5EF" }}>
+                      <p className="text-[11px] font-semibold" style={{ color: "#8A8474" }}>ALSO ON GOOGLE MAPS</p>
+                      <span className="text-[10px]" style={{ color: "#B8B0A0" }}>· not parent-verified yet</span>
+                    </div>
+                    {gResults.map((p) => (
+                      <button key={p.id} onClick={() => onSelectGoogle && onSelectGoogle(p)} className="w-full flex items-center gap-3 p-3 text-left border-b last:border-b-0" style={{ borderColor: "#F3F0E8" }}>
+                        <span className="w-9 h-9 rounded-lg flex items-center justify-center text-[18px] shrink-0" style={{ backgroundColor: "#F3F5F9" }}>{p.photo}</span>
+                        <span className="flex-1 min-w-0">
+                          <span className="block text-[14px] font-medium text-[#1B2A4A] truncate">{p.name}</span>
+                          <span className="block text-[12px] text-[#8A8474] truncate">{p.category} · {p.town}</span>
+                        </span>
+                      </button>
+                    ))}
+                  </>
+                )}
                 <button onClick={() => setScreen("map")} className="w-full text-center text-[13px] font-semibold py-2.5" style={{ color: "var(--accent)" }}>See all in Categories List →</button>
               </>
             )}
@@ -2532,6 +2700,7 @@ function GoogleMapView({ places, located, userCoords, onSelect }) {
   const { isLoaded, loadError } = useJsApiLoader({
     id: "little-day-gmaps",
     googleMapsApiKey: GMAPS_KEY,
+    libraries: GMAPS_LIBRARIES,
   });
 
   if (loadError) {
@@ -2634,7 +2803,7 @@ function MapScreen({ setSelectedPlace, favorites, toggleFavorite, location, onRe
   const located = location.status === "located";
   return (
     <div className="pb-4">
-      <TopBar title="Categories List" />
+      <TopBar title="Categories List" hideHome={false} />
       <div className="px-5 mb-3">
         <div className="flex items-center gap-2 rounded-2xl px-3.5 py-2.5 border bg-white" style={{ borderColor: "#E7E1D4" }}>
           <Search size={17} color="#9C9484" />
@@ -3059,6 +3228,7 @@ function PlaceDetailScreen({ place, onBack, favorited, onToggleFavorite, checkIn
             <div className="mt-2 flex items-center gap-2 flex-wrap">
               <PriceBadge price={place.price} detail />
               <OpenNowBadge place={place} nowHour={currentHour()} />
+              <HoursChip place={place} size="lg" />
             </div>
             {placeHours(place) && (
               <p className="text-[12px] text-[#B8B0A0] mt-1.5 italic">
@@ -4025,6 +4195,7 @@ function ActivitiesScreen({ setSelectedPlace }) {
                         {isClassBased(p) && <span className="text-[10.5px] px-2 py-0.5 rounded-full" style={{ backgroundColor: "#EEF0F5", color: "#5B6B8C" }}>Sign-up</span>}
                         {classInfo(p)?.freeTrial === true && <span className="text-[10.5px] px-2 py-0.5 rounded-full" style={{ backgroundColor: "#E4F4E9", color: "#2E8B57" }}>Free trial</span>}
                         <span className="text-[10.5px] px-2 py-0.5 rounded-full bg-[#F0EEE6] text-[#5C5648]">Ages {p.ageRange}</span>
+                        {hoursLabel(p) && <span className="text-[10.5px] px-2 py-0.5 rounded-full bg-[#F0EEE6] text-[#5C5648]">{hoursLabel(p)}</span>}
                       </div>
                     </div>
                   </button>
@@ -4384,6 +4555,7 @@ export default function LittleDayApp() {
   const [sitters, setCaregivers] = usePersistentState("sitters", []);
   const [sitterEditor, setSitterEditor] = useState(null);
   const [inviteOpen, setInviteOpen] = useState(false);
+  const [googlePlace, setGooglePlace] = useState(null);
 
   const [favorites, setFavorites] = usePersistentState("favorites", ["muscoot-farm"]);
   const location = useGeolocation();
@@ -4703,6 +4875,7 @@ export default function LittleDayApp() {
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
         onHowTo={() => setShowHowTo(true)}
+        onSelectGoogle={setGooglePlace}
       />
     );
   } else if (screen === "planner") {
@@ -4791,6 +4964,7 @@ export default function LittleDayApp() {
 
   return (
     <ReviewsContext.Provider value={{ reviews, addReview }}>
+    <NavContext.Provider value={{ goHome: () => { setSelectedPlace(null); setSurpriseMode(false); goTo("home"); } }}>
     <div
       className="min-h-screen flex justify-center"
       style={{
@@ -4847,9 +5021,11 @@ export default function LittleDayApp() {
           <SitterEditorSheet key={sitterEditor.id || "snew"} data={sitterEditor} onSave={saveSitter} onDelete={deleteSitter} onClose={() => setSitterEditor(null)} />
         )}
         <AuthSheet open={authOpen} onClose={() => setAuthOpen(false)} session={session} />
+        <GooglePlaceSheet place={googlePlace} onClose={() => setGooglePlace(null)} />
         <InviteSheet open={inviteOpen} onClose={() => setInviteOpen(false)} onShared={() => { setInviteOpen(false); showToast("Invite sent — preview only for now"); }} />
       </div>
     </div>
+    </NavContext.Provider>
     </ReviewsContext.Provider>
   );
 }
