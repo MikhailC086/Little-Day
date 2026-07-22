@@ -91,6 +91,11 @@ const COORDS = {
   "katonah-playcare": [41.2570, -73.6870], "katonah-village-kids": [41.2600, -73.6860],
   "little-feet-katonah": [41.2620, -73.6880], "mkccc": [41.2050, -73.7290],
   "kids-world-preschool": [41.1980, -73.7440], "landmark-preschool": [41.2040, -73.6440],
+  "reading-room-katonah": [41.2585, -73.6860], "scattered-books": [41.1580, -73.7700],
+  "hip-kid": [41.1570, -73.7690], "briarcliff-toyshop": [41.1480, -73.8250],
+  "star-spangled-carousel": [41.1270, -73.7140], "lego-store-wp": [41.0340, -73.7620],
+  "build-a-bear-wp": [41.0340, -73.7620], "millers-toy-store": [40.9490, -73.7350],
+  "bronx-river-books": [40.9890, -73.8060], "womrath-bookshop": [40.9380, -73.8330],
 };
 function placeCoords(place) {
   const c = COORDS[place.id];
@@ -1050,6 +1055,97 @@ const PLACES = [
     blurb: "A village preschool on Bedford's historic green, long a first-school choice for local families. Phone: 914-393-2293.",
     changingTable: true, stroller: true, food: false, crowd: UNRATED, shade: "N/A (indoor)", bathrooms: true, parking: "Village green",
   },
+  // ---------- MORE SHOPPING ----------
+  {
+    id: "reading-room-katonah", name: "The Reading Room", category: "Bookstore",
+    tags: ["indoor", "shopping", "rain-friendly", "learning"], ring: "core",
+    town: "Katonah", address: "Katonah, NY 10536",
+    website: "", ageRange: "All ages", price: "$$", distanceMi: 1,
+    photo: "📖",
+    blurb: "A cozy bookstore and coffee shop steps from the Katonah Metro-North station, with book clubs and events. Grab a picture book and a hot chocolate — the easiest rainy-morning outing in the village.",
+    changingTable: UNRATED, stroller: true, food: true, crowd: UNRATED, shade: "N/A (indoor)", bathrooms: UNRATED, parking: "Village lot",
+  },
+  {
+    id: "scattered-books", name: "Scattered Books", category: "Bookstore",
+    tags: ["indoor", "shopping", "rain-friendly", "learning"], ring: "core",
+    town: "Chappaqua", address: "Chappaqua, NY 10514",
+    website: "scatteredbooks.com", ageRange: "All ages", price: "$$", distanceMi: 8,
+    photo: "📚",
+    blurb: "A family-owned bookshop set inside an antique house — books for children and grown-ups, gifts, and author signings. Charming enough that browsing feels like an activity.",
+    changingTable: UNRATED, stroller: true, food: false, crowd: UNRATED, shade: "N/A (indoor)", bathrooms: UNRATED, parking: "Street",
+  },
+  {
+    id: "hip-kid", name: "hip kid", category: "Store",
+    tags: ["indoor", "shopping", "rain-friendly"], ring: "core",
+    town: "Chappaqua", address: "77 S Greeley Ave, Chappaqua, NY 10514",
+    website: "", ageRange: "0–10", price: "$$$", distanceMi: 8,
+    photo: "👕",
+    blurb: "One of the area's coolest children's clothing shops — infants through teens, plus the toys, accessories and gifts kids actually want.",
+    changingTable: UNRATED, stroller: true, food: false, crowd: UNRATED, shade: "N/A (indoor)", bathrooms: UNRATED, parking: "Street + lot",
+  },
+  {
+    id: "briarcliff-toyshop", name: "Briarcliff Toyshop", category: "Toy Store",
+    tags: ["indoor", "shopping", "rain-friendly"], ring: "core",
+    town: "Briarcliff Manor", address: "Briarcliff Manor, NY 10510",
+    website: "", ageRange: "0–10", price: "$$", distanceMi: 13,
+    photo: "🧸",
+    blurb: "A carefully curated independent toy shop mixing new releases with classic toys — the kind of place staff can pick the right gift for any age.",
+    changingTable: UNRATED, stroller: true, food: false, crowd: UNRATED, shade: "N/A (indoor)", bathrooms: UNRATED, parking: "Street",
+  },
+  {
+    id: "star-spangled-carousel", name: "Star Spangled Carousel", category: "Store",
+    tags: ["indoor", "shopping", "rain-friendly"], ring: "core",
+    town: "Armonk", address: "Armonk, NY 10504",
+    website: "", ageRange: "0–10", price: "$$$", distanceMi: 9,
+    photo: "🎠",
+    blurb: "Three floors of a historic home filled with high-quality children's clothing, including exclusive European lines. A special-occasion and gift destination for decades.",
+    changingTable: UNRATED, stroller: false, food: false, crowd: UNRATED, shade: "N/A (indoor)", bathrooms: UNRATED, parking: "Street",
+  },
+  {
+    id: "lego-store-wp", name: "The LEGO Store Westchester", category: "Toy Store",
+    tags: ["indoor", "shopping", "rain-friendly"], ring: "core",
+    town: "White Plains", address: "125 Westchester Ave, White Plains, NY 10601",
+    website: "lego.com", ageRange: "3–10", price: "$$", distanceMi: 16,
+    photo: "🧱",
+    blurb: "The official LEGO store at The Westchester — sets, the pick-a-brick wall, and minifigure building. An easy rainy-day win, especially paired with the mall's other kid stops.",
+    changingTable: true, stroller: true, food: false, crowd: UNRATED, shade: "N/A (indoor)", bathrooms: true, parking: "Mall garage",
+  },
+  {
+    id: "build-a-bear-wp", name: "Build-A-Bear Workshop", category: "Toy Store",
+    tags: ["indoor", "shopping", "rain-friendly", "active"], ring: "core",
+    town: "White Plains", address: "125 Westchester Ave, White Plains, NY 10601",
+    website: "buildabear.com", ageRange: "3–10", price: "$$", distanceMi: 16,
+    photo: "🐻",
+    blurb: "Less a store than an activity — kids stuff, dress and name their own bear start to finish. A reliable birthday treat, and it takes a good hour.",
+    changingTable: true, stroller: true, food: false, crowd: UNRATED, shade: "N/A (indoor)", bathrooms: true, parking: "Mall garage",
+  },
+  {
+    id: "millers-toy-store", name: "Miller's Toy Store", category: "Toy Store",
+    tags: ["indoor", "shopping", "rain-friendly"], ring: "core",
+    town: "Mamaroneck", address: "335 Mamaroneck Ave, Mamaroneck, NY 10543",
+    website: "", ageRange: "0–10", price: "$$", distanceMi: 22,
+    photo: "🚲",
+    blurb: "A local institution: toys, books and bikes plus kids' clothes and shoes from infant to tween. Known for genuinely helpful service and a loyalty program.",
+    changingTable: UNRATED, stroller: true, food: false, crowd: UNRATED, shade: "N/A (indoor)", bathrooms: UNRATED, parking: "Street",
+  },
+  {
+    id: "bronx-river-books", name: "Bronx River Books", category: "Bookstore",
+    tags: ["indoor", "shopping", "rain-friendly", "learning"], ring: "core",
+    town: "Scarsdale", address: "Scarsdale, NY 10583",
+    website: "bronxriverbooks.com", ageRange: "All ages", price: "$$", distanceMi: 18,
+    photo: "📗",
+    blurb: "Over 14,000 titles including a deep children's section, plus puzzles, board games, coloring and activity books. A great gift stop.",
+    changingTable: UNRATED, stroller: true, food: false, crowd: UNRATED, shade: "N/A (indoor)", bathrooms: UNRATED, parking: "Village lot",
+  },
+  {
+    id: "womrath-bookshop", name: "Womrath Bookshop", category: "Bookstore",
+    tags: ["indoor", "shopping", "rain-friendly", "learning"], ring: "core",
+    town: "Bronxville", address: "76 Pondfield Rd, Bronxville, NY 10708",
+    website: "", ageRange: "All ages", price: "$$", distanceMi: 21,
+    photo: "📕",
+    blurb: "A Bronxville mainstay since 1938 — a mom-and-pop shop with carefully curated children's books, toys and gifts, and a loyal local following.",
+    changingTable: UNRATED, stroller: true, food: false, crowd: UNRATED, shade: "N/A (indoor)", bathrooms: UNRATED, parking: "Street",
+  },
 ];
 
 
@@ -1131,6 +1227,10 @@ const HOURS = {
   "pleasantville-market": [8, 13], "chappaqua-market": [8, 13], "mtkisco-market": [10, 15], "tash-market": [8, 14], "roselle-park": [8, 20],
   "katonah-playcare": [7, 18], "katonah-village-kids": [8, 15], "little-feet-katonah": [7, 18],
   "mkccc": [7, 18], "kids-world-preschool": [7, 18], "landmark-preschool": [8, 15],
+  "reading-room-katonah": [8, 18], "scattered-books": [10, 18], "hip-kid": [10, 18],
+  "briarcliff-toyshop": [10, 18], "star-spangled-carousel": [10, 17], "lego-store-wp": [10, 20],
+  "build-a-bear-wp": [10, 20], "millers-toy-store": [10, 18], "bronx-river-books": [10, 18],
+  "womrath-bookshop": [10, 18],
 };
 
 function placeHours(place) {
@@ -1147,6 +1247,10 @@ const KID_PERKS = {
   "table-nine": ["High chairs", "Kids' menu", "Picky-eater & GF friendly"],
   "barnes-noble": ["Kids' storytimes", "Big kids' book & toy section", "Cafe"],
   "bedford-hills-diner": ["High chairs", "Kids' menu", "Tuesday character night"],
+  "reading-room-katonah": ["Picture book nook", "Cafe with hot chocolate", "Story events"],
+  "build-a-bear-wp": ["Build your own bear", "Birthday parties", "Takes about an hour"],
+  "lego-store-wp": ["Pick-a-brick wall", "Build a minifigure", "Play tables"],
+  "millers-toy-store": ["Toys, books & bikes", "Kids' shoes", "Loyalty program"],
 };
 function placePerks(place) {
   return KID_PERKS[place.id] || [];
