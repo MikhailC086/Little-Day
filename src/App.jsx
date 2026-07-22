@@ -4081,6 +4081,17 @@ export default function LittleDayApp() {
   const [, setWeatherV] = useState(0);
   useEffect(() => { fetchLiveWeather().then(() => setWeatherV((v) => v + 1)); }, []);
 
+  const [kids, setKids] = usePersistentState("kids", [{ id: "k1", name: "Little one", birthday: "2022-06-15", emoji: "🧒" }]);
+  const [activeKidId, setActiveKidId] = usePersistentState("activeKidId", "k1");
+  const [kidEditor, setKidEditor] = useState(null);
+  const [sitters, setSitters] = usePersistentState("sitters", []);
+  const [sitterEditor, setSitterEditor] = useState(null);
+  const [inviteOpen, setInviteOpen] = useState(false);
+
+  const [favorites, setFavorites] = usePersistentState("favorites", ["muscoot-farm"]);
+  const location = useGeolocation();
+  const [friends, setFriends] = usePersistentState("friends", FRIENDS_SEED);
+
   // ---- Accounts & cloud sync (Stage 1) ----
   const [session, setSession] = useState(null);
   const [authOpen, setAuthOpen] = useState(false);
@@ -4120,16 +4131,6 @@ export default function LittleDayApp() {
     return () => clearTimeout(t);
   }, [session, kids, sitters, favorites, savedDays, checkIns, completedDays]);
   const signOut = async () => { if (backendReady()) await supabase.auth.signOut(); showToast("Signed out — this device keeps its local copy"); };
-  const [kids, setKids] = usePersistentState("kids", [{ id: "k1", name: "Little one", birthday: "2022-06-15", emoji: "🧒" }]);
-  const [activeKidId, setActiveKidId] = usePersistentState("activeKidId", "k1");
-  const [kidEditor, setKidEditor] = useState(null);
-  const [sitters, setSitters] = usePersistentState("sitters", []);
-  const [sitterEditor, setSitterEditor] = useState(null);
-  const [inviteOpen, setInviteOpen] = useState(false);
-
-  const [favorites, setFavorites] = usePersistentState("favorites", ["muscoot-farm"]);
-  const location = useGeolocation();
-  const [friends, setFriends] = usePersistentState("friends", FRIENDS_SEED);
   const [sharedDays, setSharedDays] = useState(SHARED_DAYS_SEED);
   const [playDates, setPlayDates] = useState(PLAYDATES_SEED);
   const [toast, setToast] = useState(null);
