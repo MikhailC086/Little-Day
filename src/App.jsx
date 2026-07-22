@@ -1210,8 +1210,23 @@ const CATEGORY_ICON = {
   "Dance Classes": "🩰", "Music Classes": "🎵", "Art Studio": "🎨",
   "Sports Program": "⚽", "Afterschool": "🎒", "Kids' Studio": "🧩",
   "Daycare & Preschool": "🏫", "Indoor Play": "🎪", "Theater": "🎭", "Aquarium": "🐠",
+  "Indoor Playground": "🎪", "Amusement Park": "🎡", "Zoo": "🦁", "Gardens": "🌷",
+  "Gardens & Arts": "🌷", "Children's Museum": "🏛️", "Cinema": "🎬", "Bookstore": "📖",
 };
 function categoryIcon(place) { return CATEGORY_ICON[place.category] || place.photo || "📍"; }
+
+// Every place belongs to exactly ONE group — no place appears twice in the list.
+const PRIMARY_GROUPS = [
+  { k: "play", l: "Play & Outdoors", cats: ["Playground", "Park", "Pool", "Trail", "Beach", "Farm", "Nature Center", "Indoor Play", "Indoor Playground", "Amusement Park", "Zoo", "Gardens", "Gardens & Arts"] },
+  { k: "eat", l: "Eat & Treats", cats: ["Restaurant", "Ice Cream", "Farmers Market"] },
+  { k: "learn", l: "Learn & Explore", cats: ["Library", "Museum", "Historic Site", "Theater", "Aquarium", "Children's Museum", "Cinema"] },
+  { k: "classes", l: "Classes & Care", cats: ["Gym & Classes", "Martial Arts", "Dance Classes", "Music Classes", "Art Studio", "Sports Program", "Afterschool", "Kids' Studio", "Daycare & Preschool"] },
+  { k: "shop", l: "Shopping", cats: ["Toy Store", "Store", "Bookstore"] },
+];
+function primaryGroup(place) {
+  for (const g of PRIMARY_GROUPS) if (g.cats.includes(place.category)) return g.k;
+  return "play"; // sensible default so nothing ever disappears
+}
 
 /* ---------------------------------------------------------
    GOOGLE PLACES SEARCH (fills gaps in our curated list)
@@ -2778,17 +2793,7 @@ function MapScreen({ setSelectedPlace, favorites, toggleFavorite, location, onRe
   const [filter, setFilter] = useState("all");
   const [query, setQuery] = useState(initialQuery || "");
   const filtered = useMemo(() => {
-    const GROUPS = {
-      play: (p) => ["Playground", "Park", "Pool", "Trail", "Beach", "Farm", "Indoor Play", "Nature Center"].includes(p.category)
-        || p.tags.includes("playground") || p.tags.includes("water"),
-      eat: (p) => ["Restaurant", "Ice Cream", "Farmers Market"].includes(p.category) || p.tags.includes("food"),
-      learn: (p) => ["Library", "Museum", "Historic Site", "Gym & Classes", "Martial Arts", "Dance Classes",
-        "Music Classes", "Art Studio", "Sports Program", "Afterschool", "Kids' Studio", "Daycare & Preschool", "Theater", "Aquarium"].includes(p.category),
-      shop: (p) => ["Toy Store", "Store"].includes(p.category) || p.tags.includes("shopping"),
-      free: (p) => p.tags.includes("free") || p.price === "Free",
-      indoor: (p) => p.tags.includes("indoor") || p.tags.includes("rain-friendly"),
-    };
-    let list = filter === "all" ? PLACES : PLACES.filter(GROUPS[filter] || ((p) => p.tags.includes(filter)));
+    let list = filter === "all" ? PLACES : PLACES.filter((p) => primaryGroup(p) === filter);
     const q = query.trim().toLowerCase();
     if (q) {
       list = list.filter(
@@ -2842,12 +2847,7 @@ function MapScreen({ setSelectedPlace, favorites, toggleFavorite, location, onRe
       <div className="px-5 mb-3 flex gap-2 overflow-x-auto">
         {[
           { k: "all", l: "All" },
-          { k: "play", l: "Play" },
-          { k: "eat", l: "Eat" },
-          { k: "learn", l: "Learn" },
-          { k: "shop", l: "Shop" },
-          { k: "free", l: "Free" },
-          { k: "indoor", l: "Rainy day" },
+          ...PRIMARY_GROUPS.map((g) => ({ k: g.k, l: g.l.split(" ")[0] })),
         ].map((f) => (
           <Pill key={f.k} active={filter === f.k} onClick={() => setFilter(f.k)}>
             {f.l}
@@ -2870,15 +2870,30 @@ function MapScreen({ setSelectedPlace, favorites, toggleFavorite, location, onRe
             No places match{query ? ` “${query}”` : " that filter"}. Try a different search or filter.
           </p>
         )}
-        {filtered.map((p) => (
-          <PlaceCard
-            key={p.id}
-            place={p}
-            onSelect={setSelectedPlace}
-            favorited={favorites.includes(p.id)}
-            onToggleFavorite={toggleFavorite}
-          />
-        ))}
+        {PRIMARY_GROUPS.map((g) => {
+          const inGroup = filtered.filter((p) => primaryGroup(p) === g.k);
+          if (!inGroup.length) return null;
+          return (
+            <div key={g.k}>
+              <div className="flex items-center gap-2 mb-2 mt-1">
+                <span className="text-[17px]">{CATEGORY_ICON[g.cats[0]] || "📍"}</span>
+                <p className="text-[14px] font-semibold text-[#1B2A4A]">{g.l}</p>
+                <span className="text-[11.5px]" style={{ color: "#B8B0A0" }}>{inGroup.length}</span>
+              </div>
+              <div className="flex flex-col gap-2.5">
+                {inGroup.map((p) => (
+                  <PlaceCard
+                    key={p.id}
+                    place={p}
+                    onSelect={setSelectedPlace}
+                    favorited={favorites.includes(p.id)}
+                    onToggleFavorite={toggleFavorite}
+                  />
+                ))}
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
