@@ -2022,9 +2022,8 @@ function BottomNav({ screen, setScreen }) {
     { key: "home", label: "Home", icon: Home },
     { key: "map", label: "Categories", icon: ListIcon },
     { key: "friends", label: "Friends", icon: Users },
-    { key: "favorites", label: "Saved", icon: Heart },
     { key: "safety", label: "Safety", icon: Shield },
-    { key: "profile", label: "Family", icon: User },
+    { key: "profile", label: "My Profile", icon: User },
   ];
   return (
     <div
@@ -3167,12 +3166,31 @@ function FavoritesScreen({ favorites, setSelectedPlace, toggleFavorite, savedDay
   );
 }
 
-function ProfileScreen({ onOpenPremium, onOpenPassport, stats, session, onOpenAuth, onSignOut, earnedBadges, kids, activeKidId, onSetActive, onAddKid, onEditKid, sitters, onAddSitter, onEditSitter, onShareWithSitter }) {
+function ProfileScreen({ onOpenPremium, onOpenPassport, stats, session, onOpenAuth, onSignOut, earnedBadges, kids, activeKidId, onSetActive, onAddKid, onEditKid, sitters, onAddSitter, onEditSitter, onShareWithSitter,
+  profileNames, onSaveProfileNames, myCaregivers, caregiverLinks, caregiverInvite, onCreateCaregiverInvite, onRemoveCaregiverAccess, activeFamilyId, onSwitchFamily,
+  favorites, savedDays, onViewSaved,
+}) {
   const activeKid = kids.find((k) => k.id === activeKidId) || kids[0] || null;
+  const [nameForm, setNameForm] = useState(profileNames || { firstName: "", lastName: "", handle: "" });
+  const [nameSaving, setNameSaving] = useState(false);
+  const [nameMsg, setNameMsg] = useState("");
+  useEffect(() => { setNameForm(profileNames || { firstName: "", lastName: "", handle: "" }); }, [profileNames]);
   return (
     <div className="pb-4">
-      <TopBar title="Family profile" />
+      <TopBar title="My Profile" />
       <div className="px-5">
+        <button
+          onClick={onViewSaved}
+          className="w-full rounded-2xl p-4 bg-white border mb-3 text-left flex items-center gap-3"
+          style={{ borderColor: "#EFEAE0" }}
+        >
+          <div className="w-10 h-10 rounded-full flex items-center justify-center text-[18px] shrink-0" style={{ backgroundColor: "#FFF3E6" }}>❤️</div>
+          <div className="flex-1 min-w-0">
+            <p className="text-[13.5px] font-semibold text-[#1B2A4A]">Saved places & days</p>
+            <p className="text-[11.5px] text-[#8A8474]">{favorites.length} favorite{favorites.length === 1 ? "" : "s"} · {savedDays.length} saved day{savedDays.length === 1 ? "" : "s"}</p>
+          </div>
+          <span className="text-[12px] font-medium shrink-0" style={{ color: "var(--accent)" }}>View →</span>
+        </button>
         <div className="rounded-2xl p-4 bg-white border mb-3" style={{ borderColor: session ? "#CDE8D6" : "#EFEAE0", backgroundColor: session ? "#F4FBF6" : "#FFFFFF" }}>
           {session ? (
             <div className="flex items-center gap-3">
@@ -3194,6 +3212,117 @@ function ProfileScreen({ onOpenPremium, onOpenPassport, stats, session, onOpenAu
             </div>
           )}
         </div>
+
+        <div className="rounded-2xl p-4 bg-white border mb-3" style={{ borderColor: "#EFEAE0" }}>
+          <p className="font-semibold text-[#1B2A4A] mb-1">Your name & username</p>
+          <p className="text-[11.5px] text-[#8A8474] mb-3">So other parents can find and add you as a friend.</p>
+          {session ? (
+            <>
+              <div className="flex gap-2 mb-2">
+                <input value={nameForm.firstName} onChange={(e) => setNameForm({ ...nameForm, firstName: e.target.value })} placeholder="First name"
+                  className="flex-1 rounded-xl px-3 py-2 text-[14px] border outline-none" style={{ borderColor: "#E7E1D4" }} />
+                <input value={nameForm.lastName} onChange={(e) => setNameForm({ ...nameForm, lastName: e.target.value })} placeholder="Last name"
+                  className="flex-1 rounded-xl px-3 py-2 text-[14px] border outline-none" style={{ borderColor: "#E7E1D4" }} />
+              </div>
+              <input value={nameForm.handle} onChange={(e) => setNameForm({ ...nameForm, handle: e.target.value.replace(/[^a-zA-Z0-9_]/g, "") })} placeholder="Username (optional, e.g. essiek)"
+                className="w-full rounded-xl px-3 py-2 text-[14px] border outline-none mb-2" style={{ borderColor: "#E7E1D4" }} />
+              <button
+                onClick={async () => {
+                  setNameSaving(true);
+                  const r = await onSaveProfileNames(nameForm);
+                  setNameMsg(r.message);
+                  setNameSaving(false);
+                }}
+                className="w-full rounded-xl py-2.5 text-white font-semibold text-[13px]"
+                style={{ background: "var(--cta)" }}
+              >
+                {nameSaving ? "Saving…" : "Save"}
+              </button>
+              {nameMsg && <p className="text-[11.5px] text-center mt-2" style={{ color: "#8A8474" }}>{nameMsg}</p>}
+            </>
+          ) : (
+            <button onClick={onOpenAuth} className="w-full rounded-xl py-2.5 text-white font-semibold text-[13px]" style={{ background: "var(--cta)" }}>
+              Sign in to set your name
+            </button>
+          )}
+        </div>
+
+        <div className="rounded-2xl p-4 bg-white border mb-3" style={{ borderColor: "#EFEAE0" }}>
+            <p className="font-semibold text-[#1B2A4A] mb-1">Family Circle</p>
+            <p className="text-[11.5px] text-[#8A8474] mb-3">Give a co-parent, grandparent, or nanny their own sign-in that shares your kids, favorites, and plans.</p>
+
+            {caregiverLinks && caregiverLinks.length > 0 && (
+              <div className="mb-3">
+                <p className="text-[12px] font-semibold text-[#1B2A4A] mb-1.5">Families you can help plan for</p>
+                <div className="flex flex-col gap-1.5">
+                  <button
+                    onClick={() => onSwitchFamily(null)}
+                    className="text-left p-2 rounded-xl border text-[13px]"
+                    style={{ borderColor: !activeFamilyId ? "var(--accent)" : "#EFEAE0", backgroundColor: !activeFamilyId ? "#FFF6F0" : "#fff" }}
+                  >
+                    Your own family {!activeFamilyId && "· viewing"}
+                  </button>
+                  {caregiverLinks.map((link) => {
+                    const p = link.profiles || {};
+                    const label = [p.first_name, p.last_name].filter(Boolean).join(" ") || p.display_name || "A family";
+                    const active = activeFamilyId === link.owner_id;
+                    return (
+                      <button
+                        key={link.id}
+                        onClick={() => onSwitchFamily(link.owner_id)}
+                        className="text-left p-2 rounded-xl border text-[13px]"
+                        style={{ borderColor: active ? "var(--accent)" : "#EFEAE0", backgroundColor: active ? "#FFF6F0" : "#fff" }}
+                      >
+                        {label}'s family {active && "· viewing"}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {myCaregivers && myCaregivers.length > 0 && (
+              <div className="mb-3">
+                <p className="text-[12px] font-semibold text-[#1B2A4A] mb-1.5">People who can help plan for your kids</p>
+                <div className="flex flex-col gap-1.5">
+                  {myCaregivers.map((m) => {
+                    const p = m.profiles || {};
+                    const label = [p.first_name, p.last_name].filter(Boolean).join(" ") || p.display_name || "A caregiver";
+                    return (
+                      <div key={m.id} className="flex items-center justify-between p-2 rounded-xl" style={{ backgroundColor: "#F7F4EC" }}>
+                        <p className="text-[13px] text-[#1B2A4A]">{label}</p>
+                        <button onClick={() => onRemoveCaregiverAccess(m.id)} className="text-[11.5px] font-semibold" style={{ color: "#C0604B" }}>Remove</button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {session ? (
+              caregiverInvite ? (
+                <div className="rounded-xl p-3" style={{ backgroundColor: "#FFF3E6" }}>
+                  <p className="text-[12px] text-[#8A8474] mb-1.5">Share this link — they'll sign in and get access:</p>
+                  <p className="text-[12.5px] font-mono break-all text-[#1B2A4A] mb-2">{caregiverInvite.link}</p>
+                  <button
+                    onClick={() => { navigator.clipboard?.writeText(caregiverInvite.link); }}
+                    className="w-full rounded-xl py-2 text-white font-semibold text-[13px]"
+                    style={{ background: "var(--cta)" }}
+                  >
+                    Copy link
+                  </button>
+                </div>
+              ) : (
+                <button onClick={onCreateCaregiverInvite} className="w-full rounded-xl py-2.5 border font-semibold text-[13px]" style={{ borderColor: "var(--accent)", color: "var(--accent)" }}>
+                  + Invite a caregiver
+                </button>
+              )
+            ) : (
+              <button onClick={onOpenAuth} className="w-full rounded-xl py-2.5 text-white font-semibold text-[13px]" style={{ background: "var(--cta)" }}>
+                Sign in to invite a caregiver
+              </button>
+            )}
+          </div>
 
         <div className="rounded-2xl p-4 bg-white border" style={{ borderColor: "#EFEAE0" }}>
           <div className="flex items-center justify-between mb-3">
@@ -3786,9 +3915,23 @@ function FriendsScreen({ onOpenInvite,
   onUseDay,
   onAddFriend,
   setSelectedPlace,
+  session,
+  onSearchProfiles,
+  onAddRealFriend,
 }) {
   const [newName, setNewName] = useState("");
   const [phoneInput, setPhoneInput] = useState("");
+  const [nameQuery, setNameQuery] = useState("");
+  const [nameResults, setNameResults] = useState([]);
+  const [searching, setSearching] = useState(false);
+  useEffect(() => {
+    if (!session || nameQuery.trim().length < 2) { setNameResults([]); return; }
+    setSearching(true);
+    const t = setTimeout(() => {
+      onSearchProfiles(nameQuery).then((r) => { setNameResults(r); setSearching(false); });
+    }, 400);
+    return () => clearTimeout(t);
+  }, [nameQuery, session]);
   const incoming = playDates.filter((p) => p.direction === "incoming" && p.status === "pending");
   const upcoming = playDates.filter((p) => p.status === "confirmed" || p.status === "invited");
   const place = (id) => PLACES.find((p) => p.id === id);
@@ -3942,6 +4085,49 @@ function FriendsScreen({ onOpenInvite,
               </div>
             </div>
           ))}
+        </div>
+
+        <div className="rounded-2xl p-3.5 mb-2.5 border" style={{ borderColor: "#EFEAE0", backgroundColor: "#FFFDF8" }}>
+          <p className="text-[12.5px] font-semibold text-[#1B2A4A] mb-2">Search by name or username</p>
+          {session ? (
+            <>
+              <input
+                value={nameQuery}
+                onChange={(e) => setNameQuery(e.target.value)}
+                placeholder="First and last name, or @handle"
+                className="w-full rounded-xl px-3.5 py-2.5 text-[14px] border outline-none"
+                style={{ borderColor: "#E7E1D4", backgroundColor: "#FFFFFF" }}
+              />
+              {searching && <p className="text-[11.5px] text-[#B8B0A0] mt-2">Searching…</p>}
+              {!searching && nameQuery.trim().length >= 2 && nameResults.length === 0 && (
+                <p className="text-[11.5px] text-[#B8B0A0] mt-2">No one found — check the spelling or ask them to set a username.</p>
+              )}
+              {nameResults.length > 0 && (
+                <div className="flex flex-col gap-1.5 mt-2">
+                  {nameResults.map((r) => {
+                    const label = [r.first_name, r.last_name].filter(Boolean).join(" ") || r.display_name || r.handle || "Little Day parent";
+                    return (
+                      <div key={r.id} className="flex items-center justify-between gap-2 p-2 rounded-xl" style={{ backgroundColor: "#F7F4EC" }}>
+                        <div className="min-w-0">
+                          <p className="text-[13.5px] font-medium text-[#1B2A4A] truncate">{label}</p>
+                          {r.handle && <p className="text-[11.5px] text-[#8A8474] truncate">@{r.handle}</p>}
+                        </div>
+                        <button
+                          onClick={() => { onAddRealFriend(r.id, label); setNameQuery(""); setNameResults([]); }}
+                          className="text-[12px] font-semibold px-3 py-1.5 rounded-full text-white shrink-0"
+                          style={{ background: "var(--cta)" }}
+                        >
+                          Add
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </>
+          ) : (
+            <p className="text-[11.5px]" style={{ color: "#B8B0A0" }}>Sign in from the Profile tab to search for friends by name.</p>
+          )}
         </div>
 
         <div className="rounded-2xl p-3.5 mb-2.5 border" style={{ borderColor: "#EFEAE0", backgroundColor: "#FFFDF8" }}>
@@ -4477,7 +4663,7 @@ function ActivitiesScreen({ setSelectedPlace }) {
 
 const HOWTO_STEPS = [
   { emoji: "🌅", title: "Welcome to Little Day", body: "The first app that plans your whole day out with the kids — where to go, eat, play, and everything in between. Here's a quick tour." },
-  { emoji: "🧒", title: "1. Add your children", body: "In the Family tab, add each child with their name and birthday. Switch between them anytime — the planner tailors ideas to whoever you've selected." },
+  { emoji: "🧒", title: "1. Add your children", body: "In the Profile tab, add each child with their name and birthday. Switch between them anytime — the planner tailors ideas to whoever you've selected." },
   { emoji: "✨", title: "2. Plan My Day", body: "Tap Plan My Day, then set the age, budget, time you have, and nap or 'home by' time. Little Day builds a full itinerary — with a lunch stop and a treat — in seconds." },
   { emoji: "🔍", title: "3. Search & explore", body: "Use the search bar on the home screen to find anything — a place, a town, or a category like 'playground' or 'ice cream.' Or open the Map to browse with filters." },
   { emoji: "🤸", title: "4. Classes & Activities", body: "Browse sports, dance, music, art, and afterschool programs. Look for the 'Free trial' tag, and note which need sign-up (no drop-ins)." },
@@ -4920,6 +5106,8 @@ export default function LittleDayApp() {
   const [session, setSession] = useState(null);
   const [authOpen, setAuthOpen] = useState(false);
   const cloudLoaded = useRef(false);
+  const [activeFamilyId, setActiveFamilyId] = usePersistentState("activeFamilyId", null);
+  const effectiveFamilyId = activeFamilyId || (session ? session.user.id : null);
   useEffect(() => {
     if (!backendReady()) return;
     supabase.auth.getSession().then(({ data }) => setSession(data.session || null));
@@ -4927,9 +5115,10 @@ export default function LittleDayApp() {
     return () => sub.subscription.unsubscribe();
   }, []);
   useEffect(() => {
-    if (!backendReady() || !session) { cloudLoaded.current = false; return; }
+    if (!backendReady() || !session || !effectiveFamilyId) { cloudLoaded.current = false; return; }
+    cloudLoaded.current = false;
     (async () => {
-      const { data } = await supabase.from("user_data").select("*").eq("user_id", session.user.id).maybeSingle();
+      const { data } = await supabase.from("user_data").select("*").eq("user_id", effectiveFamilyId).maybeSingle();
       if (data) {
         const has = (v) => Array.isArray(v) ? v.length > 0 : v && Object.keys(v).length > 0;
         if (has(data.kids)) { setKids(data.kids); setActiveKidId(data.kids[0].id); }
@@ -4941,20 +5130,107 @@ export default function LittleDayApp() {
       }
       cloudLoaded.current = true;
     })();
-  }, [session]);
+  }, [session, effectiveFamilyId]);
   useEffect(() => {
-    if (!backendReady() || !session || !cloudLoaded.current) return;
+    if (!backendReady() || !session || !effectiveFamilyId || !cloudLoaded.current) return;
     const t = setTimeout(() => {
       supabase.from("user_data").upsert({
-        user_id: session.user.id,
+        user_id: effectiveFamilyId,
         kids, sitters, favorites,
         saved_days: savedDays, check_ins: checkIns, completed_days: completedDays,
         updated_at: new Date().toISOString(),
       }).then(() => {});
     }, 1200);
     return () => clearTimeout(t);
-  }, [session, kids, sitters, favorites, savedDays, checkIns, completedDays]);
+  }, [session, effectiveFamilyId, kids, sitters, favorites, savedDays, checkIns, completedDays]);
   const signOut = async () => { if (backendReady()) await supabase.auth.signOut(); showToast("Signed out — this device keeps its local copy"); };
+
+  // ---- Family Circle (caregiver access) ----
+  const [myCaregivers, setMyCaregivers] = useState([]);
+  const [caregiverLinks, setCaregiverLinks] = useState([]);
+  const [caregiverInvite, setCaregiverInvite] = useState(null);
+  const [pendingCaregiverCode, setPendingCaregiverCode] = useState(null);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get("caregiver");
+    if (code) {
+      setPendingCaregiverCode(code);
+      params.delete("caregiver");
+      const clean = window.location.pathname + (params.toString() ? `?${params}` : "");
+      window.history.replaceState({}, "", clean);
+    }
+  }, []);
+  useEffect(() => {
+    if (!pendingCaregiverCode || !backendReady() || !session) return;
+    (async () => {
+      const { data, error } = await supabase.rpc("redeem_family_invite", { p_code: pendingCaregiverCode });
+      if (error) { showToast("That caregiver invite link didn't work — ask for a new one"); }
+      else { showToast(`You now have caregiver access to ${data || "their"} family`); }
+      setPendingCaregiverCode(null);
+    })();
+  }, [pendingCaregiverCode, session]);
+
+  const loadFamilyCircle = async () => {
+    if (!backendReady() || !session) { setMyCaregivers([]); setCaregiverLinks([]); return; }
+    const { data: mine } = await supabase
+      .from("family_members").select("id, caregiver_id, profiles!family_members_caregiver_id_fkey(display_name, first_name, last_name)")
+      .eq("owner_id", session.user.id);
+    setMyCaregivers(mine || []);
+    const { data: access } = await supabase
+      .from("family_members").select("id, owner_id, profiles!family_members_owner_id_fkey(display_name, first_name, last_name)")
+      .eq("caregiver_id", session.user.id);
+    setCaregiverLinks(access || []);
+  };
+  useEffect(() => { loadFamilyCircle(); }, [session]);
+
+  const createCaregiverInvite = async () => {
+    if (!backendReady() || !session) return;
+    const { data, error } = await supabase.rpc("create_family_invite");
+    if (error || !data) { showToast("Couldn't create an invite — try again"); return; }
+    const link = `${window.location.origin}${window.location.pathname}?caregiver=${data}`;
+    setCaregiverInvite({ code: data, link });
+  };
+  const removeCaregiverAccess = async (rowId) => {
+    if (!backendReady()) return;
+    await supabase.from("family_members").delete().eq("id", rowId);
+    loadFamilyCircle();
+    showToast("Caregiver access removed");
+  };
+  const switchFamily = (ownerId) => {
+    setActiveFamilyId(ownerId);
+    showToast(ownerId ? "Now viewing that family's plans" : "Back to your own family");
+  };
+
+  // ---- Friends: real name/handle search ----
+  const [profileNames, setProfileNames] = useState({ firstName: "", lastName: "", handle: "" });
+  useEffect(() => {
+    if (!backendReady() || !session) return;
+    supabase.from("profiles").select("first_name, last_name, handle").eq("id", session.user.id).maybeSingle()
+      .then(({ data }) => { if (data) setProfileNames({ firstName: data.first_name || "", lastName: data.last_name || "", handle: data.handle || "" }); });
+  }, [session]);
+  const saveProfileNames = async (next) => {
+    if (!backendReady() || !session) return { ok: false, message: "Sign in first to set your name" };
+    const { error } = await supabase.from("profiles").update({
+      first_name: next.firstName.trim(), last_name: next.lastName.trim(), handle: next.handle.trim() || null,
+    }).eq("id", session.user.id);
+    if (error) {
+      const msg = /duplicate|unique/i.test(error.message) ? "That username is taken — try another" : "Couldn't save — try again";
+      return { ok: false, message: msg };
+    }
+    setProfileNames(next);
+    return { ok: true, message: "Profile saved" };
+  };
+  const searchRealProfiles = async (q) => {
+    if (!backendReady() || !session || q.trim().length < 2) return [];
+    const { data, error } = await supabase.rpc("search_profiles", { q: q.trim() });
+    return error ? [] : (data || []);
+  };
+  const addRealFriend = async (otherId, label) => {
+    if (!backendReady() || !session) return;
+    const { error } = await supabase.rpc("add_friendship", { other_id: otherId });
+    if (!error) showToast(`${label} added to your friends`);
+  };
   const [sharedDays, setSharedDays] = useState(SHARED_DAYS_SEED);
   const [playDates, setPlayDates] = useState(PLAYDATES_SEED);
   const [toast, setToast] = useState(null);
@@ -5281,10 +5557,19 @@ export default function LittleDayApp() {
         onUseDay={useSharedDay}
         onAddFriend={addFriend}
         setSelectedPlace={handleSelectPlace}
+        session={session}
+        onSearchProfiles={searchRealProfiles}
+        onAddRealFriend={addRealFriend}
       />
     );
   } else if (screen === "profile") {
-    content = <ProfileScreen onOpenPremium={() => goTo("premium")} onOpenPassport={() => goTo("passport")} stats={stats} session={session} onOpenAuth={() => setAuthOpen(true)} onSignOut={signOut} earnedBadges={earnedBadges} kids={kids} activeKidId={activeKidId} onSetActive={setActiveKidId} onAddKid={openAddKid} onEditKid={openEditKid} sitters={sitters} onAddSitter={openAddSitter} onEditSitter={openEditSitter} onShareWithSitter={shareWithSitter} />;
+    content = <ProfileScreen onOpenPremium={() => goTo("premium")} onOpenPassport={() => goTo("passport")} stats={stats} session={session} onOpenAuth={() => setAuthOpen(true)} onSignOut={signOut} earnedBadges={earnedBadges} kids={kids} activeKidId={activeKidId} onSetActive={setActiveKidId} onAddKid={openAddKid} onEditKid={openEditKid} sitters={sitters} onAddSitter={openAddSitter} onEditSitter={openEditSitter} onShareWithSitter={shareWithSitter}
+      profileNames={profileNames} onSaveProfileNames={saveProfileNames}
+      myCaregivers={myCaregivers} caregiverLinks={caregiverLinks} caregiverInvite={caregiverInvite}
+      onCreateCaregiverInvite={createCaregiverInvite} onRemoveCaregiverAccess={removeCaregiverAccess}
+      activeFamilyId={activeFamilyId} onSwitchFamily={switchFamily}
+      favorites={favorites} savedDays={savedDays} onViewSaved={() => goTo("favorites")}
+    />;
   } else if (screen === "safety") {
     content = <SafetyScreen />;
   } else if (screen === "community") {
