@@ -1642,9 +1642,9 @@ const EVENTS_SEED = [
 ];
 
 const FRIENDS_SEED = [
-  { id: "sofia", name: "Sofia R.", emoji: "👩🏻", kids: "Mia (3), Leo (5)", town: "Chappaqua" },
-  { id: "dana", name: "Dana K.", emoji: "👨🏽", kids: "Noah (2)", town: "Pleasantville" },
-  { id: "priya", name: "Priya M.", emoji: "👩🏾", kids: "Ava (4)", town: "Mount Kisco" },
+  { id: "sofia", name: "Sofia R.", emoji: "👩🏻", kids: "Mia (3), Leo (5)", town: "Chappaqua", demo: true },
+  { id: "dana", name: "Dana K.", emoji: "👨🏽", kids: "Noah (2)", town: "Pleasantville", demo: true },
+  { id: "priya", name: "Priya M.", emoji: "👩🏾", kids: "Ava (4)", town: "Mount Kisco", demo: true },
 ];
 
 const SHARED_DAYS_SEED = [
@@ -1717,7 +1717,32 @@ function buildItinerary(prefs) {
     for (let i = top.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [top[i], top[j]] = [top[j], top[i]]; }
     activityPool = top.concat(activityPool.slice(k));
   }
-  let activity = activityPool.slice(0, Math.min(prefs.stops, maxActivities));
+
+  // Keep the day varied: skip a place if we've already picked its category or
+  // primary group twice (so no itinerary is two parks or two farms back to back).
+  // Only relax the rule if there truly isn't enough variety to fill the day.
+  const wanted = Math.min(prefs.stops, maxActivities);
+  let activity = [];
+  const catCount = {};
+  const groupCount = {};
+  for (const p of activityPool) {
+    if (activity.length >= wanted) break;
+    const cat = p.category;
+    const grp = typeof primaryGroup === "function" ? primaryGroup(p) : cat;
+    const catSeen = catCount[cat] || 0;
+    const groupSeen = groupCount[grp] || 0;
+    if (catSeen >= 1 || groupSeen >= 2) continue; // at most one of the same category, two of the same group
+    activity.push(p);
+    catCount[cat] = catSeen + 1;
+    groupCount[grp] = groupSeen + 1;
+  }
+  // Fill any remaining slots (only happens if the filtered area is genuinely thin on variety).
+  if (activity.length < wanted) {
+    for (const p of activityPool) {
+      if (activity.length >= wanted) break;
+      if (!activity.includes(p)) activity.push(p);
+    }
+  }
 
   let stops = [...activity];
 
@@ -3763,6 +3788,7 @@ function FriendsScreen({ onOpenInvite,
   setSelectedPlace,
 }) {
   const [newName, setNewName] = useState("");
+  const [phoneInput, setPhoneInput] = useState("");
   const incoming = playDates.filter((p) => p.direction === "incoming" && p.status === "pending");
   const upcoming = playDates.filter((p) => p.status === "confirmed" || p.status === "invited");
   const place = (id) => PLACES.find((p) => p.id === id);
@@ -3894,12 +3920,22 @@ function FriendsScreen({ onOpenInvite,
 
       <div className="px-5">
         <p className="text-[13px] font-semibold text-[#1B2A4A] mb-2">Your friends</p>
+        {friends.some((f) => f.demo) && (
+          <p className="text-[11.5px] mb-2" style={{ color: "#B08A5A" }}>
+            The friends marked "Demo" below are sample profiles to show how this screen works — invite real friends to replace them.
+          </p>
+        )}
         <div className="flex flex-col gap-2 mb-3">
           {friends.map((f) => (
             <div key={f.id} className="flex items-center gap-2.5 p-2.5 rounded-2xl bg-white border" style={{ borderColor: "#EFEAE0" }}>
               <Avatar emoji={f.emoji} size={38} />
               <div className="flex-1 min-w-0">
-                <p className="text-[14px] font-medium text-[#1B2A4A]">{f.name}</p>
+                <div className="flex items-center gap-1.5">
+                  <p className="text-[14px] font-medium text-[#1B2A4A]">{f.name}</p>
+                  {f.demo && (
+                    <span className="text-[9.5px] font-bold px-1.5 py-0.5 rounded-full" style={{ backgroundColor: "#F0EEE6", color: "#8A8474" }}>DEMO</span>
+                  )}
+                </div>
                 <p className="text-[12px] text-[#8A8474] truncate">
                   {f.kids} · {f.town}
                 </p>
@@ -3907,6 +3943,37 @@ function FriendsScreen({ onOpenInvite,
             </div>
           ))}
         </div>
+
+        <div className="rounded-2xl p-3.5 mb-2.5 border" style={{ borderColor: "#EFEAE0", backgroundColor: "#FFFDF8" }}>
+          <p className="text-[12.5px] font-semibold text-[#1B2A4A] mb-2">Add a friend by phone number</p>
+          <div className="flex gap-2">
+            <input
+              value={phoneInput}
+              onChange={(e) => setPhoneInput(e.target.value)}
+              type="tel"
+              inputMode="tel"
+              placeholder="(914) 555-0123"
+              className="flex-1 rounded-xl px-3.5 py-2.5 text-[14px] border outline-none"
+              style={{ borderColor: "#E7E1D4", backgroundColor: "#FFFFFF" }}
+            />
+            <button
+              onClick={() => {
+                if (phoneInput.replace(/\D/g, "").length >= 10) {
+                  onAddFriend(phoneInput);
+                  setPhoneInput("");
+                }
+              }}
+              className="px-4 rounded-xl flex items-center gap-1.5 text-white font-medium text-[13px]"
+              style={{ backgroundColor: "#1B2A4A" }}
+            >
+              <UserPlus size={15} /> Add
+            </button>
+          </div>
+          <p className="text-[11px] mt-2" style={{ color: "#B8B0A0" }}>
+            Preview only for now — once accounts are fully connected, this will text your friend an invite if they're not on Little Day yet, or connect you instantly if they are.
+          </p>
+        </div>
+
         <button
           onClick={onOpenInvite}
           className="w-full rounded-2xl py-3.5 flex items-center justify-center gap-2 text-white font-semibold text-[14px] mb-2.5"
@@ -4845,7 +4912,7 @@ export default function LittleDayApp() {
   const [inviteOpen, setInviteOpen] = useState(false);
   const [googlePlace, setGooglePlace] = useState(null);
 
-  const [favorites, setFavorites] = usePersistentState("favorites", ["muscoot-farm"]);
+  const [favorites, setFavorites] = usePersistentState("favorites", []);
   const location = useGeolocation();
   const [friends, setFriends] = usePersistentState("friends", FRIENDS_SEED);
 
@@ -4905,9 +4972,16 @@ export default function LittleDayApp() {
   const declinePlayDate = (id) => {
     setPlayDates((cur) => cur.filter((p) => p.id !== id));
   };
-  const addFriend = (name) => {
-    setFriends((cur) => [...cur, { id: `f${Date.now()}`, name, emoji: "🙂", kids: "New friend", town: "Nearby" }]);
-    showToast(`${name} added to your friends`);
+  const addFriend = (nameOrPhone) => {
+    const isPhone = /^[\d\s()+-]{7,}$/.test(nameOrPhone.trim());
+    setFriends((cur) => [...cur, {
+      id: `f${Date.now()}`,
+      name: isPhone ? nameOrPhone.trim() : nameOrPhone,
+      emoji: "🙂",
+      kids: "New friend",
+      town: "Nearby",
+    }]);
+    showToast(isPhone ? "Invite noted — we'll text them once real invites are live" : `${nameOrPhone} added to your friends`);
   };
   const shareCurrentDay = () => {
     if (!itinerary.length) return;
@@ -5291,14 +5365,18 @@ export default function LittleDayApp() {
       `}</style>
       <div
         className="w-full flex flex-col relative"
-        style={{ maxWidth: 420, minHeight: "100vh", backgroundColor: "var(--bg)" }}
+        style={{ maxWidth: 420, height: "100dvh", backgroundColor: "var(--bg)" }}
       >
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto overscroll-contain">
           <div key={screen} style={{ animation: "fadeSlide 0.28s ease-out" }}>
             {content}
           </div>
         </div>
-        {showNav && <BottomNav screen={screen} setScreen={goTo} />}
+        {showNav && (
+          <div style={{ position: "sticky", bottom: 0, zIndex: 20, flexShrink: 0 }}>
+            <BottomNav screen={screen} setScreen={goTo} />
+          </div>
+        )}
         <Toast message={toast} />
         <FriendPickerSheet
           open={invitePickerOpen}
