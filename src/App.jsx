@@ -4439,14 +4439,26 @@ function FakeQR({ size = 120, seed = 7 }) {
   return <svg width={size} height={size}>{cells}</svg>;
 }
 
-function InviteSheet({ open, onClose, onShared }) {
+function InviteSheet({ open, onClose, onShared, session }) {
+  const [copied, setCopied] = useState(false);
+  useEffect(() => { if (open) setCopied(false); }, [open]);
   if (!open) return null;
-  const link = "littleday.app/invite/essie-7H3K";
+  const hasRealLink = !!session;
+  const link = hasRealLink
+    ? `${window.location.origin}${window.location.pathname}?addfriend=${session.user.id}`
+    : null;
+  const shareText = link
+    ? `Join me on Little Day — the app that plans whole days out with the kids! ${link}`
+    : "Join me on Little Day — the app that plans whole days out with the kids!";
   const doShare = async () => {
     try {
-      if (navigator.share) { await navigator.share({ title: "Join me on Little Day", text: `Join me on Little Day — the app that plans whole days out with the kids! ${link}` }); onShared(); return; }
+      if (navigator.share) { await navigator.share({ title: "Join me on Little Day", text: shareText }); onShared(); return; }
     } catch (e) {}
     onShared();
+  };
+  const doCopy = async () => {
+    if (!link) return;
+    try { await navigator.clipboard.writeText(link); setCopied(true); } catch (e) {}
   };
   return (
     <div className="absolute inset-0 z-30 flex items-end" onClick={onClose}>
@@ -4454,7 +4466,9 @@ function InviteSheet({ open, onClose, onShared }) {
       <div className="relative w-full rounded-t-3xl bg-white p-6 pb-8 text-center" onClick={(e) => e.stopPropagation()} style={{ animation: "sheetUp 0.22s ease-out" }}>
         <div className="w-10 h-1 rounded-full bg-[#E7E1D4] mx-auto mb-4" />
         <p className="text-[17px] font-bold text-[#1B2A4A]" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Invite a friend</p>
-        <p className="text-[13px] text-[#8A8474] mt-1 max-w-[280px] mx-auto">Send your personal link, or let them scan your code at the playground.</p>
+        <p className="text-[13px] text-[#8A8474] mt-1 max-w-[280px] mx-auto">
+          {hasRealLink ? "Send your personal link — when they tap it and sign in, you'll be connected as friends automatically." : "Sign in first to get your personal invite link."}
+        </p>
 
         <div className="flex justify-center my-5">
           <div className="rounded-2xl p-3 border-2" style={{ borderColor: "#F0E4D4", backgroundColor: "#FFFBF5" }}>
@@ -4462,15 +4476,17 @@ function InviteSheet({ open, onClose, onShared }) {
           </div>
         </div>
 
-        <div className="rounded-xl px-3.5 py-3 flex items-center justify-between border mb-3" style={{ borderColor: "#E7E1D4", backgroundColor: "#FFF8EE" }}>
-          <span className="text-[13px] font-medium text-[#1B2A4A] truncate">{link}</span>
-          <span className="text-[12px] font-semibold shrink-0 ml-2" style={{ color: "var(--accent)" }}>Copy</span>
-        </div>
+        {hasRealLink && (
+          <div className="rounded-xl px-3.5 py-3 flex items-center justify-between border mb-3" style={{ borderColor: "#E7E1D4", backgroundColor: "#FFF8EE" }}>
+            <span className="text-[13px] font-medium text-[#1B2A4A] truncate">{link}</span>
+            <button onClick={doCopy} className="text-[12px] font-semibold shrink-0 ml-2" style={{ color: "var(--accent)" }}>{copied ? "Copied!" : "Copy"}</button>
+          </div>
+        )}
 
-        <button onClick={doShare} className="w-full rounded-2xl py-3.5 flex items-center justify-center gap-2 text-white font-semibold text-[14px]" style={{ background: "var(--cta)" }}>
+        <button onClick={doShare} disabled={!hasRealLink} className="w-full rounded-2xl py-3.5 flex items-center justify-center gap-2 text-white font-semibold text-[14px] disabled:opacity-50" style={{ background: "var(--cta)" }}>
           <Share2 size={16} /> Share invite link
         </button>
-        <p className="text-[11px] text-[#B8B0A0] mt-3 leading-snug">Preview — invite links connect real friends once accounts launch. Friends only ever see what you choose to share.</p>
+        <p className="text-[11px] text-[#B8B0A0] mt-3 leading-snug">The QR code above is a visual only for now — sharing the link (text, email, etc.) is what actually connects you. Friends only ever see what you choose to share.</p>
       </div>
     </div>
   );
@@ -5495,16 +5511,37 @@ export default function LittleDayApp() {
   const [pendingCaregiverCode, setPendingCaregiverCode] = useState(null);
   const [forceEditNameToken, setForceEditNameToken] = useState(null);
 
+  const [pendingFriendId, setPendingFriendId] = useState(null);
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const code = params.get("caregiver");
+    const addfriend = params.get("addfriend");
     if (code) {
       setPendingCaregiverCode(code);
       params.delete("caregiver");
+    }
+    if (addfriend) {
+      setPendingFriendId(addfriend);
+      params.delete("addfriend");
+    }
+    if (code || addfriend) {
       const clean = window.location.pathname + (params.toString() ? `?${params}` : "");
       window.history.replaceState({}, "", clean);
     }
   }, []);
+  useEffect(() => {
+    if (!pendingFriendId || !backendReady() || !session) return;
+    (async () => {
+      if (pendingFriendId === session.user.id) { showToast("That's your own invite link!"); setPendingFriendId(null); return; }
+      const { data: profs } = await supabase.rpc("get_profiles_by_ids", { ids: [pendingFriendId] });
+      const other = (profs || [])[0];
+      const label = other ? ([other.first_name, other.last_name].filter(Boolean).join(" ") || other.display_name || (other.handle ? `@${other.handle}` : "your friend")) : "your friend";
+      const { error } = await supabase.rpc("add_friendship", { other_id: pendingFriendId });
+      if (error) { showToast("That invite link didn't work — ask for a new one"); }
+      else { showToast(`You're connected with ${label}!`); loadRealFriends(); goTo("friends"); }
+      setPendingFriendId(null);
+    })();
+  }, [pendingFriendId, session]);
   useEffect(() => {
     if (!pendingCaregiverCode || !backendReady() || !session) return;
     (async () => {
@@ -6112,7 +6149,7 @@ export default function LittleDayApp() {
         )}
         <AuthSheet open={authOpen} onClose={() => setAuthOpen(false)} session={session} />
         <GooglePlaceSheet place={googlePlace} onClose={() => setGooglePlace(null)} />
-        <InviteSheet open={inviteOpen} onClose={() => setInviteOpen(false)} onShared={() => { setInviteOpen(false); showToast("Invite sent — preview only for now"); }} />
+        <InviteSheet open={inviteOpen} onClose={() => setInviteOpen(false)} onShared={() => { setInviteOpen(false); showToast("Invite link shared!"); }} session={session} />
         <GroupChatSheet open={!!chatGroupId} groupId={chatGroupId} session={session} onClose={() => setChatGroupId(null)} />
       </div>
     </div>
