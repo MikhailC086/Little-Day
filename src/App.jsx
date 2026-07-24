@@ -5618,15 +5618,15 @@ export default function LittleDayApp() {
     cloudLoaded.current = false;
     (async () => {
       const { data } = await supabase.from("user_data").select("*").eq("user_id", effectiveFamilyId).maybeSingle();
-      if (data) {
-        const has = (v) => Array.isArray(v) ? v.length > 0 : v && Object.keys(v).length > 0;
-        if (has(data.kids)) { setKids(data.kids); setActiveKidId(data.kids[0].id); }
-        if (has(data.sitters)) setCaregivers(data.sitters);
-        if (has(data.favorites)) setFavorites(data.favorites);
-        if (has(data.saved_days)) setSavedDays(data.saved_days);
-        if (has(data.check_ins)) setCheckIns(data.check_ins);
-        if (has(data.completed_days)) setCompletedDays(data.completed_days);
-      }
+      const data2 = data || {};
+      const hasNonEmpty = (v) => Array.isArray(v) ? v.length > 0 : v && Object.keys(v).length > 0;
+      const wasSynced = (v) => v !== null && v !== undefined; // trust the cloud even when it's genuinely empty
+      if (hasNonEmpty(data2.kids)) { setKids(data2.kids); setActiveKidId(data2.kids[0].id); }
+      if (hasNonEmpty(data2.sitters)) setCaregivers(data2.sitters);
+      if (wasSynced(data2.favorites)) setFavorites(data2.favorites);
+      if (wasSynced(data2.saved_days)) setSavedDays(data2.saved_days);
+      if (wasSynced(data2.check_ins)) setCheckIns(data2.check_ins);
+      if (wasSynced(data2.completed_days)) setCompletedDays(data2.completed_days);
       cloudLoaded.current = true;
     })();
   }, [session, effectiveFamilyId]);
