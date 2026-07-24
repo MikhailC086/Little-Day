@@ -4142,9 +4142,9 @@ function FriendsScreen({ onOpenInvite,
     <div className="pb-4">
       <TopBar title="Friends & play dates" />
 
-      {chatGroups.length > 0 && (
-        <div className="px-5 mb-5">
-          <p className="text-[13px] font-semibold text-[#1B2A4A] mb-2">💬 Chats about your days</p>
+      <div className="px-5 mb-5">
+        <p className="text-[13px] font-semibold text-[#1B2A4A] mb-2">💬 Chats about your days</p>
+        {chatGroups.length > 0 ? (
           <div className="flex flex-col gap-2">
             {chatGroups.map((g) => {
               const pl = place(g.placeId);
@@ -4165,8 +4165,16 @@ function FriendsScreen({ onOpenInvite,
               );
             })}
           </div>
-        </div>
-      )}
+        ) : (
+          <div className="p-3.5 rounded-2xl border" style={{ borderColor: "#EFEAE0", backgroundColor: "#FAF8F3" }}>
+            <p className="text-[12.5px] text-[#8A8474] leading-snug">
+              {!session
+                ? "Sign in from the Profile tab, then invite a real friend (added by name search) to a day plan — a chat for that group will show up right here."
+                : "No active group chats yet. Build a day, tap 'Invite friends to join,' and pick a friend you've added by name search — a chat for that day will appear here once they're invited."}
+            </p>
+          </div>
+        )}
+      </div>
 
       {incoming.length > 0 && (
         <div className="px-5 mb-5">
