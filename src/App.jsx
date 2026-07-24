@@ -3174,6 +3174,8 @@ function ProfileScreen({ onOpenPremium, onOpenPassport, stats, session, onOpenAu
   const [nameForm, setNameForm] = useState(profileNames || { firstName: "", lastName: "", handle: "" });
   const [nameSaving, setNameSaving] = useState(false);
   const [nameMsg, setNameMsg] = useState("");
+  const [editingName, setEditingName] = useState(false);
+  const hasSavedName = !!(profileNames && (profileNames.firstName || profileNames.lastName || profileNames.handle));
   useEffect(() => { setNameForm(profileNames || { firstName: "", lastName: "", handle: "" }); }, [profileNames]);
   return (
     <div className="pb-4">
@@ -3217,29 +3219,59 @@ function ProfileScreen({ onOpenPremium, onOpenPassport, stats, session, onOpenAu
           <p className="font-semibold text-[#1B2A4A] mb-1">Your name & username</p>
           <p className="text-[11.5px] text-[#8A8474] mb-3">So other parents can find and add you as a friend.</p>
           {session ? (
-            <>
-              <div className="flex gap-2 mb-2">
-                <input value={nameForm.firstName} onChange={(e) => setNameForm({ ...nameForm, firstName: e.target.value })} placeholder="First name"
-                  className="flex-1 rounded-xl px-3 py-2 text-[14px] border outline-none" style={{ borderColor: "#E7E1D4" }} />
-                <input value={nameForm.lastName} onChange={(e) => setNameForm({ ...nameForm, lastName: e.target.value })} placeholder="Last name"
-                  className="flex-1 rounded-xl px-3 py-2 text-[14px] border outline-none" style={{ borderColor: "#E7E1D4" }} />
+            hasSavedName && !editingName ? (
+              <div className="flex items-center justify-between gap-2 p-2.5 rounded-xl" style={{ backgroundColor: "#F7F4EC" }}>
+                <div className="min-w-0">
+                  <p className="text-[14px] font-medium text-[#1B2A4A] truncate">
+                    {[profileNames.firstName, profileNames.lastName].filter(Boolean).join(" ") || "No name set"}
+                  </p>
+                  {profileNames.handle && <p className="text-[12px] text-[#8A8474] truncate">@{profileNames.handle}</p>}
+                </div>
+                <button
+                  onClick={() => { setNameForm(profileNames); setNameMsg(""); setEditingName(true); }}
+                  className="text-[12px] font-semibold px-3 py-1.5 rounded-full shrink-0"
+                  style={{ color: "var(--accent)", backgroundColor: "#FFF3E6" }}
+                >
+                  Edit
+                </button>
               </div>
-              <input value={nameForm.handle} onChange={(e) => setNameForm({ ...nameForm, handle: e.target.value.replace(/[^a-zA-Z0-9_]/g, "") })} placeholder="Username (optional, e.g. essiek)"
-                className="w-full rounded-xl px-3 py-2 text-[14px] border outline-none mb-2" style={{ borderColor: "#E7E1D4" }} />
-              <button
-                onClick={async () => {
-                  setNameSaving(true);
-                  const r = await onSaveProfileNames(nameForm);
-                  setNameMsg(r.message);
-                  setNameSaving(false);
-                }}
-                className="w-full rounded-xl py-2.5 text-white font-semibold text-[13px]"
-                style={{ background: "var(--cta)" }}
-              >
-                {nameSaving ? "Saving…" : "Save"}
-              </button>
-              {nameMsg && <p className="text-[11.5px] text-center mt-2" style={{ color: "#8A8474" }}>{nameMsg}</p>}
-            </>
+            ) : (
+              <>
+                <div className="flex gap-2 mb-2">
+                  <input value={nameForm.firstName} onChange={(e) => setNameForm({ ...nameForm, firstName: e.target.value })} placeholder="First name"
+                    className="flex-1 min-w-0 rounded-xl px-3 py-2 text-[14px] border outline-none" style={{ borderColor: "#E7E1D4" }} />
+                  <input value={nameForm.lastName} onChange={(e) => setNameForm({ ...nameForm, lastName: e.target.value })} placeholder="Last name"
+                    className="flex-1 min-w-0 rounded-xl px-3 py-2 text-[14px] border outline-none" style={{ borderColor: "#E7E1D4" }} />
+                </div>
+                <input value={nameForm.handle} onChange={(e) => setNameForm({ ...nameForm, handle: e.target.value.replace(/[^a-zA-Z0-9_]/g, "") })} placeholder="Username (optional, e.g. essiek)"
+                  className="w-full rounded-xl px-3 py-2 text-[14px] border outline-none mb-2" style={{ borderColor: "#E7E1D4" }} />
+                <div className="flex gap-2">
+                  {hasSavedName && (
+                    <button
+                      onClick={() => { setNameForm(profileNames); setNameMsg(""); setEditingName(false); }}
+                      className="flex-1 rounded-xl py-2.5 font-semibold text-[13px] border"
+                      style={{ borderColor: "#E7E1D4", color: "#8A8474" }}
+                    >
+                      Cancel
+                    </button>
+                  )}
+                  <button
+                    onClick={async () => {
+                      setNameSaving(true);
+                      const r = await onSaveProfileNames(nameForm);
+                      setNameMsg(r.message);
+                      setNameSaving(false);
+                      if (r.ok) setEditingName(false);
+                    }}
+                    className="flex-1 rounded-xl py-2.5 text-white font-semibold text-[13px]"
+                    style={{ background: "var(--cta)" }}
+                  >
+                    {nameSaving ? "Saving…" : "Save"}
+                  </button>
+                </div>
+                {nameMsg && <p className="text-[11.5px] text-center mt-2" style={{ color: "#8A8474" }}>{nameMsg}</p>}
+              </>
+            )
           ) : (
             <button onClick={onOpenAuth} className="w-full rounded-xl py-2.5 text-white font-semibold text-[13px]" style={{ background: "var(--cta)" }}>
               Sign in to set your name
