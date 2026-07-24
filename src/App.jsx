@@ -5200,6 +5200,129 @@ function BetaGate({ onUnlock }) {
   );
 }
 
+function InviteWelcomeScreen({ inviterName }) {
+  const [email, setEmail] = useState("");
+  const [code, setCode] = useState("");
+  const [stage, setStage] = useState("email"); // email -> sent -> code
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState("");
+
+  const signInWithGoogle = async () => {
+    setBusy(true); setMsg("");
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: window.location.origin + window.location.pathname },
+    });
+    setBusy(false);
+    if (error) {
+      setMsg(error.message.includes("not enabled")
+        ? "Google sign-in isn't switched on yet — use your email below for now."
+        : error.message);
+    }
+  };
+  const sendLink = async () => {
+    if (!email.includes("@")) { setMsg("Enter a valid email"); return; }
+    setBusy(true); setMsg("");
+    const { error } = await supabase.auth.signInWithOtp({
+      email: email.trim(),
+      options: { shouldCreateUser: true, emailRedirectTo: window.location.origin + window.location.pathname },
+    });
+    setBusy(false);
+    if (error) { setMsg(error.message); return; }
+    setStage("sent");
+  };
+  const verifyCode = async () => {
+    setBusy(true); setMsg("");
+    const { error } = await supabase.auth.verifyOtp({ email: email.trim(), token: code.trim(), type: "email" });
+    setBusy(false);
+    if (error) { setMsg("That code didn't match — check the email and try again."); }
+  };
+
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center px-6 py-10" style={{ backgroundColor: "#FFFBF5", fontFamily: "'Inter', sans-serif" }}>
+      <LittleDaySun size={84} />
+      <p className="text-[22px] font-bold text-[#1B2A4A] mt-3 text-center" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+        🎉 {inviterName ? `${inviterName} invited you` : "You've been invited"} to Little Day
+      </p>
+      <p className="text-[13px] font-bold tracking-widest mt-1" style={{ color: "#F5B71F" }}>BIG ADVENTURES. LITTLE DAYS.</p>
+      <p className="text-[14px] text-center mt-4 max-w-[320px]" style={{ color: "#8A8474" }}>
+        Little Day plans a whole day out with your kids in one tap — where to go, where to eat, when to head home, all in one place.
+        {inviterName ? ` Sign up and you'll be connected with ${inviterName} right away.` : " Sign up to get started."}
+      </p>
+
+      <div className="w-full max-w-[340px] mt-7">
+        {stage !== "code" && (
+          <button
+            onClick={signInWithGoogle}
+            disabled={busy}
+            className="w-full rounded-2xl py-3.5 flex items-center justify-center gap-2.5 font-semibold text-[14px] border-2 bg-white"
+            style={{ borderColor: "#E7E1D4", color: "#1B2A4A", opacity: busy ? 0.6 : 1 }}
+          >
+            <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">
+              <path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9 3.6l6.7-6.7C35.6 2.6 30.2 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.8 6.1C12.3 13.2 17.6 9.5 24 9.5z"/>
+              <path fill="#4285F4" d="M46.9 24.5c0-1.6-.1-3.2-.4-4.7H24v9h12.9c-.6 3-2.3 5.5-4.8 7.2l7.6 5.9c4.4-4.1 7.2-10.2 7.2-17.4z"/>
+              <path fill="#FBBC05" d="M10.4 28.7c-.5-1.4-.8-2.9-.8-4.7s.3-3.3.8-4.7l-7.8-6.1C.9 16.5 0 20.1 0 24s.9 7.5 2.6 10.8l7.8-6.1z"/>
+              <path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.8-5.8l-7.6-5.9c-2.1 1.4-4.8 2.3-8.2 2.3-6.4 0-11.7-3.7-13.6-9.9l-7.8 6.1C6.5 42.6 14.6 48 24 48z"/>
+            </svg>
+            Continue with Google
+          </button>
+        )}
+
+        {stage === "email" && (
+          <>
+            <div className="flex items-center gap-3 my-3.5">
+              <span className="flex-1 h-px" style={{ backgroundColor: "#EFEAE0" }} />
+              <span className="text-[11.5px]" style={{ color: "#B8B0A0" }}>or use email</span>
+              <span className="flex-1 h-px" style={{ backgroundColor: "#EFEAE0" }} />
+            </div>
+            <input
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && sendLink()}
+              inputMode="email"
+              autoCapitalize="none"
+              placeholder="you@example.com"
+              className="w-full rounded-2xl px-4 py-3.5 text-[15px] border-2 outline-none text-center"
+              style={{ borderColor: "#F0E4D4" }}
+            />
+            <button onClick={sendLink} disabled={busy}
+              className="w-full rounded-2xl py-3.5 mt-3 text-white font-semibold text-[14px]"
+              style={{ background: "var(--cta)", opacity: busy ? 0.6 : 1 }}>
+              {busy ? "Sending…" : "Sign up with email"}
+            </button>
+            <p className="text-[11px] text-center mt-3" style={{ color: "#B8B0A0" }}>No passwords — we email you a secure link or code.</p>
+          </>
+        )}
+
+        {stage === "sent" && (
+          <div className="mt-2">
+            <p className="text-[13px] text-center" style={{ color: "#8A8474" }}>
+              Check <strong>{email}</strong> for a sign-in link — or enter the 6-digit code from that email below.
+            </p>
+            <input
+              value={code}
+              onChange={(e) => setCode(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && verifyCode()}
+              inputMode="numeric"
+              placeholder="6-digit code"
+              className="w-full rounded-2xl px-4 py-3.5 mt-3 text-[16px] text-center tracking-widest border-2 outline-none"
+              style={{ borderColor: "#F0E4D4" }}
+            />
+            <button onClick={verifyCode} disabled={busy}
+              className="w-full rounded-2xl py-3.5 mt-3 text-white font-semibold text-[14px]"
+              style={{ background: "var(--cta)", opacity: busy ? 0.6 : 1 }}>
+              {busy ? "Checking…" : "Confirm code"}
+            </button>
+            <button onClick={() => setStage("email")} className="w-full text-[12.5px] mt-3" style={{ color: "#B08A5A" }}>Use a different email</button>
+          </div>
+        )}
+
+        {!!msg && <p className="text-[12px] text-center mt-3" style={{ color: "#E0603A" }}>{msg}</p>}
+      </div>
+    </div>
+  );
+}
+
 function AuthSheet({ open, onClose, session }) {
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
@@ -5511,7 +5634,8 @@ export default function LittleDayApp() {
   const [pendingCaregiverCode, setPendingCaregiverCode] = useState(null);
   const [forceEditNameToken, setForceEditNameToken] = useState(null);
 
-  const [pendingFriendId, setPendingFriendId] = useState(null);
+  const [pendingFriendId, setPendingFriendId] = usePersistentState("pendingFriendId", null);
+  const [inviterName, setInviterName] = useState(null);
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const code = params.get("caregiver");
@@ -5522,6 +5646,7 @@ export default function LittleDayApp() {
     }
     if (addfriend) {
       setPendingFriendId(addfriend);
+      setBetaOk(true); // a personal invite from a real friend is credential enough to skip the beta-code screen
       params.delete("addfriend");
     }
     if (code || addfriend) {
@@ -5529,6 +5654,14 @@ export default function LittleDayApp() {
       window.history.replaceState({}, "", clean);
     }
   }, []);
+  // Look up the inviter's name to show on the welcome screen, even before the new person signs in.
+  useEffect(() => {
+    if (!pendingFriendId || session || !backendReady()) return;
+    supabase.rpc("get_profiles_by_ids", { ids: [pendingFriendId] }).then(({ data }) => {
+      const other = (data || [])[0];
+      setInviterName(other ? ([other.first_name, other.last_name].filter(Boolean).join(" ") || other.display_name || (other.handle ? `@${other.handle}` : null)) : null);
+    });
+  }, [pendingFriendId, session]);
   useEffect(() => {
     if (!pendingFriendId || !backendReady() || !session) return;
     (async () => {
@@ -5538,7 +5671,13 @@ export default function LittleDayApp() {
       const label = other ? ([other.first_name, other.last_name].filter(Boolean).join(" ") || other.display_name || (other.handle ? `@${other.handle}` : "your friend")) : "your friend";
       const { error } = await supabase.rpc("add_friendship", { other_id: pendingFriendId });
       if (error) { showToast("That invite link didn't work — ask for a new one"); }
-      else { showToast(`You're connected with ${label}!`); loadRealFriends(); goTo("friends"); }
+      else {
+        showToast(`You're connected with ${label}! Add your name so they recognize you`);
+        loadRealFriends();
+        setSeenWelcome(true);
+        goTo("profile");
+        setForceEditNameToken(Date.now());
+      }
       setPendingFriendId(null);
     })();
   }, [pendingFriendId, session]);
@@ -6078,6 +6217,7 @@ export default function LittleDayApp() {
     } catch (e) { return true; }
   });
   if (showSplash) return <SunriseSplash onDone={() => setShowSplash(false)} />;
+  if (pendingFriendId && !session) return <InviteWelcomeScreen inviterName={inviterName} />;
   if (!betaOk) return <BetaGate onUnlock={() => setBetaOk(true)} />;
 
   return (
