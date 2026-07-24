@@ -3350,17 +3350,18 @@ function ProfileScreen({ onOpenPremium, onOpenPassport, stats, session, onOpenAu
           </div>
           <span className="text-[12px] font-medium shrink-0" style={{ color: "var(--accent)" }}>View →</span>
         </button>
-        <div className="rounded-2xl p-4 bg-white border mb-3" style={{ borderColor: session ? "#CDE8D6" : "#EFEAE0", backgroundColor: session ? "#F4FBF6" : "#FFFFFF" }}>
-          {session ? (
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full flex items-center justify-center text-[18px]" style={{ backgroundColor: "#E4F4E9" }}>☁️</div>
-              <div className="flex-1 min-w-0">
-                <p className="text-[13.5px] font-semibold text-[#1B2A4A]">Synced to your account</p>
-                <p className="text-[11.5px] text-[#8A8474] truncate">{session.user.email} · kids, favorites & days follow you</p>
-              </div>
-              <button onClick={onSignOut} className="text-[12px] font-semibold shrink-0" style={{ color: "#8A8474" }}>Sign out</button>
-            </div>
-          ) : (
+        {session && (
+          <div className="flex items-center gap-2 mb-3 px-1">
+            <div className="w-7 h-7 rounded-full flex items-center justify-center text-[13px] shrink-0" style={{ backgroundColor: "#E4F4E9" }}>☁️</div>
+            <p className="text-[12.5px] text-[#8A8474] truncate">
+              Signed in as <span className="font-semibold text-[#1B2A4A]">
+                {hasSavedName ? [profileNames.firstName, profileNames.lastName].filter(Boolean).join(" ") : session.user.email}
+              </span> · synced across devices
+            </p>
+          </div>
+        )}
+        {!session && (
+          <div className="rounded-2xl p-4 bg-white border mb-3" style={{ borderColor: "#EFEAE0" }}>
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full flex items-center justify-center text-[18px]" style={{ backgroundColor: "#FFF3E6" }}>☁️</div>
               <div className="flex-1">
@@ -3369,8 +3370,8 @@ function ProfileScreen({ onOpenPremium, onOpenPassport, stats, session, onOpenAu
               </div>
               <button onClick={onOpenAuth} className="text-[12px] font-bold px-3 py-2 rounded-full text-white shrink-0" style={{ background: "var(--cta)" }}>Sign in</button>
             </div>
-          )}
-        </div>
+          </div>
+        )}
 
         <div className="rounded-2xl p-4 bg-white border mb-3" style={{ borderColor: "#EFEAE0" }}>
           <p className="font-semibold text-[#1B2A4A] mb-1">Your name & username</p>
@@ -3604,6 +3605,12 @@ function ProfileScreen({ onOpenPremium, onOpenPassport, stats, session, onOpenAu
             See Premium
           </button>
         </div>
+
+        {session && (
+          <button onClick={onSignOut} className="w-full text-center mt-5 text-[13px] font-semibold" style={{ color: "#B08A5A" }}>
+            Sign out
+          </button>
+        )}
       </div>
     </div>
   );
