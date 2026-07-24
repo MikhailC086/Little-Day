@@ -4126,9 +4126,47 @@ function FriendsScreen({ onOpenInvite,
   const upcoming = playDates.filter((p) => p.status === "confirmed" || p.status === "invited");
   const place = (id) => PLACES.find((p) => p.id === id);
 
+  const chatGroups = [];
+  const seenGroups = new Set();
+  playDates.filter((p) => p.real && p.groupId).forEach((p) => {
+    if (seenGroups.has(p.groupId)) {
+      const g = chatGroups.find((x) => x.groupId === p.groupId);
+      if (g && !g.names.includes(p.friend)) g.names.push(p.friend);
+    } else {
+      seenGroups.add(p.groupId);
+      chatGroups.push({ groupId: p.groupId, names: [p.friend], placeId: p.placeId });
+    }
+  });
+
   return (
     <div className="pb-4">
       <TopBar title="Friends & play dates" />
+
+      {chatGroups.length > 0 && (
+        <div className="px-5 mb-5">
+          <p className="text-[13px] font-semibold text-[#1B2A4A] mb-2">💬 Chats about your days</p>
+          <div className="flex flex-col gap-2">
+            {chatGroups.map((g) => {
+              const pl = place(g.placeId);
+              return (
+                <button
+                  key={g.groupId}
+                  onClick={() => onOpenChat(g.groupId)}
+                  className="flex items-center gap-3 p-3 rounded-2xl border text-left"
+                  style={{ borderColor: "var(--accent)", backgroundColor: "#FFF6F0" }}
+                >
+                  <div className="w-10 h-10 rounded-full flex items-center justify-center text-[18px] shrink-0" style={{ backgroundColor: "#FFFFFF" }}>💬</div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[13.5px] font-semibold text-[#1B2A4A] truncate">With {g.names.join(", ")}</p>
+                    <p className="text-[11.5px] text-[#8A8474] truncate">{pl ? pl.name : "Your shared day"} · tap to open chat</p>
+                  </div>
+                  <ChevronRight size={16} color="#B08A5A" />
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {incoming.length > 0 && (
         <div className="px-5 mb-5">
