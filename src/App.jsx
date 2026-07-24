@@ -1159,14 +1159,14 @@ const INTERESTS = [
 ];
 
 // mock weather signal. rainRiskAfter = hour (24h) when rain may start; null = clear all day.
-const WEATHER = { condition: "sunny", tempF: 78, rainRiskAfter: null, live: false };
+const WEATHER = { condition: "sunny", tempF: 78, rainRiskAfter: null, live: false, tomorrow: null };
 
 async function fetchLiveWeather() {
   try {
     const url =
       "https://api.open-meteo.com/v1/forecast?latitude=41.2587&longitude=-73.6854" +
-      "&hourly=precipitation_probability,weather_code&daily=temperature_2m_max" +
-      "&temperature_unit=fahrenheit&forecast_days=1&timezone=auto";
+      "&hourly=precipitation_probability,weather_code&daily=temperature_2m_max,weather_code,precipitation_probability_max" +
+      "&temperature_unit=fahrenheit&forecast_days=2&timezone=auto";
     const r = await fetch(url);
     const d = await r.json();
     const probs = (d.hourly && d.hourly.precipitation_probability) || [];
@@ -1183,10 +1183,56 @@ async function fetchLiveWeather() {
     WEATHER.rainRiskAfter = rainAfter;
     WEATHER.condition = maxCode >= 51 ? "rainy" : maxCode >= 45 ? "foggy" : maxCode >= 1 ? "cloudy" : "sunny";
     WEATHER.live = true;
+    if (d.daily && d.daily.temperature_2m_max && d.daily.temperature_2m_max.length > 1) {
+      const tomCode = d.daily.weather_code ? d.daily.weather_code[1] : 0;
+      const tomRainChance = d.daily.precipitation_probability_max ? d.daily.precipitation_probability_max[1] : 0;
+      WEATHER.tomorrow = {
+        tempF: Math.round(d.daily.temperature_2m_max[1]),
+        rainy: tomCode >= 51 || tomRainChance >= 50,
+        greatDay: tomCode < 2 && d.daily.temperature_2m_max[1] >= 65 && d.daily.temperature_2m_max[1] <= 85,
+      };
+    }
     return true;
   } catch (e) { return false; }
 }
 
+// ---- School calendar (manually curated starter set — update yearly) ----
+// Source: each district's published 2025–2026 calendar, checked July 2026.
+// Add more districts here as needed; dates are YYYY-MM-DD, inclusive ranges.
+const SCHOOL_DISTRICTS = [
+  {
+    id: "bedford", name: "Bedford Central School District",
+    noSchool: [
+      ["2025-12-24", "2026-01-02"], // Winter break
+      ["2026-03-30", "2026-04-03"], // Spring break
+      ["2026-06-27", "2099-12-31"], // Summer (last day June 26, 2026)
+    ],
+  },
+  {
+    id: "chappaqua", name: "Chappaqua Central School District",
+    noSchool: [
+      ["2025-12-22", "2026-01-02"], // Winter break
+      ["2026-02-16", "2026-02-20"], // February break
+      ["2026-03-30", "2026-04-03"], // Spring break
+      ["2026-06-27", "2099-12-31"], // Summer (last day June 26, 2026)
+    ],
+  },
+  {
+    id: "katonah-lewisboro", name: "Katonah-Lewisboro School District",
+    noSchool: [
+      ["2025-11-27", "2025-11-28"], // Thanksgiving recess
+      ["2025-12-22", "2026-01-02"], // Holiday recess
+      ["2026-02-16", "2026-02-20"], // Winter recess
+      ["2026-03-30", "2026-04-03"], // Spring recess
+      ["2026-06-27", "2099-12-31"], // Summer (last day June 26, 2026)
+    ],
+  },
+];
+function isNoSchoolDay(districtId, dateStr) {
+  const d = SCHOOL_DISTRICTS.find((x) => x.id === districtId);
+  if (!d) return false;
+  return d.noSchool.some(([start, end]) => dateStr >= start && dateStr <= end);
+}
 // Estimated opening hours per place (24h decimal). NOTE: these are approximate
 // placeholders until real hours come from a live source. Format: [open, close].
 const HOURS = {
@@ -1678,6 +1724,14 @@ const PLAYDATES_SEED = [
 --------------------------------------------------------- */
 function buildItinerary(prefs) {
   let pool = [...PLACES];
+
+  // Multi-kid compromise: places don't have per-age data yet, so this is a
+  // light-touch first pass — skip categories that clearly skew to one age
+  // band when the group spans more than one distinct age.
+  const allAges = new Set([prefs.age, ...(prefs.companionAges || [])].filter(Boolean));
+  if (allAges.size > 1) {
+    pool = pool.filter((p) => p.category !== "Daycare & Preschool");
+  }
 
   // weather intelligence
   if (WEATHER.condition === "rain") {
@@ -2223,7 +2277,87 @@ function PlaceCard({ place, onSelect, favorited, onToggleFavorite, nowHour }) {
 /* ---------------------------------------------------------
    SCREENS
 --------------------------------------------------------- */
-function HomeScreen({ setScreen, favorites, toggleFavorite, setSelectedPlace, location, onRequestLocation, onSurprise, kids, activeKidId, onSetActive, searchQuery, setSearchQuery, onHowTo, onSelectGoogle }) {
+function daysUntilNextBirthday(bday) {
+  if (!bday) return null;
+  const b = new Date(bday);
+  if (isNaN(b)) return null;
+  const now = new Date();
+  let next = new Date(now.getFullYear(), b.getMonth(), b.getDate());
+  if (next < new Date(now.getFullYear(), now.getMonth(), now.getDate())) next.setFullYear(now.getFullYear() + 1);
+  return Math.round((next - new Date(now.getFullYear(), now.getMonth(), now.getDate())) / (1000 * 3600 * 24));
+}
+
+function HomeSmartBanners({ kids, companionKidIds, schoolDistrictId, onSetSchoolDistrict, completedDays, onOpenBuilder }) {
+  const [dismissedId, setDismissedId] = useState(null);
+  const [pickingDistrict, setPickingDistrict] = useState(false);
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const dow = new Date().getDay(); // 0 = Sun, 1 = Mon
+
+  const banners = [];
+
+  if (schoolDistrictId && isNoSchoolDay(schoolDistrictId, todayStr)) {
+    banners.push({ id: `noschool-${todayStr}`, emoji: "🎒", text: "No school today — a perfect day for an adventure.", cta: "Plan today", action: onOpenBuilder });
+  } else if (!schoolDistrictId) {
+    banners.push({ id: "pick-district", emoji: "🏫", text: "Add your school district to get no-school-day heads-ups.", cta: "Choose district", action: () => setPickingDistrict(true) });
+  }
+
+  if (WEATHER.tomorrow) {
+    if (WEATHER.tomorrow.rainy) {
+      banners.push({ id: `rain-${todayStr}`, emoji: "🌧️", text: `Rain expected tomorrow (${WEATHER.tomorrow.tempF}°) — good day to pick something indoors.`, cta: "See indoor picks", action: onOpenBuilder });
+    } else if (WEATHER.tomorrow.greatDay) {
+      banners.push({ id: `nice-${todayStr}`, emoji: "☀️", text: `Tomorrow looks great — ${WEATHER.tomorrow.tempF}° and clear. Good day to be outside.`, cta: "Plan tomorrow", action: onOpenBuilder });
+    }
+  }
+
+  (kids || []).forEach((k) => {
+    const d = daysUntilNextBirthday(k.birthday);
+    if (d != null && d <= 30) {
+      const soon = d === 0 ? "today" : d === 1 ? "tomorrow" : `in ${d} days`;
+      banners.push({ id: `bday-${k.id}`, emoji: "🎂", text: `${k.name || "Your child"}'s birthday is ${soon} — new places open up as they get older.`, cta: null, action: null });
+    }
+  });
+
+  if ((dow === 0 || dow === 1) && completedDays && completedDays.length >= 0) {
+    banners.push({ id: `sunday-${todayStr}`, emoji: "🗓️", text: "Planning the week ahead? Pick a day and build something fun.", cta: "Plan a day this week", action: onOpenBuilder });
+  }
+
+  const visible = banners.find((b) => b.id !== dismissedId);
+  if (!visible && !pickingDistrict) return null;
+
+  return (
+    <>
+      {visible && (
+        <div className="flex items-start gap-2.5 mt-3 p-3 rounded-2xl" style={{ backgroundColor: "#FFF6F0" }}>
+          <span className="text-[18px] shrink-0">{visible.emoji}</span>
+          <div className="flex-1 min-w-0">
+            <p className="text-[12.5px] text-[#1B2A4A] leading-snug">{visible.text}</p>
+            {visible.cta && (
+              <button onClick={visible.action} className="text-[12px] font-semibold mt-1" style={{ color: "var(--accent)" }}>{visible.cta} →</button>
+            )}
+          </div>
+          <button onClick={() => setDismissedId(visible.id)} className="shrink-0 text-[#B8B0A0]"><X size={15} /></button>
+        </div>
+      )}
+      {pickingDistrict && (
+        <div className="mt-3 p-3 rounded-2xl border" style={{ borderColor: "#EFEAE0", backgroundColor: "#fff" }}>
+          <p className="text-[12.5px] font-semibold text-[#1B2A4A] mb-2">Which school district?</p>
+          <div className="flex flex-col gap-1.5">
+            {SCHOOL_DISTRICTS.map((d) => (
+              <button key={d.id} onClick={() => { onSetSchoolDistrict(d.id); setPickingDistrict(false); }} className="text-left p-2 rounded-xl border text-[13px]" style={{ borderColor: "#EFEAE0" }}>
+                {d.name}
+              </button>
+            ))}
+            <button onClick={() => setPickingDistrict(false)} className="text-[12px] text-[#B8B0A0] text-center mt-1">Not listed / skip for now</button>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+function HomeScreen({ setScreen, favorites, toggleFavorite, setSelectedPlace, location, onRequestLocation, onSurprise, kids, activeKidId, onSetActive, searchQuery, setSearchQuery, onHowTo, onSelectGoogle,
+  companionKidIds, onToggleCompanionKid, schoolDistrictId, onSetSchoolDistrict, completedDays, onOpenBuilder,
+}) {
   const nearby = PLACES.slice(0, 4);
   const hq = (searchQuery || "").trim().toLowerCase();
   const homeResults = hq
@@ -2267,6 +2401,22 @@ function HomeScreen({ setScreen, favorites, toggleFavorite, setSelectedPlace, lo
             })}
           </div>
         )}
+        {kids && kids.length > 1 && (
+          <div className="flex items-center gap-2 mt-1.5 overflow-x-auto">
+            <span className="text-[11px] text-[#B8B0A0] shrink-0">Also bringing</span>
+            {kids.filter((k) => k.id !== activeKidId).map((k) => {
+              const on = companionKidIds.includes(k.id);
+              return (
+                <button key={k.id} onClick={() => onToggleCompanionKid(k.id)} className="flex items-center gap-1 pl-1 pr-2 py-0.5 rounded-full border shrink-0"
+                  style={{ borderColor: on ? "var(--accent)" : "#EFEAE0", backgroundColor: on ? "#FFF6F0" : "#FAF8F3" }}>
+                  <span className="text-[11px]">{k.emoji}</span>
+                  <span className="text-[11px] font-medium" style={{ color: on ? "#1B2A4A" : "#B8B0A0" }}>{k.name || "Child"}</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+        <HomeSmartBanners kids={kids} companionKidIds={companionKidIds} schoolDistrictId={schoolDistrictId} onSetSchoolDistrict={onSetSchoolDistrict} completedDays={completedDays} onOpenBuilder={onOpenBuilder} />
         <p className="text-[13px] font-medium mt-3 mb-1" style={{ color: "#B08A5A" }}>
           {new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}
         </p>
@@ -2443,7 +2593,7 @@ function HomeScreen({ setScreen, favorites, toggleFavorite, setSelectedPlace, lo
   );
 }
 
-function PlannerScreen({ onBack, onGenerate, locationLabel, initialAge, activeKidName }) {
+function PlannerScreen({ onBack, onGenerate, locationLabel, initialAge, activeKidName, companionKids }) {
   const now = new Date();
   const nowHour = roundToQuarter(now.getHours() + now.getMinutes() / 60);
   // sensible default deadline: 3.5 hrs from now, capped at 8pm
@@ -2478,6 +2628,11 @@ function PlannerScreen({ onBack, onGenerate, locationLabel, initialAge, activeKi
           <p className="text-[13px] font-medium text-[#8A8474] mb-2">
             Child's age{activeKidName ? <span style={{ color: "var(--accent)" }}> · pre-set for {activeKidName}</span> : ""}
           </p>
+          {companionKids && companionKids.length > 0 && (
+            <p className="text-[11.5px] mb-2" style={{ color: "#B08A5A" }}>
+              Also bringing {companionKids.map((k) => k.name || "a sibling").join(", ")} — we'll try to skip anything too narrow for the group.
+            </p>
+          )}
           <div className="flex gap-2 flex-wrap">
             {["0-1", "1-2", "2-4", "4-6", "6-10"].map((a) => (
               <Pill key={a} active={age === a} onClick={() => setAge(a)}>
@@ -2693,6 +2848,7 @@ function PlannerScreen({ onBack, onGenerate, locationLabel, initialAge, activeKi
           onClick={() =>
             onGenerate({ plannedDate: dayOffset === "pick" ? pickedDate : (() => { const d = new Date(); d.setDate(d.getDate() + dayOffset); return d.toISOString().slice(0, 10); })(),
               age,
+              companionAges: (companionKids || []).map((k) => ageToBand(ageFromBirthday(k.birthday))),
               budget,
               distance,
               setting,
@@ -3168,7 +3324,7 @@ function FavoritesScreen({ favorites, setSelectedPlace, toggleFavorite, savedDay
 
 function ProfileScreen({ onOpenPremium, onOpenPassport, stats, session, onOpenAuth, onSignOut, earnedBadges, kids, activeKidId, onSetActive, onAddKid, onEditKid, sitters, onAddSitter, onEditSitter, onShareWithSitter,
   profileNames, onSaveProfileNames, myCaregivers, caregiverLinks, caregiverInvite, onCreateCaregiverInvite, onRemoveCaregiverAccess, activeFamilyId, onSwitchFamily,
-  favorites, savedDays, onViewSaved,
+  favorites, savedDays, onViewSaved, forceEditNameToken,
 }) {
   const activeKid = kids.find((k) => k.id === activeKidId) || kids[0] || null;
   const [nameForm, setNameForm] = useState(profileNames || { firstName: "", lastName: "", handle: "" });
@@ -3177,6 +3333,7 @@ function ProfileScreen({ onOpenPremium, onOpenPassport, stats, session, onOpenAu
   const [editingName, setEditingName] = useState(false);
   const hasSavedName = !!(profileNames && (profileNames.firstName || profileNames.lastName || profileNames.handle));
   useEffect(() => { setNameForm(profileNames || { firstName: "", lastName: "", handle: "" }); }, [profileNames]);
+  useEffect(() => { if (forceEditNameToken) setEditingName(true); }, [forceEditNameToken]);
   return (
     <div className="pb-4">
       <TopBar title="My Profile" />
@@ -3334,7 +3491,7 @@ function ProfileScreen({ onOpenPremium, onOpenPassport, stats, session, onOpenAu
             {session ? (
               caregiverInvite ? (
                 <div className="rounded-xl p-3" style={{ backgroundColor: "#FFF3E6" }}>
-                  <p className="text-[12px] text-[#8A8474] mb-1.5">Share this link — they'll sign in and get access:</p>
+                  <p className="text-[12px] text-[#8A8474] mb-1.5">Share this link — they'll sign in, set up their name, and get access:</p>
                   <p className="text-[12.5px] font-mono break-all text-[#1B2A4A] mb-2">{caregiverInvite.link}</p>
                   <button
                     onClick={() => { navigator.clipboard?.writeText(caregiverInvite.link); }}
@@ -3950,6 +4107,7 @@ function FriendsScreen({ onOpenInvite,
   session,
   onSearchProfiles,
   onAddRealFriend,
+  onOpenChat,
 }) {
   const [newName, setNewName] = useState("");
   const [phoneInput, setPhoneInput] = useState("");
@@ -4004,6 +4162,15 @@ function FriendsScreen({ onOpenInvite,
                     >
                       <X size={15} /> Can't
                     </button>
+                    {pd.real && pd.groupId && (
+                      <button
+                        onClick={() => onOpenChat(pd.groupId)}
+                        className="px-3 rounded-xl py-2.5 flex items-center justify-center border"
+                        style={{ borderColor: "#E7E1D4", color: "#8A8474" }}
+                      >
+                        💬
+                      </button>
+                    )}
                   </div>
                 </div>
               );
@@ -4031,7 +4198,7 @@ function FriendsScreen({ onOpenInvite,
                       </p>
                     </div>
                     <span
-                      className="text-[11px] px-2.5 py-1 rounded-full font-medium"
+                      className="text-[11px] px-2.5 py-1 rounded-full font-medium shrink-0"
                       style={{
                         backgroundColor: pd.status === "confirmed" ? "#E7F3EA" : "#FFF3E6",
                         color: pd.status === "confirmed" ? "#3B7A57" : "#B08A5A",
@@ -4039,6 +4206,11 @@ function FriendsScreen({ onOpenInvite,
                     >
                       {pd.status === "confirmed" ? "Confirmed" : "Invited"}
                     </span>
+                    {pd.real && pd.groupId && (
+                      <button onClick={() => onOpenChat(pd.groupId)} className="shrink-0 w-8 h-8 rounded-full flex items-center justify-center" style={{ backgroundColor: "#F7F4EC" }}>
+                        💬
+                      </button>
+                    )}
                   </div>
                 </div>
               );
@@ -4253,6 +4425,71 @@ function InviteSheet({ open, onClose, onShared }) {
           <Share2 size={16} /> Share invite link
         </button>
         <p className="text-[11px] text-[#B8B0A0] mt-3 leading-snug">Preview — invite links connect real friends once accounts launch. Friends only ever see what you choose to share.</p>
+      </div>
+    </div>
+  );
+}
+
+function GroupChatSheet({ open, groupId, session, onClose }) {
+  const [messages, setMessages] = useState([]);
+  const [text, setText] = useState("");
+  const [sending, setSending] = useState(false);
+
+  const load = async () => {
+    if (!groupId || !backendReady()) return;
+    const { data } = await supabase.from("day_plan_messages").select("*").eq("group_id", groupId).order("created_at", { ascending: true });
+    if (data) setMessages(data);
+  };
+  useEffect(() => {
+    if (!open || !groupId) return;
+    load();
+    const t = setInterval(load, 4000);
+    return () => clearInterval(t);
+  }, [open, groupId]);
+
+  if (!open) return null;
+
+  const send = async () => {
+    const body = text.trim();
+    if (!body || !backendReady() || !session) return;
+    setSending(true);
+    await supabase.from("day_plan_messages").insert({ group_id: groupId, sender_id: session.user.id, body });
+    setText("");
+    await load();
+    setSending(false);
+  };
+
+  return (
+    <div className="absolute inset-0 z-30 flex items-end" onClick={onClose}>
+      <div className="absolute inset-0 bg-black/30" />
+      <div className="relative w-full rounded-t-3xl bg-white p-5 pb-6 max-h-[80%] flex flex-col" onClick={(e) => e.stopPropagation()} style={{ animation: "sheetUp 0.22s ease-out" }}>
+        <div className="w-10 h-1 rounded-full bg-[#E7E1D4] mx-auto mb-4 shrink-0" />
+        <p className="text-[15px] font-semibold text-[#1B2A4A] mb-3 shrink-0">Chat about this day</p>
+        <div className="flex-1 overflow-y-auto flex flex-col gap-2 mb-3">
+          {messages.length === 0 && <p className="text-[12.5px] text-[#B8B0A0] text-center mt-4">No messages yet — say hi!</p>}
+          {messages.map((m) => {
+            const mine = session && m.sender_id === session.user.id;
+            return (
+              <div key={m.id} className={`max-w-[80%] px-3 py-2 rounded-2xl text-[13px] ${mine ? "self-end text-white" : "self-start text-[#1B2A4A]"}`}
+                style={{ background: mine ? "var(--cta)" : "#F7F4EC" }}>
+                {m.body}
+              </div>
+            );
+          })}
+        </div>
+        <div className="flex gap-2 shrink-0">
+          <input
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") send(); }}
+            placeholder="Message the group…"
+            className="flex-1 rounded-xl px-3.5 py-2.5 text-[14px] border outline-none"
+            style={{ borderColor: "#E7E1D4" }}
+          />
+          <button onClick={send} disabled={sending || !text.trim()} className="px-4 rounded-xl text-white font-medium text-[13px]" style={{ background: "var(--cta)", opacity: sending || !text.trim() ? 0.5 : 1 }}>
+            Send
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -4493,7 +4730,7 @@ function RewardOverlay({ data, onClose }) {
   );
 }
 
-function PassportScreen({ onBack, completedDays, stats, earnedBadges, onShareDay }) {
+function PassportScreen({ onBack, completedDays, stats, earnedBadges, onShareDay, onAddPhoto }) {
   const earnedIds = new Set(earnedBadges.map((b) => b.id));
   const allStamps = completedDays.flatMap((d) => d.stops.map((s) => ({ ...s, date: d.date })));
   return (
@@ -4542,11 +4779,29 @@ function PassportScreen({ onBack, completedDays, stats, earnedBadges, onShareDay
             <div className="flex flex-col gap-2.5">
               {completedDays.slice(0, 5).map((d) => (
                 <div key={d.id} className="rounded-2xl p-3.5 bg-white border" style={{ borderColor: "#EFEAE0" }}>
+                  {d.memoryPhoto && (
+                    <img src={d.memoryPhoto} alt="" className="w-full h-32 object-cover rounded-xl mb-2.5" />
+                  )}
                   <div className="flex items-center justify-between">
                     <p className="text-[13px] text-[#5C5648]">{d.stops.map((s) => s.photo).join(" ")}</p>
                     <button onClick={() => onShareDay(d)} className="text-[12px] font-medium flex items-center gap-1" style={{ color: "var(--accent)" }}><Share2 size={13} /> Card</button>
                   </div>
-                  <p className="text-[11px] text-[#8A8474] mt-1">{new Date(d.date).toLocaleDateString(undefined, { month: "short", day: "numeric" })} · {d.stops.length} stop{d.stops.length !== 1 ? "s" : ""}</p>
+                  <div className="flex items-center justify-between mt-1">
+                    <p className="text-[11px] text-[#8A8474]">{new Date(d.date).toLocaleDateString(undefined, { month: "short", day: "numeric" })} · {d.stops.length} stop{d.stops.length !== 1 ? "s" : ""}</p>
+                    <label className="text-[11px] font-medium shrink-0" style={{ color: "var(--accent)" }}>
+                      {d.memoryPhoto ? "Change photo" : "+ Add photo"}
+                      <input
+                        type="file" accept="image/*" className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files && e.target.files[0];
+                          if (!file) return;
+                          const reader = new FileReader();
+                          reader.onload = () => onAddPhoto(d.id, reader.result);
+                          reader.readAsDataURL(file);
+                        }}
+                      />
+                    </label>
+                  </div>
                 </div>
               ))}
             </div>
@@ -4695,12 +4950,14 @@ function ActivitiesScreen({ setSelectedPlace }) {
 
 const HOWTO_STEPS = [
   { emoji: "🌅", title: "Welcome to Little Day", body: "The first app that plans your whole day out with the kids — where to go, eat, play, and everything in between. Here's a quick tour." },
-  { emoji: "🧒", title: "1. Add your children", body: "In the Profile tab, add each child with their name and birthday. Switch between them anytime — the planner tailors ideas to whoever you've selected." },
+  { emoji: "🧒", title: "1. Add your children", body: "In the Profile tab, add each child with their name and birthday. Switch between them anytime — the planner tailors ideas to whoever you've selected. Planning for more than one? Use 'Also bringing' on Home to plan around everyone." },
   { emoji: "✨", title: "2. Plan My Day", body: "Tap Plan My Day, then set the age, budget, time you have, and nap or 'home by' time. Little Day builds a full itinerary — with a lunch stop and a treat — in seconds." },
-  { emoji: "🔍", title: "3. Search & explore", body: "Use the search bar on the home screen to find anything — a place, a town, or a category like 'playground' or 'ice cream.' Or open the Map to browse with filters." },
-  { emoji: "🤸", title: "4. Classes & Activities", body: "Browse sports, dance, music, art, and afterschool programs. Look for the 'Free trial' tag, and note which need sign-up (no drop-ins)." },
-  { emoji: "🎟️", title: "5. Check in & earn rewards", body: "Check in when you arrive somewhere. Every 5 check-ins unlocks a reward, and finishing a day earns stamps and badges in your Adventure Passport." },
-  { emoji: "🔀", title: "6. Reshuffle, save & share", body: "Not feeling a plan? Reshuffle for a fresh one. Save the days you love, and share a day card with friends and family." },
+  { emoji: "🔔", title: "3. Smart nudges on Home", body: "Little Day watches the weather, your kids' birthdays, and no-school days (once you add your school district in a Home banner) to nudge you toward a plan before you even ask." },
+  { emoji: "🔍", title: "4. Search & explore", body: "Use the search bar on the home screen to find anything — a place, a town, or a category like 'playground' or 'ice cream.' Or open Categories to browse by type." },
+  { emoji: "🤸", title: "5. Classes & Activities", body: "Browse sports, dance, music, art, and afterschool programs. Look for the 'Free trial' tag, and note which need sign-up (no drop-ins)." },
+  { emoji: "🎟️", title: "6. Check in & earn rewards", body: "Check in when you arrive somewhere. Every 5 check-ins unlocks a reward, and finishing a day earns stamps and badges in your Adventure Passport — add a photo to remember it by." },
+  { emoji: "🔀", title: "7. Reshuffle, save & share", body: "Not feeling a plan? Reshuffle for a fresh one. Save the days you love, and share a day card with friends and family." },
+  { emoji: "👨‍👩‍👧", title: "8. Friends, Family Circle & play dates", body: "Sign in from the Profile tab to set your name and username, invite a co-parent or caregiver into your Family Circle, and plan group play dates — with a built-in chat to coordinate details." },
 ];
 
 function HowToOverlay({ open, onClose }) {
@@ -5111,6 +5368,9 @@ export default function LittleDayApp() {
   const [savedDays, setSavedDays] = usePersistentState("savedDays", []);
   const [reviews, setReviews] = usePersistentState("reviews", REVIEWS_SEED);
   const [completedDays, setCompletedDays] = usePersistentState("completedDays", []);
+  const addDayPhoto = (dayId, dataUrl) => {
+    setCompletedDays((cur) => cur.map((d) => d.id === dayId ? { ...d, memoryPhoto: dataUrl } : d));
+  };
   const [celebration, setCelebration] = useState(null);
   const [dayCard, setDayCard] = useState(null);
   const [checkIns, setCheckIns] = usePersistentState("checkIns", {});
@@ -5124,6 +5384,11 @@ export default function LittleDayApp() {
 
   const [kids, setKids] = usePersistentState("kids", [{ id: "k1", name: "Little one", birthday: "2022-06-15", emoji: "🧒" }]);
   const [activeKidId, setActiveKidId] = usePersistentState("activeKidId", "k1");
+  const [companionKidIds, setCompanionKidIds] = usePersistentState("companionKidIds", []);
+  const toggleCompanionKid = (id) => {
+    setCompanionKidIds((cur) => cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]);
+  };
+  const [schoolDistrictId, setSchoolDistrictId] = usePersistentState("schoolDistrictId", null);
   const [kidEditor, setKidEditor] = useState(null);
   const [sitters, setCaregivers] = usePersistentState("sitters", []);
   const [sitterEditor, setSitterEditor] = useState(null);
@@ -5182,6 +5447,7 @@ export default function LittleDayApp() {
   const [caregiverLinks, setCaregiverLinks] = useState([]);
   const [caregiverInvite, setCaregiverInvite] = useState(null);
   const [pendingCaregiverCode, setPendingCaregiverCode] = useState(null);
+  const [forceEditNameToken, setForceEditNameToken] = useState(null);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -5198,7 +5464,11 @@ export default function LittleDayApp() {
     (async () => {
       const { data, error } = await supabase.rpc("redeem_family_invite", { p_code: pendingCaregiverCode });
       if (error) { showToast("That caregiver invite link didn't work — ask for a new one"); }
-      else { showToast(`You now have caregiver access to ${data || "their"} family`); }
+      else {
+        showToast(`You're in! Add your name so ${data || "they"} recognize you`);
+        goTo("profile");
+        setForceEditNameToken(Date.now());
+      }
       setPendingCaregiverCode(null);
     })();
   }, [pendingCaregiverCode, session]);
@@ -5261,24 +5531,82 @@ export default function LittleDayApp() {
   const addRealFriend = async (otherId, label) => {
     if (!backendReady() || !session) return;
     const { error } = await supabase.rpc("add_friendship", { other_id: otherId });
-    if (!error) showToast(`${label} added to your friends`);
+    if (!error) { showToast(`${label} added to your friends`); loadRealFriends(); }
   };
+  const loadRealFriends = async () => {
+    if (!backendReady() || !session) return;
+    const uid = session.user.id;
+    const { data: rows } = await supabase.from("friendships").select("a,b").or(`a.eq.${uid},b.eq.${uid}`);
+    const otherIds = (rows || []).map((r) => (r.a === uid ? r.b : r.a));
+    if (!otherIds.length) { setFriends((cur) => cur.filter((f) => !f.real)); return; }
+    const { data: profiles } = await supabase.rpc("get_profiles_by_ids", { ids: otherIds });
+    const real = (profiles || []).map((p) => ({
+      id: p.id,
+      name: [p.first_name, p.last_name].filter(Boolean).join(" ") || p.display_name || (p.handle ? `@${p.handle}` : "Little Day parent"),
+      emoji: "🙂", kids: "", town: "", real: true,
+    }));
+    setFriends((cur) => [...real, ...cur.filter((f) => !f.real)]);
+  };
+  useEffect(() => { loadRealFriends(); }, [session]);
   const [sharedDays, setSharedDays] = useState(SHARED_DAYS_SEED);
   const [playDates, setPlayDates] = useState(PLAYDATES_SEED);
   const [toast, setToast] = useState(null);
   const [invitePickerOpen, setInvitePickerOpen] = useState(false);
+  const [chatGroupId, setChatGroupId] = useState(null);
 
   const showToast = (msg) => {
     setToast(msg);
     setTimeout(() => setToast(null), 2400);
   };
 
-  const acceptPlayDate = (id) => {
-    setPlayDates((cur) => cur.map((p) => (p.id === id ? { ...p, status: "confirmed" } : p)));
+  const loadRealPlayDates = async () => {
+    if (!backendReady() || !session) return;
+    const uid = session.user.id;
+    const { data: rows } = await supabase.from("play_dates").select("*").or(`from_user.eq.${uid},to_user.eq.${uid}`).order("created_at", { ascending: false });
+    if (!rows || !rows.length) { setPlayDates((cur) => cur.filter((p) => !p.real)); return; }
+    const otherIds = [...new Set(rows.map((r) => (r.from_user === uid ? r.to_user : r.from_user)))];
+    const { data: profiles } = await supabase.rpc("get_profiles_by_ids", { ids: otherIds });
+    const nameFor = (id) => {
+      const p = (profiles || []).find((x) => x.id === id);
+      if (!p) return "A Little Day parent";
+      return [p.first_name, p.last_name].filter(Boolean).join(" ") || p.display_name || (p.handle ? `@${p.handle}` : "A Little Day parent");
+    };
+    const mapped = rows.map((r) => {
+      const stops = (r.day_plan && r.day_plan.stops) || [];
+      const mine = r.from_user === uid;
+      return {
+        id: r.id, real: true, groupId: r.group_id, stops,
+        direction: mine ? "outgoing" : "incoming",
+        friend: nameFor(mine ? r.to_user : r.from_user),
+        friendEmoji: "🙂",
+        placeId: stops[0] ? stops[0].placeId : null,
+        time: stops[0] ? stops[0].time : null,
+        day: "Planned",
+        status: r.status === "invited" ? "pending" : r.status,
+      };
+    });
+    setPlayDates((cur) => [...mapped, ...cur.filter((p) => !p.real)]);
+  };
+  useEffect(() => { loadRealPlayDates(); }, [session]);
+
+  const acceptPlayDate = async (id) => {
+    const pd = playDates.find((p) => p.id === id);
+    if (pd && pd.real && backendReady()) {
+      await supabase.from("play_dates").update({ status: "confirmed" }).eq("id", id);
+      loadRealPlayDates();
+    } else {
+      setPlayDates((cur) => cur.map((p) => (p.id === id ? { ...p, status: "confirmed" } : p)));
+    }
     showToast("You're in! Play date confirmed 🎉");
   };
-  const declinePlayDate = (id) => {
-    setPlayDates((cur) => cur.filter((p) => p.id !== id));
+  const declinePlayDate = async (id) => {
+    const pd = playDates.find((p) => p.id === id);
+    if (pd && pd.real && backendReady()) {
+      await supabase.from("play_dates").delete().eq("id", id);
+      loadRealPlayDates();
+    } else {
+      setPlayDates((cur) => cur.filter((p) => p.id !== id));
+    }
   };
   const addFriend = (nameOrPhone) => {
     const isPhone = /^[\d\s()+-]{7,}$/.test(nameOrPhone.trim());
@@ -5305,24 +5633,34 @@ export default function LittleDayApp() {
     ]);
     showToast("Day shared with your friends");
   };
-  const inviteFriendToDay = (picked) => {
+  const inviteFriendToDay = async (picked) => {
     const first = itinerary[0];
     if (!first) return;
     const arr = Array.isArray(picked) ? picked : [picked];
     if (!arr.length) return;
-    setPlayDates((cur) => [
-      ...cur,
-      ...arr.map((friend, i) => ({
-        id: `pd${Date.now()}_${i}`,
-        direction: "outgoing",
-        friend: friend.name,
-        friendEmoji: friend.emoji,
-        placeId: first.place.id,
-        time: first.time,
-        day: "Soon",
-        status: "invited",
-      })),
-    ]);
+    const realFriends = arr.filter((f) => f.real);
+    const demoFriends = arr.filter((f) => !f.real);
+
+    if (realFriends.length && backendReady() && session) {
+      const dayPlan = { stops: itinerary.map((i) => ({ placeId: i.place.id, time: i.time })) };
+      const { error } = await supabase.rpc("create_group_plan", { p_day_plan: dayPlan, p_friend_ids: realFriends.map((f) => f.id) });
+      if (!error) loadRealPlayDates();
+    }
+    if (demoFriends.length) {
+      setPlayDates((cur) => [
+        ...cur,
+        ...demoFriends.map((friend, i) => ({
+          id: `pd${Date.now()}_${i}`,
+          direction: "outgoing",
+          friend: friend.name,
+          friendEmoji: friend.emoji,
+          placeId: first.place.id,
+          time: first.time,
+          day: "Soon",
+          status: "invited",
+        })),
+      ]);
+    }
     setInvitePickerOpen(false);
     showToast(
       arr.length === 1
@@ -5546,10 +5884,16 @@ export default function LittleDayApp() {
         setSearchQuery={setSearchQuery}
         onHowTo={() => setShowHowTo(true)}
         onSelectGoogle={setGooglePlace}
+        companionKidIds={companionKidIds}
+        onToggleCompanionKid={toggleCompanionKid}
+        schoolDistrictId={schoolDistrictId}
+        onSetSchoolDistrict={setSchoolDistrictId}
+        completedDays={completedDays}
+        onOpenBuilder={() => goTo("planner")}
       />
     );
   } else if (screen === "planner") {
-    content = <PlannerScreen onBack={() => goTo("home")} onGenerate={handleGenerate} locationLabel={location.label} initialAge={ageToBand(ageFromBirthday(activeKid?.birthday))} activeKidName={activeKid?.name || ""} />;
+    content = <PlannerScreen onBack={() => goTo("home")} onGenerate={handleGenerate} locationLabel={location.label} initialAge={ageToBand(ageFromBirthday(activeKid?.birthday))} activeKidName={activeKid?.name || ""} companionKids={kids.filter((k) => companionKidIds.includes(k.id))} />;
   } else if (screen === "planning") {
     content = <PlanningScreen onDone={() => setScreen("itinerary")} />;
   } else if (screen === "itinerary") {
@@ -5592,6 +5936,7 @@ export default function LittleDayApp() {
         session={session}
         onSearchProfiles={searchRealProfiles}
         onAddRealFriend={addRealFriend}
+        onOpenChat={(gid) => setChatGroupId(gid)}
       />
     );
   } else if (screen === "profile") {
@@ -5601,6 +5946,7 @@ export default function LittleDayApp() {
       onCreateCaregiverInvite={createCaregiverInvite} onRemoveCaregiverAccess={removeCaregiverAccess}
       activeFamilyId={activeFamilyId} onSwitchFamily={switchFamily}
       favorites={favorites} savedDays={savedDays} onViewSaved={() => goTo("favorites")}
+      forceEditNameToken={forceEditNameToken}
     />;
   } else if (screen === "safety") {
     content = <SafetyScreen />;
@@ -5618,6 +5964,7 @@ export default function LittleDayApp() {
         stats={stats}
         earnedBadges={earnedBadges}
         onShareDay={(rec) => setDayCard(rec)}
+        onAddPhoto={addDayPhoto}
       />
     );
   } else if (screen === "place") {
@@ -5720,6 +6067,7 @@ export default function LittleDayApp() {
         <AuthSheet open={authOpen} onClose={() => setAuthOpen(false)} session={session} />
         <GooglePlaceSheet place={googlePlace} onClose={() => setGooglePlace(null)} />
         <InviteSheet open={inviteOpen} onClose={() => setInviteOpen(false)} onShared={() => { setInviteOpen(false); showToast("Invite sent — preview only for now"); }} />
+        <GroupChatSheet open={!!chatGroupId} groupId={chatGroupId} session={session} onClose={() => setChatGroupId(null)} />
       </div>
     </div>
     </NavContext.Provider>
