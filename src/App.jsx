@@ -4695,6 +4695,25 @@ function Confetti() {
   );
 }
 
+function MiniCelebration({ data, onDone }) {
+  useEffect(() => {
+    if (!data) return;
+    const t = setTimeout(onDone, 1500);
+    return () => clearTimeout(t);
+  }, [data]);
+  if (!data) return null;
+  return (
+    <div className="absolute inset-0 z-30 flex items-center justify-center pointer-events-none" onClick={onDone}>
+      <Confetti />
+      <div className="rounded-3xl px-7 py-6 flex flex-col items-center gap-1.5 bg-white shadow-xl" style={{ animation: "sunFloat 0.3s ease-out" }}>
+        <span className="text-[44px]" style={{ display: "inline-block", animation: "burstPop 0.5s ease-out" }}>{data.emoji}</span>
+        <p className="text-[14.5px] font-bold text-[#1B2A4A] text-center max-w-[220px]">{data.text}</p>
+        {data.subtext && <p className="text-[12px] text-[#8A8474] text-center max-w-[220px]">{data.subtext}</p>}
+      </div>
+    </div>
+  );
+}
+
 function CelebrationOverlay({ data, onClose, onPassport, onShare }) {
   if (!data) return null;
   const { record, newBadges } = data;
@@ -5557,6 +5576,7 @@ export default function LittleDayApp() {
   const [dayCard, setDayCard] = useState(null);
   const [checkIns, setCheckIns] = usePersistentState("checkIns", {});
   const [reward, setReward] = useState(null);
+  const [burst, setBurst] = useState(null);
   const [surpriseMode, setSurpriseMode] = useState(false);
   const [lastPrefs, setLastPrefs] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -5669,7 +5689,7 @@ export default function LittleDayApp() {
       const { error } = await supabase.rpc("add_friendship", { other_id: pendingFriendId });
       if (error) { showToast("That invite link didn't work — ask for a new one"); }
       else {
-        showToast(`You're connected with ${label}! Add your name so they recognize you`);
+        setBurst({ emoji: "🎉", text: `You're connected with ${label}!`, subtext: "Add your name so they recognize you" });
         loadRealFriends();
         setSeenWelcome(true);
         goTo("profile");
@@ -5971,7 +5991,7 @@ export default function LittleDayApp() {
     if (newCount % 5 === 0) {
       setReward({ place, number: newCount / 5 });
     } else {
-      showToast(`Checked in at ${place.name}! ${newCount % 5}/5 toward a reward`);
+      setBurst({ emoji: place.photo || "📍", text: `Checked in at ${place.name}!`, subtext: `${newCount % 5}/5 toward a reward` });
     }
   };
 
@@ -6246,6 +6266,7 @@ export default function LittleDayApp() {
         @keyframes sunBob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-7px); } }
         @keyframes raysShimmer { 0%, 100% { opacity: 0.55; } 50% { opacity: 1; } }
         @keyframes confettiFall { 0% { transform: translateY(-20px) rotate(0deg); opacity: 1; } 100% { transform: translateY(760px) rotate(600deg); opacity: 0.9; } }
+        @keyframes burstPop { 0% { transform: scale(0.3) rotate(-8deg); opacity: 0; } 55% { transform: scale(1.2) rotate(4deg); opacity: 1; } 100% { transform: scale(1) rotate(0deg); opacity: 1; } }
       `}</style>
       <div
         className="w-full flex flex-col relative"
@@ -6277,6 +6298,7 @@ export default function LittleDayApp() {
         />
         <DayCardOverlay record={dayCard} onClose={() => setDayCard(null)} onShared={() => showToast("Shared — or screenshot to send!")} />
         <RewardOverlay data={reward} onClose={() => setReward(null)} />
+        <MiniCelebration data={burst} onDone={() => setBurst(null)} />
         <HowToOverlay key={showHowTo ? "howto-open" : "howto-closed"} open={showHowTo} onClose={() => setShowHowTo(false)} />
         {kidEditor && (
           <KidEditorSheet key={kidEditor.id || "new"} data={kidEditor} onSave={saveKid} onDelete={deleteKid} onClose={() => setKidEditor(null)} />
