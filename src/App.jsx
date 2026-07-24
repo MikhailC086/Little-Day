@@ -3350,16 +3350,6 @@ function ProfileScreen({ onOpenPremium, onOpenPassport, stats, session, onOpenAu
           </div>
           <span className="text-[12px] font-medium shrink-0" style={{ color: "var(--accent)" }}>View →</span>
         </button>
-        {session && (
-          <div className="flex items-center gap-2 mb-3 px-1">
-            <div className="w-7 h-7 rounded-full flex items-center justify-center text-[13px] shrink-0" style={{ backgroundColor: "#E4F4E9" }}>☁️</div>
-            <p className="text-[12.5px] text-[#8A8474] truncate">
-              Signed in as <span className="font-semibold text-[#1B2A4A]">
-                {hasSavedName ? [profileNames.firstName, profileNames.lastName].filter(Boolean).join(" ") : session.user.email}
-              </span> · synced across devices
-            </p>
-          </div>
-        )}
         {!session && (
           <div className="rounded-2xl p-4 bg-white border mb-3" style={{ borderColor: "#EFEAE0" }}>
             <div className="flex items-center gap-3">
