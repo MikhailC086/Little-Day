@@ -1934,7 +1934,7 @@ function SunriseSplash({ onDone }) {
         <LittleDaySun size={132} animateRays />
       </div>
       <div style={{ marginTop: 12, textAlign: "center", animation: "fadeUp 0.7s ease-out 0.75s both" }}>
-        <p style={{ fontSize: 30, fontWeight: 800, color: "#1B2A4A", margin: 0 }}>little day</p>
+        <p style={{ fontSize: 26, fontWeight: 800, color: "#1B2A4A", margin: 0 }}>little day memories</p>
         <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.18em", color: "#F5B71F", marginTop: 4 }}>
           BIG ADVENTURES. LITTLE DAYS.
         </p>
@@ -1991,7 +1991,7 @@ function LittleDayWordmark({ size = 22 }) {
         letterSpacing: "-0.01em",
       }}
     >
-      little day
+      little day memories
     </span>
   );
 }
@@ -2071,11 +2071,11 @@ function Pill({ children, active, onClick, disabled }) {
   );
 }
 
-function BottomNav({ screen, setScreen }) {
+function BottomNav({ screen, setScreen, friendsBadge = 0 }) {
   const items = [
     { key: "home", label: "Home", icon: Home },
     { key: "map", label: "Categories", icon: ListIcon },
-    { key: "friends", label: "Friends", icon: Users },
+    { key: "friends", label: "Friends", icon: Users, badge: friendsBadge },
     { key: "safety", label: "Safety", icon: Shield },
     { key: "profile", label: "My Profile", icon: User },
   ];
@@ -2084,15 +2084,25 @@ function BottomNav({ screen, setScreen }) {
       className="flex justify-around items-center border-t bg-white/95 backdrop-blur"
       style={{ borderColor: "#EFEAE0", paddingBottom: "env(safe-area-inset-bottom, 10px)" }}
     >
-      {items.map(({ key, label, icon: Icon }) => {
+      {items.map(({ key, label, icon: Icon, badge }) => {
         const active = screen === key;
         return (
           <button
             key={key}
             onClick={() => setScreen(key)}
-            className="flex flex-col items-center gap-1 py-2.5 px-3"
+            className="flex flex-col items-center gap-1 py-2.5 px-3 relative"
           >
-            <Icon size={22} color={active ? "var(--accent)" : "#9C9484"} strokeWidth={active ? 2.4 : 2} />
+            <div className="relative">
+              <Icon size={22} color={active ? "var(--accent)" : "#9C9484"} strokeWidth={active ? 2.4 : 2} />
+              {!!badge && (
+                <span
+                  className="absolute -top-1.5 -right-2 min-w-[16px] h-4 px-1 rounded-full flex items-center justify-center text-[10px] font-bold text-white"
+                  style={{ background: "var(--cta)" }}
+                >
+                  {badge > 9 ? "9+" : badge}
+                </span>
+              )}
+            </div>
             <span
               className="text-[11px] font-medium"
               style={{ color: active ? "#1B2A4A" : "#9C9484" }}
@@ -3323,6 +3333,7 @@ function FavoritesScreen({ favorites, setSelectedPlace, toggleFavorite, savedDay
 }
 
 function ProfileScreen({ onOpenPremium, onOpenPassport, stats, session, onOpenAuth, onSignOut, earnedBadges, kids, activeKidId, onSetActive, onAddKid, onEditKid, sitters, onAddSitter, onEditSitter, onShareWithSitter,
+  emergencyContacts, onAddEmergencyContact, onEditEmergencyContact,
   profileNames, onSaveProfileNames, myCaregivers, caregiverLinks, caregiverInvite, onCreateCaregiverInvite, onRemoveCaregiverAccess, activeFamilyId, onSwitchFamily,
   favorites, savedDays, onViewSaved, forceEditNameToken,
 }) {
@@ -3566,6 +3577,34 @@ function ProfileScreen({ onOpenPremium, onOpenPassport, stats, session, onOpenAu
           )}
         </div>
 
+        <div className="rounded-2xl p-4 bg-white border mt-3" style={{ borderColor: "#EFEAE0" }}>
+          <div className="flex items-center justify-between mb-3">
+            <p className="font-semibold text-[#1B2A4A]">🚨 Emergency contacts</p>
+            <button onClick={onAddEmergencyContact} className="text-[12px] font-semibold flex items-center gap-1" style={{ color: "var(--accent)" }}><Plus size={14} /> Add</button>
+          </div>
+          {(!emergencyContacts || emergencyContacts.length === 0) ? (
+            <p className="text-[13px] text-[#8A8474]">Add a grandparent, pediatrician, or neighbor — visible to whoever you share this profile with.</p>
+          ) : (
+            <div className="flex flex-col gap-2.5">
+              {emergencyContacts.map((c) => (
+                <div key={c.id} className="flex items-center gap-3 p-2.5 rounded-xl border" style={{ borderColor: "#F3F0E8" }}>
+                  <div className="w-10 h-10 rounded-full flex items-center justify-center text-[18px] shrink-0" style={{ backgroundColor: "#FDEDEA" }}>🚨</div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[14px] font-medium text-[#1B2A4A] truncate">{c.name}{c.relationship ? <span className="text-[11px] font-normal text-[#8A8474]"> · {c.relationship}</span> : null}</p>
+                    <p className="text-[11.5px] text-[#8A8474] truncate">{c.notes || c.phone || "No details yet"}</p>
+                  </div>
+                  {c.phone && (
+                    <a href={`tel:${c.phone.replace(/[^0-9+]/g, "")}`} onClick={(e) => e.stopPropagation()} className="w-8 h-8 rounded-full flex items-center justify-center shrink-0" style={{ backgroundColor: "#E4F4E9" }}>
+                      <Phone size={14} color="#2E8B57" />
+                    </a>
+                  )}
+                  <button onClick={() => onEditEmergencyContact(c)} className="text-[11px] font-medium shrink-0" style={{ color: "var(--accent)" }}>Edit</button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
         <button onClick={onOpenPassport} className="w-full rounded-2xl p-4 bg-white border mt-3 text-left" style={{ borderColor: "#EFEAE0" }}>
           <div className="flex items-center justify-between mb-2">
             <p className="font-semibold text-[#1B2A4A]">Adventure Passport</p>
@@ -3585,7 +3624,7 @@ function ProfileScreen({ onOpenPremium, onOpenPassport, stats, session, onOpenAu
         </button>
 
         <div className="rounded-2xl p-4 mt-3 text-center" style={{ backgroundColor: "#FFF8EE" }}>
-          <p className="font-semibold text-[#1B2A4A] text-[14px]">Little Day Premium</p>
+          <p className="font-semibold text-[#1B2A4A] text-[14px]">Little Day Memories Premium</p>
           <p className="text-[12px] text-[#8A8474] mt-1">Unlimited planning, vacation mode, offline guides</p>
           <button
             onClick={onOpenPremium}
@@ -3622,7 +3661,7 @@ function PremiumScreen({ onBack, onUpgrade }) {
 
   return (
     <div className="pb-10">
-      <TopBar title="Little Day Premium" onBack={onBack} />
+      <TopBar title="Little Day Memories Premium" onBack={onBack} />
       <div className="px-5">
         <div className="rounded-3xl p-6 text-center" style={{ background: "linear-gradient(160deg,#FFF3E6,#FFF8EE)" }}>
           <div className="flex justify-center mb-2">
@@ -4020,7 +4059,7 @@ function WelcomeScreen({ onStart }) {
           Every other app gives you a piece of the day.
         </p>
         <p className="text-[14px] text-[#8A8474] mt-2.5 leading-relaxed max-w-[290px]">
-          Little Day is the first to plan the <span className="font-semibold text-[#5C5648]">whole</span> day with the kids — where to go, eat, play, potty, and everything in between. One app. One tap. One less thing to figure out.
+          Little Day Memories is the first to plan the <span className="font-semibold text-[#5C5648]">whole</span> day with the kids — where to go, eat, play, potty, and everything in between. One app. One tap. One less thing to figure out.
         </p>
       </div>
       <div className="px-6 pb-10">
@@ -4092,6 +4131,81 @@ function Avatar({ emoji, size = 40 }) {
   );
 }
 
+function kidAge(birthday) {
+  if (!birthday) return null;
+  const b = new Date(birthday);
+  if (isNaN(b)) return null;
+  const now = new Date();
+  let age = now.getFullYear() - b.getFullYear();
+  const m = now.getMonth() - b.getMonth();
+  if (m < 0 || (m === 0 && now.getDate() < b.getDate())) age--;
+  return age;
+}
+
+function FriendDetailScreen({ friend, kids, onBack, onPlanDay, onRemoveFriend }) {
+  if (!friend) return null;
+  return (
+    <div className="min-h-screen pb-8" style={{ backgroundColor: "#FFFBF5" }}>
+      <TopBar title="Friend" onBack={onBack} />
+      <div className="px-5 pt-2 flex flex-col items-center text-center">
+        <Avatar emoji={friend.emoji} size={72} />
+        <p className="text-[20px] font-bold text-[#1B2A4A] mt-3">{friend.name}</p>
+        {friend.demo && (
+          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full mt-1" style={{ backgroundColor: "#F0EEE6", color: "#8A8474" }}>DEMO PROFILE</span>
+        )}
+        {!friend.real && !friend.demo && <p className="text-[12.5px] text-[#8A8474] mt-1">Added by phone number · preview only for now</p>}
+
+        <div className="w-full mt-6 text-left">
+          <p className="text-[13px] font-semibold text-[#1B2A4A] mb-2">Kids</p>
+          {kids === null ? (
+            <p className="text-[13px] text-[#8A8474]">Loading…</p>
+          ) : kids.length === 0 ? (
+            <div className="rounded-2xl p-4 bg-white border" style={{ borderColor: "#EFEAE0" }}>
+              <p className="text-[13px] text-[#8A8474]">
+                {friend.real ? "They haven't added their kids yet." : "Not available for demo or phone-added friends yet."}
+              </p>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-2">
+              {kids.map((k) => {
+                const age = kidAge(k.birthday);
+                return (
+                  <div key={k.id} className="flex items-center gap-3 p-3 rounded-2xl bg-white border" style={{ borderColor: "#EFEAE0" }}>
+                    <div className="w-11 h-11 rounded-full flex items-center justify-center text-[20px]" style={{ backgroundColor: "#FFF3E6" }}>{k.emoji || "🧒"}</div>
+                    <div>
+                      <p className="text-[14px] font-medium text-[#1B2A4A]">{k.name}</p>
+                      {age !== null && <p className="text-[12px] text-[#8A8474]">{age} years old</p>}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {friend.real && (
+          <button
+            onClick={onPlanDay}
+            className="w-full rounded-2xl py-3.5 mt-6 flex items-center justify-center gap-2 text-white font-semibold text-[14.5px]"
+            style={{ background: "var(--cta)" }}
+          >
+            📅 Plan a day together
+          </button>
+        )}
+        {friend.real && (
+          <p className="text-[11.5px] text-[#B8B0A0] mt-2.5">Build a day, then tap "Invite friends to join" and pick {friend.name.split(" ")[0]}.</p>
+        )}
+
+        {onRemoveFriend && (
+          <button onClick={() => onRemoveFriend(friend)} className="mt-6 text-[13px] font-semibold" style={{ color: "#C05621" }}>
+            Remove friend
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function FriendsScreen({ onOpenInvite,
   friends,
   sharedDays,
@@ -4100,6 +4214,7 @@ function FriendsScreen({ onOpenInvite,
   onDecline,
   onUseDay,
   onAddFriend,
+  onSelectFriend,
   setSelectedPlace,
   session,
   onSearchProfiles,
@@ -4317,7 +4432,7 @@ function FriendsScreen({ onOpenInvite,
         )}
         <div className="flex flex-col gap-2 mb-3">
           {friends.map((f) => (
-            <div key={f.id} className="flex items-center gap-2.5 p-2.5 rounded-2xl bg-white border" style={{ borderColor: "#EFEAE0" }}>
+            <button key={f.id} onClick={() => onSelectFriend(f)} className="flex items-center gap-2.5 p-2.5 rounded-2xl bg-white border text-left w-full" style={{ borderColor: "#EFEAE0" }}>
               <Avatar emoji={f.emoji} size={38} />
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1.5">
@@ -4330,7 +4445,8 @@ function FriendsScreen({ onOpenInvite,
                   {f.kids} · {f.town}
                 </p>
               </div>
-            </div>
+              <ChevronRight size={16} color="#B08A5A" className="shrink-0" />
+            </button>
           ))}
         </div>
 
@@ -4352,7 +4468,7 @@ function FriendsScreen({ onOpenInvite,
               {nameResults.length > 0 && (
                 <div className="flex flex-col gap-1.5 mt-2">
                   {nameResults.map((r) => {
-                    const label = [r.first_name, r.last_name].filter(Boolean).join(" ") || r.display_name || r.handle || "Little Day parent";
+                    const label = [r.first_name, r.last_name].filter(Boolean).join(" ") || r.display_name || r.handle || "Little Day Memories parent";
                     return (
                       <div key={r.id} className="flex items-center justify-between gap-2 p-2 rounded-xl" style={{ backgroundColor: "#F7F4EC" }}>
                         <div className="min-w-0">
@@ -4403,7 +4519,7 @@ function FriendsScreen({ onOpenInvite,
             </button>
           </div>
           <p className="text-[11px] mt-2" style={{ color: "#B8B0A0" }}>
-            Preview only for now — once accounts are fully connected, this will text your friend an invite if they're not on Little Day yet, or connect you instantly if they are.
+            Preview only for now — once accounts are fully connected, this will text your friend an invite if they're not on Little Day Memories yet, or connect you instantly if they are.
           </p>
         </div>
 
@@ -4445,11 +4561,11 @@ function InviteSheet({ open, onClose, onShared, session }) {
     ? `${window.location.origin}${window.location.pathname}?addfriend=${session.user.id}`
     : null;
   const shareText = link
-    ? `Join me on Little Day — the app that plans whole days out with the kids! ${link}`
-    : "Join me on Little Day — the app that plans whole days out with the kids!";
+    ? `Join me on Little Day Memories — the app that plans whole days out with the kids! ${link}`
+    : "Join me on Little Day Memories — the app that plans whole days out with the kids!";
   const doShare = async () => {
     try {
-      if (navigator.share) { await navigator.share({ title: "Join me on Little Day", text: shareText }); onShared(); return; }
+      if (navigator.share) { await navigator.share({ title: "Join me on Little Day Memories", text: shareText }); onShared(); return; }
     } catch (e) {}
     onShared();
   };
@@ -4757,8 +4873,8 @@ function DayCardOverlay({ record, onClose, onShared }) {
   const dateStr = dt.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
   const items = record.stops.map((s) => ({ place: { id: s.placeId, photo: s.photo }, time: s.time || 0 }));
   const doShare = async () => {
-    const text = `Our Little Day (${dateStr}): ${record.stops.map((s) => s.name).join(" → ")}`;
-    try { if (navigator.share) { await navigator.share({ title: "Our Little Day", text }); } } catch (e) {}
+    const text = `Our Little Day Memories (${dateStr}): ${record.stops.map((s) => s.name).join(" → ")}`;
+    try { if (navigator.share) { await navigator.share({ title: "Our Little Day Memories", text }); } } catch (e) {}
     onShared && onShared();
   };
   return (
@@ -4801,7 +4917,7 @@ function RewardOverlay({ data, onClose }) {
           <p className="text-[12px] text-[#8A8474] mt-0.5">Show this at the counter</p>
           <p className="text-[17px] font-bold mt-2" style={{ color: "#B08A5A", letterSpacing: "0.15em" }}>{code}</p>
         </div>
-        <p className="text-[11px] text-[#B8B0A0] mt-3 leading-snug">Sample reward. Real perks appear when {place.name} joins Little Day as a partner.</p>
+        <p className="text-[11px] text-[#B8B0A0] mt-3 leading-snug">Sample reward. Real perks appear when {place.name} joins Little Day Memories as a partner.</p>
         <button onClick={onClose} className="w-full rounded-2xl py-3 mt-4 text-white font-semibold text-[14px]" style={{ background: "var(--cta)" }}>Awesome</button>
       </div>
     </div>
@@ -4884,6 +5000,48 @@ function PassportScreen({ onBack, completedDays, stats, earnedBadges, onShareDay
               ))}
             </div>
           </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function EmergencyContactEditorSheet({ data, onSave, onDelete, onClose }) {
+  const [name, setName] = useState(data.name || "");
+  const [relationship, setRelationship] = useState(data.relationship || "");
+  const [phone, setPhone] = useState(data.phone || "");
+  const [notes, setNotes] = useState(data.notes || "");
+  return (
+    <div className="absolute inset-0 z-30 flex items-end" onClick={onClose}>
+      <div className="absolute inset-0 bg-black/30" />
+      <div className="relative w-full rounded-t-3xl bg-white p-5 pb-8 max-h-[85%] overflow-y-auto" onClick={(e) => e.stopPropagation()} style={{ animation: "sheetUp 0.22s ease-out" }}>
+        <div className="w-10 h-1 rounded-full bg-[#E7E1D4] mx-auto mb-4" />
+        <p className="text-[15px] font-semibold text-[#1B2A4A] mb-3">{data.isNew ? "Add emergency contact" : "Edit emergency contact"}</p>
+
+        <p className="text-[12px] font-medium text-[#8A8474] mb-1.5">Name</p>
+        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Grandma Rosa"
+          className="w-full rounded-xl px-3.5 py-2.5 text-[14px] border outline-none mb-4" style={{ borderColor: "#E7E1D4" }} />
+
+        <p className="text-[12px] font-medium text-[#8A8474] mb-1.5">Relationship</p>
+        <input value={relationship} onChange={(e) => setRelationship(e.target.value)} placeholder="e.g. Grandmother, Pediatrician, Neighbor"
+          className="w-full rounded-xl px-3.5 py-2.5 text-[14px] border outline-none mb-4" style={{ borderColor: "#E7E1D4" }} />
+
+        <p className="text-[12px] font-medium text-[#8A8474] mb-1.5">Phone</p>
+        <input value={phone} onChange={(e) => setPhone(e.target.value)} inputMode="tel" placeholder="(914) 555-0123"
+          className="w-full rounded-xl px-3.5 py-2.5 text-[14px] border outline-none mb-4" style={{ borderColor: "#E7E1D4" }} />
+
+        <p className="text-[12px] font-medium text-[#8A8474] mb-1.5">Notes (optional)</p>
+        <input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="e.g. Allergies, medications, special instructions"
+          className="w-full rounded-xl px-3.5 py-2.5 text-[14px] border outline-none mb-5" style={{ borderColor: "#E7E1D4" }} />
+
+        <button onClick={() => onSave({ ...data, name, relationship, phone, notes })}
+          className="w-full rounded-2xl py-3.5 text-white font-semibold text-[14px]" style={{ background: "var(--cta)" }}>
+          {data.isNew ? "Add contact" : "Save"}
+        </button>
+        {!data.isNew && (
+          <button onClick={() => onDelete(data.id)} className="w-full rounded-2xl py-3 mt-2 font-semibold text-[13px] flex items-center justify-center gap-1.5" style={{ color: "#C6564B" }}>
+            <Trash2 size={15} /> Remove contact
+          </button>
         )}
       </div>
     </div>
@@ -5027,10 +5185,10 @@ function ActivitiesScreen({ setSelectedPlace }) {
 }
 
 const HOWTO_STEPS = [
-  { emoji: "🌅", title: "Welcome to Little Day", body: "The first app that plans your whole day out with the kids — where to go, eat, play, and everything in between. Here's a quick tour." },
+  { emoji: "🌅", title: "Welcome to Little Day Memories", body: "The first app that plans your whole day out with the kids — where to go, eat, play, and everything in between. Here's a quick tour." },
   { emoji: "🧒", title: "1. Add your children", body: "In the Profile tab, add each child with their name and birthday. Switch between them anytime — the planner tailors ideas to whoever you've selected. Planning for more than one? Use 'Also bringing' on Home to plan around everyone." },
-  { emoji: "✨", title: "2. Plan My Day", body: "Tap Plan My Day, then set the age, budget, time you have, and nap or 'home by' time. Little Day builds a full itinerary — with a lunch stop and a treat — in seconds." },
-  { emoji: "🔔", title: "3. Smart nudges on Home", body: "Little Day watches the weather, your kids' birthdays, and no-school days (once you add your school district in a Home banner) to nudge you toward a plan before you even ask." },
+  { emoji: "✨", title: "2. Plan My Day", body: "Tap Plan My Day, then set the age, budget, time you have, and nap or 'home by' time. Little Day Memories builds a full itinerary — with a lunch stop and a treat — in seconds." },
+  { emoji: "🔔", title: "3. Smart nudges on Home", body: "Little Day Memories watches the weather, your kids' birthdays, and no-school days (once you add your school district in a Home banner) to nudge you toward a plan before you even ask." },
   { emoji: "🔍", title: "4. Search & explore", body: "Use the search bar on the home screen to find anything — a place, a town, or a category like 'playground' or 'ice cream.' Or open Categories to browse by type." },
   { emoji: "🤸", title: "5. Classes & Activities", body: "Browse sports, dance, music, art, and afterschool programs. Look for the 'Free trial' tag, and note which need sign-up (no drop-ins)." },
   { emoji: "🎟️", title: "6. Check in & earn rewards", body: "Check in when you arrive somewhere. Every 5 check-ins unlocks a reward, and finishing a day earns stamps and badges in your Adventure Passport — add a photo to remember it by." },
@@ -5172,7 +5330,7 @@ function SafetyScreen({ onBack }) {
             </div>
           </div>
         ))}
-        <p className="text-[11px] text-[#B8B0A0] leading-snug">Details verified from county and hospital listings, but schedules and contacts change — always call ahead. Car seat checks need a booked slot — call before you drive over. Resources cover Westchester County for now — built to expand region by region as Little Day grows.</p>
+        <p className="text-[11px] text-[#B8B0A0] leading-snug">Details verified from county and hospital listings, but schedules and contacts change — always call ahead. Car seat checks need a booked slot — call before you drive over. Resources cover Westchester County for now — built to expand region by region as Little Day Memories grows.</p>
       </div>
     </div>
   );
@@ -5192,10 +5350,10 @@ function BetaGate({ onUnlock }) {
     <div className="min-h-screen w-full flex items-center justify-center px-6" style={{ backgroundColor: "#FFFBF5" }}>
       <div className="w-full max-w-sm text-center" style={{ animation: shake ? "shakeX 0.4s" : "none" }}>
         <div className="flex justify-center mb-3"><LittleDaySun size={64} /></div>
-        <h1 className="text-[26px] font-bold" style={{ color: "#1B2A4A", fontFamily: "'Plus Jakarta Sans', sans-serif" }}>little day</h1>
+        <h1 className="text-[22px] font-bold" style={{ color: "#1B2A4A", fontFamily: "'Plus Jakarta Sans', sans-serif" }}>little day memories</h1>
         <p className="text-[12px] font-bold tracking-widest mt-1" style={{ color: "#F5B71F" }}>PRIVATE BETA</p>
         <p className="text-[14px] mt-4 mb-5" style={{ color: "#8A8474" }}>
-          Little Day is in early testing with a small group of Westchester families. Enter your invite code to come in.
+          Little Day Memories is in early testing with a small group of Westchester families. Enter your invite code to come in.
         </p>
         <input
           value={code}
@@ -5209,7 +5367,7 @@ function BetaGate({ onUnlock }) {
         <button onClick={tryUnlock} className="w-full rounded-2xl py-3.5 mt-3 text-white font-semibold text-[15px]" style={{ background: "linear-gradient(135deg, #FF8C61, #FFC857)" }}>
           Let's go
         </button>
-        <p className="text-[11px] mt-5" style={{ color: "#B8B0A0" }}>Don't have a code? Little Day opens wider soon. {"☀️"}</p>
+        <p className="text-[11px] mt-5" style={{ color: "#B8B0A0" }}>Don't have a code? Little Day Memories opens wider soon. {"☀️"}</p>
       </div>
       <style>{`@keyframes shakeX { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-8px)} 75%{transform:translateX(8px)} }`}</style>
     </div>
@@ -5258,11 +5416,11 @@ function InviteWelcomeScreen({ inviterName }) {
     <div className="min-h-screen flex flex-col items-center justify-center px-6 py-10" style={{ backgroundColor: "#FFFBF5", fontFamily: "'Inter', sans-serif" }}>
       <LittleDaySun size={84} />
       <p className="text-[22px] font-bold text-[#1B2A4A] mt-3 text-center" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-        🎉 {inviterName ? `${inviterName} invited you` : "You've been invited"} to Little Day
+        🎉 {inviterName ? `${inviterName} invited you` : "You've been invited"} to Little Day Memories
       </p>
       <p className="text-[13px] font-bold tracking-widest mt-1" style={{ color: "#F5B71F" }}>BIG ADVENTURES. LITTLE DAYS.</p>
       <p className="text-[14px] text-center mt-4 max-w-[320px]" style={{ color: "#8A8474" }}>
-        Little Day plans a whole day out with your kids in one tap — where to go, where to eat, when to head home, all in one place.
+        Little Day Memories plans a whole day out with your kids in one tap — where to go, where to eat, when to head home, all in one place.
         {inviterName ? ` Sign up and you'll be connected with ${inviterName} right away.` : " Sign up to get started."}
       </p>
 
@@ -5593,7 +5751,9 @@ export default function LittleDayApp() {
   const [schoolDistrictId, setSchoolDistrictId] = usePersistentState("schoolDistrictId", null);
   const [kidEditor, setKidEditor] = useState(null);
   const [sitters, setCaregivers] = usePersistentState("sitters", []);
+  const [emergencyContacts, setEmergencyContacts] = usePersistentState("emergencyContacts", []);
   const [sitterEditor, setSitterEditor] = useState(null);
+  const [emergencyEditor, setEmergencyEditor] = useState(null);
   const [inviteOpen, setInviteOpen] = useState(false);
   const [googlePlace, setGooglePlace] = useState(null);
 
@@ -5623,6 +5783,7 @@ export default function LittleDayApp() {
       const wasSynced = (v) => v !== null && v !== undefined; // trust the cloud even when it's genuinely empty
       if (hasNonEmpty(data2.kids)) { setKids(data2.kids); setActiveKidId(data2.kids[0].id); }
       if (hasNonEmpty(data2.sitters)) setCaregivers(data2.sitters);
+      if (wasSynced(data2.emergency_contacts)) setEmergencyContacts(data2.emergency_contacts);
       if (wasSynced(data2.favorites)) setFavorites(data2.favorites);
       if (wasSynced(data2.saved_days)) setSavedDays(data2.saved_days);
       if (wasSynced(data2.check_ins)) setCheckIns(data2.check_ins);
@@ -5637,11 +5798,12 @@ export default function LittleDayApp() {
         user_id: effectiveFamilyId,
         kids, sitters, favorites,
         saved_days: savedDays, check_ins: checkIns, completed_days: completedDays,
+        emergency_contacts: emergencyContacts,
         updated_at: new Date().toISOString(),
       }).then(() => {});
     }, 1200);
     return () => clearTimeout(t);
-  }, [session, effectiveFamilyId, kids, sitters, favorites, savedDays, checkIns, completedDays]);
+  }, [session, effectiveFamilyId, kids, sitters, favorites, savedDays, checkIns, completedDays, emergencyContacts]);
   const signOut = async () => { if (backendReady()) await supabase.auth.signOut(); showToast("Signed out — this device keeps its local copy"); };
 
   // ---- Family Circle (caregiver access) ----
@@ -5781,7 +5943,7 @@ export default function LittleDayApp() {
     const { data: profiles } = await supabase.rpc("get_profiles_by_ids", { ids: otherIds });
     const real = (profiles || []).map((p) => ({
       id: p.id,
-      name: [p.first_name, p.last_name].filter(Boolean).join(" ") || p.display_name || (p.handle ? `@${p.handle}` : "Little Day parent"),
+      name: [p.first_name, p.last_name].filter(Boolean).join(" ") || p.display_name || (p.handle ? `@${p.handle}` : "Little Day Memories parent"),
       emoji: "🙂", kids: "", town: "", real: true,
     }));
     setFriends((cur) => [...real, ...cur.filter((f) => !f.real)]);
@@ -5789,6 +5951,20 @@ export default function LittleDayApp() {
   useEffect(() => { loadRealFriends(); }, [session]);
   const [sharedDays, setSharedDays] = useState(SHARED_DAYS_SEED);
   const [playDates, setPlayDates] = useState(PLAYDATES_SEED);
+  const [ackAcceptedIds, setAckAcceptedIds] = usePersistentState("ackAcceptedInvites", []);
+  const [friendsBadge, setFriendsBadge] = useState(0);
+  const [selectedFriend, setSelectedFriend] = useState(null);
+  const [friendKids, setFriendKids] = useState(null);
+  const openFriendDetail = (f) => {
+    setSelectedFriend(f);
+    setFriendKids(null);
+    setScreen("friendDetail");
+    if (f.real && backendReady()) {
+      supabase.rpc("get_friend_kids", { p_friend_id: f.id }).then(({ data }) => setFriendKids(data || []));
+    } else {
+      setFriendKids([]);
+    }
+  };
   const [toast, setToast] = useState(null);
   const [invitePickerOpen, setInvitePickerOpen] = useState(false);
   const [chatGroupId, setChatGroupId] = useState(null);
@@ -5807,8 +5983,8 @@ export default function LittleDayApp() {
     const { data: profiles } = await supabase.rpc("get_profiles_by_ids", { ids: otherIds });
     const nameFor = (id) => {
       const p = (profiles || []).find((x) => x.id === id);
-      if (!p) return "A Little Day parent";
-      return [p.first_name, p.last_name].filter(Boolean).join(" ") || p.display_name || (p.handle ? `@${p.handle}` : "A Little Day parent");
+      if (!p) return "A Little Day Memories parent";
+      return [p.first_name, p.last_name].filter(Boolean).join(" ") || p.display_name || (p.handle ? `@${p.handle}` : "A Little Day Memories parent");
     };
     const mapped = rows.map((r) => {
       const stops = (r.day_plan && r.day_plan.stops) || [];
@@ -5824,7 +6000,19 @@ export default function LittleDayApp() {
         status: r.status === "invited" ? "pending" : r.status,
       };
     });
-    setPlayDates((cur) => [...mapped, ...cur.filter((p) => !p.real)]);
+    setPlayDates((cur) => {
+      const merged = [...mapped, ...cur.filter((p) => !p.real)];
+      const newlyConfirmed = mapped.filter(
+        (p) => p.direction === "outgoing" && p.status === "confirmed" && !ackAcceptedIds.includes(p.id)
+      );
+      if (newlyConfirmed.length) {
+        const first = newlyConfirmed[0];
+        setBurst({ emoji: "🙌", text: `${first.friend} accepted your invite!`, subtext: "Check Friends to see your plan together" });
+        setAckAcceptedIds((ids) => [...ids, ...newlyConfirmed.map((p) => p.id)]);
+        setFriendsBadge((n) => n + newlyConfirmed.length);
+      }
+      return merged;
+    });
   };
   useEffect(() => { loadRealPlayDates(); }, [session]);
 
@@ -6021,9 +6209,22 @@ export default function LittleDayApp() {
   const toggleFavorite = (id) =>
     setFavorites((cur) => (cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]));
 
+  const removeFriend = async (f) => {
+    if (f.real && backendReady() && session) {
+      const uid = session.user.id;
+      await supabase.from("friendships").delete().or(`and(a.eq.${uid},b.eq.${f.id}),and(a.eq.${f.id},b.eq.${uid})`);
+      loadRealFriends();
+    } else {
+      setFriends((cur) => cur.filter((x) => x.id !== f.id));
+    }
+    showToast(`Removed ${f.name} from your friends`);
+    goTo("friends");
+  };
+
   const goTo = (next) => {
     setPrevScreen(screen);
     setScreen(next);
+    if (next === "friends") { setFriendsBadge(0); loadRealPlayDates(); }
   };
 
   const handleSelectPlace = (place) => {
@@ -6089,15 +6290,35 @@ export default function LittleDayApp() {
     setSitterEditor(null);
     showToast("Removed");
   };
+  const openAddEmergencyContact = () => setEmergencyEditor({ id: null, name: "", relationship: "", phone: "", notes: "", isNew: true });
+  const openEditEmergencyContact = (c) => setEmergencyEditor({ ...c, isNew: false });
+  const saveEmergencyContact = (d) => {
+    if (d.isNew) {
+      setEmergencyContacts((cur) => [...cur, { id: `ec${Date.now()}`, name: d.name || "Contact", relationship: d.relationship, phone: d.phone, notes: d.notes }]);
+      showToast("Emergency contact added");
+    } else {
+      setEmergencyContacts((cur) => cur.map((c) => (c.id === d.id ? { ...c, name: d.name || c.name, relationship: d.relationship, phone: d.phone, notes: d.notes } : c)));
+      showToast("Saved");
+    }
+    setEmergencyEditor(null);
+  };
+  const deleteEmergencyContact = (id) => {
+    setEmergencyContacts((cur) => cur.filter((c) => c.id !== id));
+    setEmergencyEditor(null);
+    showToast("Removed");
+  };
   const shareWithSitter = async (sitter) => {
     const lines = itinerary.length
       ? itinerary.map((i) => `${formatHour(i.time)} — ${i.place.name} (${i.place.address || i.place.town})`).join("\n")
       : "";
     const napLine = napHour ? `Nap time: around ${formatHour(napHour)}\n` : "";
     const homeLine = homeBy ? `Home by: ${formatHour(homeBy)}\n` : "";
+    const ecLine = emergencyContacts && emergencyContacts.length
+      ? `Emergency: ${emergencyContacts.map((c) => `${c.name}${c.relationship ? ` (${c.relationship})` : ""}${c.phone ? ` ${c.phone}` : ""}`).join(", ")}\n`
+      : "";
     const text = itinerary.length
-      ? `Today's Little Day plan for the kids:\n${lines}\n${napLine}${homeLine}Thanks ${sitter.name}!`
-      : `Hi ${sitter.name}! Sharing our Little Day app info — today's plan will follow.`;
+      ? `Today's Little Day Memories plan for the kids:\n${lines}\n${napLine}${homeLine}${ecLine}Thanks ${sitter.name}!`
+      : `Hi ${sitter.name}! Sharing our Little Day Memories app info — today's plan will follow.`;
     try {
       if (navigator.share) { await navigator.share({ title: "Today's plan", text }); return; }
     } catch (e) {}
@@ -6171,6 +6392,7 @@ export default function LittleDayApp() {
         onDecline={declinePlayDate}
         onUseDay={useSharedDay}
         onAddFriend={addFriend}
+        onSelectFriend={openFriendDetail}
         setSelectedPlace={handleSelectPlace}
         session={session}
         onSearchProfiles={searchRealProfiles}
@@ -6178,8 +6400,19 @@ export default function LittleDayApp() {
         onOpenChat={(gid) => setChatGroupId(gid)}
       />
     );
+  } else if (screen === "friendDetail") {
+    content = (
+      <FriendDetailScreen
+        friend={selectedFriend}
+        kids={friendKids}
+        onBack={() => goTo("friends")}
+        onPlanDay={() => { showToast("Build a day, then invite " + selectedFriend.name.split(" ")[0] + " to join!"); goTo("home"); }}
+        onRemoveFriend={removeFriend}
+      />
+    );
   } else if (screen === "profile") {
     content = <ProfileScreen onOpenPremium={() => goTo("premium")} onOpenPassport={() => goTo("passport")} stats={stats} session={session} onOpenAuth={() => setAuthOpen(true)} onSignOut={signOut} earnedBadges={earnedBadges} kids={kids} activeKidId={activeKidId} onSetActive={setActiveKidId} onAddKid={openAddKid} onEditKid={openEditKid} sitters={sitters} onAddSitter={openAddSitter} onEditSitter={openEditSitter} onShareWithSitter={shareWithSitter}
+      emergencyContacts={emergencyContacts} onAddEmergencyContact={openAddEmergencyContact} onEditEmergencyContact={openEditEmergencyContact}
       profileNames={profileNames} onSaveProfileNames={saveProfileNames}
       myCaregivers={myCaregivers} caregiverLinks={caregiverLinks} caregiverInvite={caregiverInvite}
       onCreateCaregiverInvite={createCaregiverInvite} onRemoveCaregiverAccess={removeCaregiverAccess}
@@ -6279,7 +6512,7 @@ export default function LittleDayApp() {
         </div>
         {showNav && (
           <div style={{ position: "sticky", bottom: 0, zIndex: 20, flexShrink: 0 }}>
-            <BottomNav screen={screen} setScreen={goTo} />
+            <BottomNav screen={screen} setScreen={goTo} friendsBadge={friendsBadge} />
           </div>
         )}
         <Toast message={toast} />
@@ -6305,6 +6538,9 @@ export default function LittleDayApp() {
         )}
         {sitterEditor && (
           <SitterEditorSheet key={sitterEditor.id || "snew"} data={sitterEditor} onSave={saveSitter} onDelete={deleteSitter} onClose={() => setSitterEditor(null)} />
+        )}
+        {emergencyEditor && (
+          <EmergencyContactEditorSheet key={emergencyEditor.id || "enew"} data={emergencyEditor} onSave={saveEmergencyContact} onDelete={deleteEmergencyContact} onClose={() => setEmergencyEditor(null)} />
         )}
         <AuthSheet open={authOpen} onClose={() => setAuthOpen(false)} session={session} />
         <GooglePlaceSheet place={googlePlace} onClose={() => setGooglePlace(null)} />
