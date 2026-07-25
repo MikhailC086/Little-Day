@@ -5776,8 +5776,19 @@ export default function LittleDayApp() {
   useEffect(() => {
     if (!backendReady() || !session || !effectiveFamilyId) { cloudLoaded.current = false; return; }
     cloudLoaded.current = false;
+    let cancelled = false;
+    const fetchOnce = () => supabase.from("user_data").select("*").eq("user_id", effectiveFamilyId).maybeSingle();
     (async () => {
-      const { data } = await supabase.from("user_data").select("*").eq("user_id", effectiveFamilyId).maybeSingle();
+      let { data } = await fetchOnce();
+      // Right after sign-in there's a brief window where the auth token hasn't fully
+      // propagated yet, which can make this query come back empty even though a real
+      // row exists. If we get nothing back, wait a beat and try again before giving up.
+      if (!data) {
+        await new Promise((r) => setTimeout(r, 1500));
+        if (cancelled) return;
+        ({ data } = await fetchOnce());
+      }
+      if (cancelled) return;
       const data2 = data || {};
       const hasNonEmpty = (v) => Array.isArray(v) ? v.length > 0 : v && Object.keys(v).length > 0;
       const wasSynced = (v) => v !== null && v !== undefined; // trust the cloud even when it's genuinely empty
@@ -5790,6 +5801,7 @@ export default function LittleDayApp() {
       if (wasSynced(data2.completed_days)) setCompletedDays(data2.completed_days);
       cloudLoaded.current = true;
     })();
+    return () => { cancelled = true; };
   }, [session, effectiveFamilyId]);
   useEffect(() => {
     if (!backendReady() || !session || !effectiveFamilyId || !cloudLoaded.current) return;
@@ -5909,8 +5921,17 @@ export default function LittleDayApp() {
   const [profileNames, setProfileNames] = useState({ firstName: "", lastName: "", handle: "" });
   useEffect(() => {
     if (!backendReady() || !session) return;
-    supabase.from("profiles").select("first_name, last_name, handle").eq("id", session.user.id).maybeSingle()
-      .then(({ data }) => { if (data) setProfileNames({ firstName: data.first_name || "", lastName: data.last_name || "", handle: data.handle || "" }); });
+    let cancelled = false;
+    (async () => {
+      let { data } = await supabase.from("profiles").select("first_name, last_name, handle").eq("id", session.user.id).maybeSingle();
+      if (!data) {
+        await new Promise((r) => setTimeout(r, 1500));
+        if (cancelled) return;
+        ({ data } = await supabase.from("profiles").select("first_name, last_name, handle").eq("id", session.user.id).maybeSingle());
+      }
+      if (!cancelled && data) setProfileNames({ firstName: data.first_name || "", lastName: data.last_name || "", handle: data.handle || "" });
+    })();
+    return () => { cancelled = true; };
   }, [session]);
   const saveProfileNames = async (next) => {
     if (!backendReady() || !session) return { ok: false, message: "Sign in first to set your name" };
@@ -5937,7 +5958,11 @@ export default function LittleDayApp() {
   const loadRealFriends = async () => {
     if (!backendReady() || !session) return;
     const uid = session.user.id;
-    const { data: rows } = await supabase.from("friendships").select("a,b").or(`a.eq.${uid},b.eq.${uid}`);
+    let { data: rows } = await supabase.from("friendships").select("a,b").or(`a.eq.${uid},b.eq.${uid}`);
+    if (!rows || !rows.length) {
+      await new Promise((r) => setTimeout(r, 1500));
+      ({ data: rows } = await supabase.from("friendships").select("a,b").or(`a.eq.${uid},b.eq.${uid}`));
+    }
     const otherIds = (rows || []).map((r) => (r.a === uid ? r.b : r.a));
     if (!otherIds.length) { setFriends((cur) => cur.filter((f) => !f.real)); return; }
     const { data: profiles } = await supabase.rpc("get_profiles_by_ids", { ids: otherIds });
