@@ -3784,6 +3784,7 @@ function ProfileScreen({ onOpenPremium, onOpenPassport, stats, session, onOpenAu
   emergencyContacts, onAddEmergencyContact, onEditEmergencyContact,
   profileNames, onSaveProfileNames, myCaregivers, caregiverLinks, caregiverInvite, onCreateCaregiverInvite, onRemoveCaregiverAccess, activeFamilyId, onSwitchFamily,
   favorites, savedDays, onViewSaved, forceEditNameToken,
+  appMode, onSetMode,
 }) {
   const activeKid = kids.find((k) => k.id === activeKidId) || kids[0] || null;
   const [nameForm, setNameForm] = useState(profileNames || { firstName: "", lastName: "", handle: "" });
@@ -3796,6 +3797,7 @@ function ProfileScreen({ onOpenPremium, onOpenPassport, stats, session, onOpenAu
   return (
     <div className="pb-4">
       <TopBar title="My Profile" />
+      <ModeSwitcher mode={appMode} onSetMode={onSetMode} />
       <div className="px-5">
         <button
           onClick={onViewSaved}
@@ -4668,6 +4670,8 @@ function FriendsScreen({ onOpenInvite,
   onSearchProfiles,
   onAddRealFriend,
   onOpenChat,
+  appMode,
+  onSetMode,
 }) {
   const [newName, setNewName] = useState("");
   const [phoneInput, setPhoneInput] = useState("");
@@ -4701,6 +4705,7 @@ function FriendsScreen({ onOpenInvite,
   return (
     <div className="pb-4">
       <TopBar title="Friends & play dates" />
+      <ModeSwitcher mode={appMode} onSetMode={onSetMode} />
 
       <div className="px-5 mb-5">
         <p className="text-[13px] font-semibold text-[#1B2A4A] mb-2">💬 Chats about your days</p>
@@ -5733,18 +5738,48 @@ const SAFETY_RESOURCES = [
   },
 ];
 
-function SafetyScreen({ onBack }) {
+const ADULT_SAFETY_RESOURCES = [
+  {
+    group: "Getting home safely", emoji: "🚗", intro: "Plan your ride home before you go out — it's the single biggest thing that keeps a night out safe.",
+    items: [
+      { name: "Uber", town: "Westchester & NYC area", detail: "On-demand rides, available throughout Westchester, CT and NYC", phone: "", website: "uber.com", note: "Book in the app" },
+      { name: "Lyft", town: "Westchester & NYC area", detail: "On-demand rides, similar coverage to Uber", phone: "", website: "lyft.com", note: "Book in the app" },
+      { name: "Designate a driver before you go", town: "", detail: "The simplest, free option — pick who's not drinking before the night starts, not after.", phone: "", note: "Plan ahead" },
+    ],
+  },
+  {
+    group: "Know before you go", emoji: "🪪", intro: "Good to double check before heading to a bar, brewery, or tasting room.",
+    items: [
+      { name: "Bring a valid ID", town: "", detail: "New York's legal drinking age is 21 — most venues will ask, even if you're clearly over it.", phone: "", note: "21+" },
+      { name: "NY legal BAC limit is 0.08%", town: "", detail: "Above this is considered driving while intoxicated (DWI) under New York law.", phone: "", website: "ny.gov", note: "Know the limit" },
+      { name: "Check reservation policies", town: "", detail: "Several of the spots in \"For myself\" mode (like Muse Paintbar) require booking a specific time slot in advance — walk-ins aren't guaranteed.", phone: "", note: "Book ahead" },
+    ],
+  },
+  {
+    group: "Support resources", emoji: "💬", intro: "Free, confidential help if a night out (or a pattern around drinking) becomes a bigger concern.",
+    items: [
+      { name: "SAMHSA National Helpline", town: "Nationwide, 24/7", detail: "Free, confidential support for substance use or mental health concerns — for yourself or someone you care about.", phone: "1-800-662-4357", note: "Free · 24/7" },
+    ],
+  },
+];
+
+function SafetyScreen({ onBack, appMode, onSetMode }) {
+  const isAdult = appMode === "adult";
+  const resources = isAdult ? ADULT_SAFETY_RESOURCES : SAFETY_RESOURCES;
   return (
     <div className="pb-8">
       <TopBar title="Safety & Prep" onBack={onBack} />
+      <ModeSwitcher mode={appMode} onSetMode={onSetMode} />
       <div className="px-5 -mt-1 mb-2">
-        <span className="inline-flex items-center gap-1.5 text-[11.5px] font-semibold px-2.5 py-1 rounded-full" style={{ backgroundColor: "#E4F4E9", color: "#2E8B57" }}>
+        <span className="inline-flex items-center gap-1.5 text-[11.5px] font-semibold px-2.5 py-1 rounded-full" style={{ backgroundColor: isAdult ? "#F3ECF7" : "#E4F4E9", color: isAdult ? "#6B4E8C" : "#2E8B57" }}>
           📍 Westchester County · more regions coming
         </span>
       </div>
-      <p className="px-5 mb-4 text-[13px] text-[#8A8474]">Real local resources to keep little ones safe — car seat checks, CPR classes, and safety programs.</p>
+      <p className="px-5 mb-4 text-[13px] text-[#8A8474]">
+        {isAdult ? "Getting home safely, ID & legal basics, and support resources for a night out." : "Real local resources to keep little ones safe — car seat checks, CPR classes, and safety programs."}
+      </p>
       <div className="px-5 flex flex-col gap-6">
-        {SAFETY_RESOURCES.map((g) => (
+        {resources.map((g) => (
           <div key={g.group}>
             <div className="flex items-center gap-2 mb-1">
               <span className="text-[18px]">{g.emoji}</span>
@@ -5757,7 +5792,7 @@ function SafetyScreen({ onBack }) {
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1 min-w-0">
                       <p className="text-[14px] font-semibold text-[#1B2A4A]">{it.name}</p>
-                      <p className="text-[12px] text-[#8A8474]">{it.town} · {it.detail}</p>
+                      <p className="text-[12px] text-[#8A8474]">{it.town ? `${it.town} · ` : ""}{it.detail}</p>
                     </div>
                     {it.phone && (
                       <a href={`tel:${it.phone.replace(/[^0-9+]/g, "")}`} className="w-9 h-9 rounded-full flex items-center justify-center shrink-0" style={{ backgroundColor: "#E4F4E9" }}>
@@ -6879,6 +6914,7 @@ export default function LittleDayApp() {
   } else if (screen === "friends") {
     content = (
       <FriendsScreen
+        appMode={appMode} onSetMode={setAppMode}
         onOpenInvite={() => setInviteOpen(true)}
         friends={friends}
         sharedDays={sharedDays}
@@ -6914,11 +6950,12 @@ export default function LittleDayApp() {
       activeFamilyId={activeFamilyId} onSwitchFamily={switchFamily}
       favorites={favorites} savedDays={savedDays} onViewSaved={() => goTo("favorites")}
       forceEditNameToken={forceEditNameToken}
+      appMode={appMode} onSetMode={setAppMode}
     />;
   } else if (screen === "travelSearch") {
     content = <TravelSearchScreen onBack={() => goTo("map")} onOpenGooglePlace={(p) => setGooglePlace(p)} />;
   } else if (screen === "safety") {
-    content = <SafetyScreen />;
+    content = <SafetyScreen appMode={appMode} onSetMode={setAppMode} />;
   } else if (screen === "community") {
     content = <CommunityScreen setSelectedPlace={handleSelectPlace} />;
   } else if (screen === "activities") {
