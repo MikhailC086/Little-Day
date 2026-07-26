@@ -2554,18 +2554,18 @@ function LittleDayLockup({ sunSize = 44, wordSize = 24, tagline = false }) {
   );
 }
 
-function TopBar({ title, onBack, right, hideHome }) {
+function TopBar({ title, onBack, right, hideHome, dark }) {
   const { goHome } = useContext(NavContext);
   return (
     <div className="flex items-center gap-3 px-5 pt-6 pb-3">
       {onBack && (
-        <button onClick={onBack} className="p-1 -ml-1 text-[#1B2A4A]">
+        <button onClick={onBack} className="p-1 -ml-1" style={{ color: dark ? "#F5F3FF" : "#1B2A4A" }}>
           <ChevronLeft size={24} />
         </button>
       )}
       <h1
-        className="text-[19px] font-semibold text-[#1B2A4A] flex-1"
-        style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+        className="text-[19px] font-semibold flex-1"
+        style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", color: dark ? "#F5F3FF" : "#1B2A4A" }}
       >
         {title}
       </h1>
@@ -2575,10 +2575,10 @@ function TopBar({ title, onBack, right, hideHome }) {
           onClick={goHome}
           title="Back to home"
           className="flex items-center gap-1 shrink-0 px-2.5 py-1.5 rounded-full"
-          style={{ backgroundColor: "#FFF3E6" }}
+          style={{ backgroundColor: dark ? "rgba(176,138,226,0.15)" : "#FFF3E6" }}
         >
           <LittleDaySun size={16} />
-          <span className="text-[12px] font-semibold" style={{ color: "#B08A5A" }}>Home</span>
+          <span className="text-[12px] font-semibold" style={{ color: dark ? "#B08AE2" : "#B08A5A" }}>Home</span>
         </button>
       )}
     </div>
@@ -2930,21 +2930,21 @@ function AdultPlaceCard({ place, onSelect, favorited, onToggleFavorite }) {
   return (
     <div
       onClick={() => onSelect(place)}
-      className="flex gap-3 p-3 rounded-2xl bg-white border cursor-pointer active:scale-[0.99] transition-transform"
-      style={{ borderColor: "#EFEAE0" }}
+      className="flex gap-3 p-3 rounded-2xl border cursor-pointer active:scale-[0.99] transition-transform"
+      style={{ borderColor: "rgba(255,255,255,0.1)", backgroundColor: "#292440" }}
     >
-      <div className="w-16 h-16 rounded-xl flex items-center justify-center text-3xl shrink-0" style={{ backgroundColor: "#F3ECF7" }}>
+      <div className="w-16 h-16 rounded-xl flex items-center justify-center text-3xl shrink-0" style={{ backgroundColor: "rgba(176,138,226,0.15)" }}>
         {place.photo}
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-start justify-between gap-2">
-          <p className="font-semibold text-[15px] text-[#1B2A4A] truncate">{place.name}</p>
+          <p className="font-semibold text-[15px] truncate" style={{ color: "#F5F3FF" }}>{place.name}</p>
           <button onClick={(e) => { e.stopPropagation(); onToggleFavorite(place.id); }} className="shrink-0">
-            <Heart size={18} color={favorited ? "#8B5CF6" : "#C9C2B2"} fill={favorited ? "#8B5CF6" : "none"} />
+            <Heart size={18} color={favorited ? "#B08AE2" : "#5C5470"} fill={favorited ? "#B08AE2" : "none"} />
           </button>
         </div>
-        <p className="text-[13px] text-[#8A8474]">{place.category} · {place.town} · {place.distanceMi} mi</p>
-        <p className="text-[12px] mt-0.5" style={{ color: "#8B5CF6" }}>{place.vibe}{place.price ? ` · ${place.price}` : ""}</p>
+        <p className="text-[13px]" style={{ color: "#8A81A3" }}>{place.category} · {place.town} · {place.distanceMi} mi</p>
+        <p className="text-[12px] mt-0.5" style={{ color: "#B08AE2" }}>{place.vibe}{place.price ? ` · ${place.price}` : ""}</p>
       </div>
     </div>
   );
@@ -3018,45 +3018,70 @@ function AdultHomeContent({ favorites, toggleFavorite, setSelectedPlace, setScre
     if (q && !(p.name.toLowerCase().includes(q) || p.category.toLowerCase().includes(q) || p.town.toLowerCase().includes(q))) return false;
     return true;
   });
+  const dateStr = new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
+  const upcomingAdultEvents = EVENTS
+    .filter((e) => e.mode === "both" || e.mode === "adult")
+    .filter((e) => new Date(e.date + "T00:00:00") >= new Date(new Date().setHours(0, 0, 0, 0)))
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .slice(0, 4);
+
+  const Kicker = ({ children }) => (
+    <p className="text-[10.5px] font-bold tracking-[0.16em] uppercase mb-2 mt-6" style={{ color: "#B08AE2" }}>{children}</p>
+  );
+
   return (
-    <div className="pb-4">
-      <div className="px-5 pt-2 pb-3">
-        <p className="text-[13px] font-semibold tracking-wide" style={{ color: "#8B5CF6" }}>FOR MYSELF</p>
-        <h1 className="text-[26px] leading-tight font-bold text-[#1B2A4A]" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-          A night off, just for you
+    <div className="pb-4" style={{ backgroundColor: "#1E1A2E", minHeight: "100%" }}>
+      {/* ===== Masthead ===== */}
+      <div className="px-5 pt-5 pb-4 text-center border-b" style={{ borderColor: "rgba(255,255,255,0.12)" }}>
+        <div className="text-[26px] mb-1">🌙</div>
+        <p className="text-[10.5px] font-bold tracking-[0.16em] uppercase" style={{ color: "#B08AE2" }}>
+          {dateStr} · Tonight's Issue
+        </p>
+        <h1 style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 25, color: "#F5F3FF", marginTop: 4, lineHeight: 1.15 }}>
+          What's the plan tonight?
         </h1>
       </div>
-      <div className="px-5 mb-4">
-        <div className="rounded-2xl p-3.5" style={{ backgroundColor: "#F3ECF7" }}>
-          <p className="text-[12.5px] leading-snug" style={{ color: "#6B4E8C" }}>
-            A small, separate starter list of date-night & adult spots — kept apart from your kids' favorites and saved days on purpose.
+
+      {/* ===== Tonight's Notes ===== */}
+      <div className="px-5">
+        <Kicker>Tonight's Notes</Kicker>
+        <div className="rounded-2xl p-3.5" style={{ backgroundColor: "rgba(176,138,226,0.12)", border: "1px solid rgba(176,138,226,0.25)" }}>
+          <p className="text-[12.5px] leading-snug" style={{ color: "#D8CCEF" }}>
+            A small, separate list of date-night & adult spots — kept apart from your kids' favorites and saved days on purpose.
           </p>
         </div>
       </div>
+
+      {/* ===== Ready? ===== */}
       {setScreen && (
-        <div className="px-5 mb-4">
+        <div className="px-5">
+          <Kicker>Ready?</Kicker>
           <DayNightToggle appMode={appMode} onSetMode={onSetMode} />
           <button
             onClick={() => setScreen("adultPlanner")}
             className="w-full rounded-2xl py-4 flex items-center justify-center gap-2 text-white font-semibold text-[16px] shadow-sm"
-            style={{ background: "#8B5CF6" }}
+            style={{ background: "linear-gradient(135deg,#5B3A8C,#B08AE2)" }}
           >
             <Sparkles size={19} />
             Plan My Night
           </button>
         </div>
       )}
-      <div className="px-5 mb-3">
+
+      {/* ===== Browse ===== */}
+      <div className="px-5">
+        <Kicker>Browse</Kicker>
         <div className="flex items-center gap-2">
-          <div className="flex-1 flex items-center gap-2 rounded-2xl px-3.5 py-2.5 border bg-white" style={{ borderColor: "#E7E1D4" }}>
-            <Search size={17} color="#9C9484" />
+          <div className="flex-1 flex items-center gap-2 rounded-2xl px-3.5 py-2.5 border" style={{ borderColor: "rgba(255,255,255,0.15)", backgroundColor: "#292440" }}>
+            <Search size={17} color="#8A81A3" />
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search restaurants, bars, concerts…"
-              className="flex-1 text-[14px] outline-none bg-transparent text-[#1B2A4A]"
+              className="flex-1 text-[14px] outline-none bg-transparent"
+              style={{ color: "#F5F3FF" }}
             />
-            {query && <button onClick={() => setQuery("")}><X size={16} color="#9C9484" /></button>}
+            {query && <button onClick={() => setQuery("")}><X size={16} color="#8A81A3" /></button>}
           </div>
           <SimpleFilterDropdown label="Category" activeKey={categoryFilter} options={categoryOptions} onSelect={setCategoryFilter} />
         </div>
@@ -3065,11 +3090,35 @@ function AdultHomeContent({ favorites, toggleFavorite, setSelectedPlace, setScre
           <SimpleFilterDropdown label="City" icon={MapPin} activeKey={cityFilter} options={cityOptions} onSelect={setCityFilter} />
         </div>
       </div>
-      <div className="px-5 flex flex-col gap-2.5">
-        {list.map((p) => (
-          <AdultPlaceCard key={p.id} place={p} onSelect={setSelectedPlace} favorited={favorites.includes(p.id)} onToggleFavorite={toggleFavorite} />
-        ))}
-        {list.length === 0 && <p className="text-[13px] text-[#8A8474] text-center py-6">No matches yet for this filter — try widening it, or use "Search any area live" from Categories for real-time results anywhere.</p>}
+
+      {/* ===== Upcoming Events ===== */}
+      {upcomingAdultEvents.length > 0 && (
+        <>
+          <div className="px-5">
+            <Kicker>Upcoming Events</Kicker>
+          </div>
+          <div className="flex items-start gap-3 overflow-x-auto px-5 pb-1" style={{ scrollbarWidth: "none" }}>
+            {upcomingAdultEvents.map((ev) => (
+              <div key={ev.id} className="shrink-0 rounded-2xl p-3.5" style={{ width: 200, backgroundColor: "#292440", border: "1px solid rgba(255,255,255,0.1)" }}>
+                <div className="text-[24px]">{ev.emoji}</div>
+                <p className="font-semibold text-[13.5px] mt-1" style={{ color: "#F5F3FF" }}>{ev.name}</p>
+                <p className="text-[11px] mt-1" style={{ color: "#B08AE2" }}>{formatEventDate(ev.date)}</p>
+                <p className="text-[11px]" style={{ color: "#8A81A3" }}>{ev.town}</p>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+
+      {/* ===== Tonight's Picks ===== */}
+      <div className="px-5">
+        <Kicker>Tonight's Picks</Kicker>
+        <div className="flex flex-col gap-2.5">
+          {list.map((p) => (
+            <AdultPlaceCard key={p.id} place={p} onSelect={setSelectedPlace} favorited={favorites.includes(p.id)} onToggleFavorite={toggleFavorite} />
+          ))}
+          {list.length === 0 && <p className="text-[13px] text-center py-6" style={{ color: "#8A81A3" }}>No matches yet for this filter — try widening it, or use "Search any area live" from Categories for real-time results anywhere.</p>}
+        </div>
       </div>
     </div>
   );
@@ -3084,59 +3133,59 @@ function AdultPlannerScreen({ onBack, onSelectAdultPlace, appMode, onSetMode }) 
   const generate = () => setPlan(buildNightPlan({ stops, startHour, vibe }));
 
   return (
-    <div className="min-h-screen pb-8" style={{ backgroundColor: "#FFFBF5" }}>
-      <TopBar title="Plan My Night" onBack={onBack} />
+    <div className="min-h-screen pb-8" style={{ backgroundColor: "#1E1A2E" }}>
+      <TopBar title="Plan My Night" onBack={onBack} dark />
       <ModeSwitcher mode={appMode} onSetMode={onSetMode} />
       <div className="px-5 pt-2">
         {!plan ? (
           <>
-            <p className="text-[13px] font-semibold text-[#1B2A4A] mb-2">How many stops?</p>
+            <p className="text-[13px] font-semibold mb-2" style={{ color: "#F5F3FF" }}>How many stops?</p>
             <div className="flex gap-2 mb-5">
               {[1, 2, 3].map((n) => (
                 <button key={n} onClick={() => setStops(n)} className="flex-1 rounded-2xl py-3 border font-semibold text-[14px]"
-                  style={{ borderColor: stops === n ? "#8B5CF6" : "#E7E1D4", backgroundColor: stops === n ? "#F3ECF7" : "#fff", color: stops === n ? "#8B5CF6" : "#5C5648" }}>
+                  style={{ borderColor: stops === n ? "#B08AE2" : "rgba(255,255,255,0.15)", backgroundColor: stops === n ? "rgba(176,138,226,0.15)" : "#292440", color: stops === n ? "#B08AE2" : "#D8CCEF" }}>
                   {n}
                 </button>
               ))}
             </div>
 
-            <p className="text-[13px] font-semibold text-[#1B2A4A] mb-2">Start time</p>
+            <p className="text-[13px] font-semibold mb-2" style={{ color: "#F5F3FF" }}>Start time</p>
             <div className="flex gap-2 mb-5 overflow-x-auto">
               {[17, 18, 19, 20, 21].map((h) => (
                 <button key={h} onClick={() => setStartHour(h)} className="shrink-0 rounded-full px-4 py-2 border font-semibold text-[13px]"
-                  style={{ borderColor: startHour === h ? "#8B5CF6" : "#E7E1D4", backgroundColor: startHour === h ? "#F3ECF7" : "#fff", color: startHour === h ? "#8B5CF6" : "#5C5648" }}>
+                  style={{ borderColor: startHour === h ? "#B08AE2" : "rgba(255,255,255,0.15)", backgroundColor: startHour === h ? "rgba(176,138,226,0.15)" : "#292440", color: startHour === h ? "#B08AE2" : "#D8CCEF" }}>
                   {formatHour(h)}
                 </button>
               ))}
             </div>
 
-            <p className="text-[13px] font-semibold text-[#1B2A4A] mb-2">Vibe</p>
+            <p className="text-[13px] font-semibold mb-2" style={{ color: "#F5F3FF" }}>Vibe</p>
             <div className="flex gap-2 mb-6 flex-wrap">
               {["any", "Romantic", "Lively"].map((v) => (
                 <button key={v} onClick={() => setVibe(v)} className="rounded-full px-4 py-2 border font-semibold text-[13px]"
-                  style={{ borderColor: vibe === v ? "#8B5CF6" : "#E7E1D4", backgroundColor: vibe === v ? "#F3ECF7" : "#fff", color: vibe === v ? "#8B5CF6" : "#5C5648" }}>
+                  style={{ borderColor: vibe === v ? "#B08AE2" : "rgba(255,255,255,0.15)", backgroundColor: vibe === v ? "rgba(176,138,226,0.15)" : "#292440", color: vibe === v ? "#B08AE2" : "#D8CCEF" }}>
                   {v === "any" ? "Any" : v}
                 </button>
               ))}
             </div>
 
-            <button onClick={generate} className="w-full rounded-2xl py-4 flex items-center justify-center gap-2 text-white font-semibold text-[16px] shadow-sm" style={{ background: "#8B5CF6" }}>
+            <button onClick={generate} className="w-full rounded-2xl py-4 flex items-center justify-center gap-2 text-white font-semibold text-[16px] shadow-sm" style={{ background: "linear-gradient(135deg,#5B3A8C,#B08AE2)" }}>
               <Sparkles size={19} />
               Build my night
             </button>
           </>
         ) : (
           <>
-            <p className="text-[13px] text-[#8A8474] mb-4">Starting around {formatHour(startHour)} — tap a stop for details.</p>
+            <p className="text-[13px] mb-4" style={{ color: "#8A81A3" }}>Starting around {formatHour(startHour)} — tap a stop for details.</p>
             <div className="flex flex-col gap-3">
               {plan.map((stop, i) => (
                 <div key={stop.place.id}>
-                  <p className="text-[12px] font-semibold mb-1.5" style={{ color: "#8B5CF6" }}>{formatHour(stop.time)}</p>
+                  <p className="text-[12px] font-semibold mb-1.5" style={{ color: "#B08AE2" }}>{formatHour(stop.time)}</p>
                   <AdultPlaceCard place={stop.place} onSelect={onSelectAdultPlace} favorited={false} onToggleFavorite={() => {}} />
                 </div>
               ))}
             </div>
-            <button onClick={() => setPlan(null)} className="w-full rounded-2xl py-3.5 mt-6 font-semibold text-[14px] border" style={{ borderColor: "#8B5CF6", color: "#8B5CF6" }}>
+            <button onClick={() => setPlan(null)} className="w-full rounded-2xl py-3.5 mt-6 font-semibold text-[14px] border" style={{ borderColor: "#B08AE2", color: "#B08AE2" }}>
               Start over
             </button>
           </>
@@ -3152,29 +3201,29 @@ function AdultPlaceSheet({ place, onClose, favorited, onToggleFavorite }) {
   return (
     <div className="absolute inset-0 z-40 flex items-end" onClick={onClose}>
       <div className="absolute inset-0 bg-black/30" />
-      <div className="relative w-full rounded-t-3xl bg-white p-6 pb-8" onClick={(e) => e.stopPropagation()} style={{ animation: "sheetUp 0.22s ease-out" }}>
-        <div className="w-10 h-1 rounded-full bg-[#E7E1D4] mx-auto mb-4" />
+      <div className="relative w-full rounded-t-3xl p-6 pb-8" onClick={(e) => e.stopPropagation()} style={{ animation: "sheetUp 0.22s ease-out", backgroundColor: "#292440" }}>
+        <div className="w-10 h-1 rounded-full mx-auto mb-4" style={{ backgroundColor: "rgba(255,255,255,0.2)" }} />
         <div className="flex items-start gap-3">
-          <div className="w-12 h-12 rounded-xl flex items-center justify-center text-[24px] shrink-0" style={{ backgroundColor: "#F3ECF7" }}>{place.photo}</div>
+          <div className="w-12 h-12 rounded-xl flex items-center justify-center text-[24px] shrink-0" style={{ backgroundColor: "rgba(176,138,226,0.15)" }}>{place.photo}</div>
           <div className="flex-1 min-w-0">
-            <p className="text-[17px] font-bold text-[#1B2A4A]" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>{place.name}</p>
-            <p className="text-[13px] text-[#8A8474]">{place.category} · {place.town}</p>
+            <p className="text-[17px] font-bold" style={{ fontFamily: "'Space Grotesk', sans-serif", color: "#F5F3FF" }}>{place.name}</p>
+            <p className="text-[13px]" style={{ color: "#8A81A3" }}>{place.category} · {place.town}</p>
           </div>
           <button onClick={() => onToggleFavorite(place.id)} className="shrink-0">
-            <Heart size={20} color={favorited ? "#8B5CF6" : "#C9C2B2"} fill={favorited ? "#8B5CF6" : "none"} />
+            <Heart size={20} color={favorited ? "#B08AE2" : "#5C5470"} fill={favorited ? "#B08AE2" : "none"} />
           </button>
         </div>
-        <p className="text-[13.5px] text-[#5C5648] mt-3 leading-relaxed">{place.blurb}</p>
+        <p className="text-[13.5px] mt-3 leading-relaxed" style={{ color: "#D8CCEF" }}>{place.blurb}</p>
         <div className="flex gap-2 mt-3">
-          <span className="text-[12px] font-semibold px-2.5 py-1 rounded-full" style={{ backgroundColor: "#F3ECF7", color: "#6B4E8C" }}>{place.vibe}</span>
-          {place.price && <span className="text-[12px] font-semibold px-2.5 py-1 rounded-full" style={{ backgroundColor: "#F3ECF7", color: "#6B4E8C" }}>{place.price}</span>}
+          <span className="text-[12px] font-semibold px-2.5 py-1 rounded-full" style={{ backgroundColor: "rgba(176,138,226,0.15)", color: "#B08AE2" }}>{place.vibe}</span>
+          {place.price && <span className="text-[12px] font-semibold px-2.5 py-1 rounded-full" style={{ backgroundColor: "rgba(176,138,226,0.15)", color: "#B08AE2" }}>{place.price}</span>}
         </div>
-        <div className="rounded-2xl p-3.5 mt-4" style={{ backgroundColor: "#F7F4EC" }}>
-          <p className="text-[12.5px] text-[#8A8474]">{place.address}</p>
-          {place.reservations && <p className="text-[12.5px] text-[#8A8474] mt-1">📅 {place.reservations}</p>}
+        <div className="rounded-2xl p-3.5 mt-4" style={{ backgroundColor: "rgba(255,255,255,0.05)" }}>
+          <p className="text-[12.5px]" style={{ color: "#8A81A3" }}>{place.address}</p>
+          {place.reservations && <p className="text-[12.5px] mt-1" style={{ color: "#8A81A3" }}>📅 {place.reservations}</p>}
         </div>
         <a href={mapsUrl} target="_blank" rel="noopener noreferrer"
-          className="w-full rounded-2xl py-3.5 mt-4 flex items-center justify-center gap-2 text-white font-semibold text-[14px]" style={{ background: "#8B5CF6" }}>
+          className="w-full rounded-2xl py-3.5 mt-4 flex items-center justify-center gap-2 text-white font-semibold text-[14px]" style={{ background: "linear-gradient(135deg,#5B3A8C,#B08AE2)" }}>
           Open in Google Maps
         </a>
       </div>
@@ -3205,27 +3254,48 @@ function HomeScreen({ setScreen, favorites, toggleFavorite, setSelectedPlace, lo
       ).slice(0, 8)
     : [];
   const { results: gResults, searching: gSearching } = useGoogleSearch(searchQuery, homeResults.length);
+  const dateStr = new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
+
+  const Kicker = ({ children }) => (
+    <p className="text-[10.5px] font-bold tracking-[0.14em] uppercase mb-2 mt-6" style={{ color: "#C97A4A" }}>{children}</p>
+  );
+
   return (
-    <div className="pb-4">
+    <div className="pb-4" style={{ backgroundColor: "#FBF3E7" }}>
       <ModeSwitcher mode={appMode} onSetMode={onSetMode} />
-      <div className="px-5 pt-6 pb-2">
-        <div className="flex items-center gap-2 mb-4">
-          <LittleDaySun size={32} />
-          <LittleDayWordmark size={22} />
-          <button onClick={onHowTo} className="ml-auto flex items-center gap-1 text-[12px] font-medium px-2.5 py-1.5 rounded-full" style={{ backgroundColor: "#FFF3E6", color: "#B08A5A" }}>
-            <HelpCircle size={14} /> How it works
-          </button>
+
+      {/* ===== Masthead ===== */}
+      <div className="px-5 pt-5 pb-4 text-center border-b-2" style={{ borderColor: "#26221E" }}>
+        <div className="flex items-center justify-center gap-2 mb-1">
+          <LittleDaySun size={30} />
         </div>
+        <p className="text-[10.5px] font-bold tracking-[0.15em] uppercase" style={{ color: "#C97A4A" }}>
+          {dateStr} · Today's Issue
+        </p>
+        <h1 style={{ fontFamily: "'Fredoka', sans-serif", fontWeight: 700, fontSize: 26, color: "#1B2A4A", marginTop: 4, lineHeight: 1.15 }}>
+          What should we do today?
+        </h1>
+        <button onClick={onHowTo} className="mt-2.5 inline-flex items-center gap-1 text-[11.5px] font-semibold px-3 py-1.5 rounded-full" style={{ backgroundColor: "#FFF3E6", color: "#B08A5A" }}>
+          <HelpCircle size={13} /> How it works
+        </button>
+      </div>
+
+      {/* ===== Today's Notes ===== */}
+      <div className="px-5">
+        <Kicker>Today's Notes</Kicker>
         <div className="flex items-center gap-1.5 mb-1.5">
-          <Sun size={20} color="#F5B71F" />
-          <span className="text-[13px] font-medium" style={{ color: "#B08A5A" }}>
-            {WEATHER.tempF}° and sunny
-          </span>
+          <Sun size={18} color="#F5B71F" />
+          <span className="text-[13px] font-medium" style={{ color: "#5C5648" }}>{WEATHER.tempF}° and sunny</span>
         </div>
         <LocationBar location={location} onRequest={onRequestLocation} />
+        <HomeSmartBanners kids={kids} companionKidIds={companionKidIds} schoolDistrictId={schoolDistrictId} onSetSchoolDistrict={onSetSchoolDistrict} completedDays={completedDays} onOpenBuilder={onOpenBuilder} />
+      </div>
+
+      {/* ===== Planning for ===== */}
+      <div className="px-5">
+        <Kicker>Planning For</Kicker>
         {kids && kids.length > 0 && (
-          <div className="flex items-center gap-2 mt-3 overflow-x-auto">
-            <span className="text-[12px] text-[#8A8474] shrink-0">Planning for</span>
+          <div className="flex items-center gap-2 overflow-x-auto">
             {kids.map((k) => {
               const active = k.id === activeKidId;
               return (
@@ -3253,20 +3323,8 @@ function HomeScreen({ setScreen, favorites, toggleFavorite, setSelectedPlace, lo
             })}
           </div>
         )}
-        <HomeSmartBanners kids={kids} companionKidIds={companionKidIds} schoolDistrictId={schoolDistrictId} onSetSchoolDistrict={onSetSchoolDistrict} completedDays={completedDays} onOpenBuilder={onOpenBuilder} />
-        <p className="text-[13px] font-medium mt-3 mb-1" style={{ color: "#B08A5A" }}>
-          {new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}
-        </p>
-        <h1
-          className="text-[26px] leading-tight font-bold text-[#1B2A4A]"
-          style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
-        >
-          What should we do today?
-        </h1>
-      </div>
 
-      <div className="px-5 mt-1">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 mt-3">
           <div className="flex-1 flex items-center gap-2 rounded-2xl px-3.5 py-2.5 border bg-white" style={{ borderColor: "#E7E1D4" }}>
             <Search size={17} color="#9C9484" />
             <input
@@ -3322,7 +3380,9 @@ function HomeScreen({ setScreen, favorites, toggleFavorite, setSelectedPlace, lo
         )}
       </div>
 
-      <div className="px-5 mt-4">
+      {/* ===== Ready? ===== */}
+      <div className="px-5">
+        <Kicker>Ready?</Kicker>
         <DayNightToggle appMode={appMode} onSetMode={onSetMode} />
         <button
           onClick={() => setScreen("planner")}
@@ -3342,28 +3402,9 @@ function HomeScreen({ setScreen, favorites, toggleFavorite, setSelectedPlace, lo
         </button>
       </div>
 
-      <div className="px-5 mt-4">
-        <button onClick={() => setScreen("activities")} className="w-full rounded-2xl p-4 flex items-center gap-3 border text-left" style={{ borderColor: "#EFEAE0", backgroundColor: "#fff" }}>
-          <div className="w-11 h-11 rounded-xl flex items-center justify-center text-[22px]" style={{ backgroundColor: "#FFF3E6" }}>🤸</div>
-          <div className="flex-1">
-            <p className="font-semibold text-[14px] text-[#1B2A4A]">Classes & Activities</p>
-            <p className="text-[12px] text-[#8A8474]">Sports, dance, music, art & afterschool programs</p>
-          </div>
-          <ChevronRight size={18} color="#C9C2B2" />
-        </button>
-
-        <button onClick={() => setScreen("community")} className="w-full rounded-2xl p-4 flex items-center gap-3 border text-left mt-2.5" style={{ borderColor: "#EFEAE0", backgroundColor: "#fff" }}>
-          <div className="w-11 h-11 rounded-xl flex items-center justify-center text-[22px]" style={{ backgroundColor: "#FFF3E6" }}>🎪</div>
-          <div className="flex-1">
-            <p className="font-semibold text-[14px] text-[#1B2A4A]">Community Events</p>
-            <p className="text-[12px] text-[#8A8474]">Markets, story hours, festivals & family nights</p>
-          </div>
-          <ChevronRight size={18} color="#C9C2B2" />
-        </button>
-      </div>
-
-      <div className="px-5 mt-8 mb-1">
-        <h2 className="font-semibold text-[15px] text-[#1B2A4A]">Happening this week</h2>
+      {/* ===== This Week ===== */}
+      <div className="px-5">
+        <Kicker>This Week</Kicker>
       </div>
       <div className="flex items-start gap-3 overflow-x-auto px-5 pb-1" style={{ scrollbarWidth: "none" }}>
         {[...EVENTS_SEED]
@@ -3415,10 +3456,11 @@ function HomeScreen({ setScreen, favorites, toggleFavorite, setSelectedPlace, lo
         })}
       </div>
 
-      <div className="px-5 mt-8 flex items-center justify-between">
-        <h2 className="font-semibold text-[15px] text-[#1B2A4A]">Family spots near you</h2>
+      {/* ===== Nearby Favorites ===== */}
+      <div className="px-5">
+        <Kicker>Nearby Favorites</Kicker>
       </div>
-      <div className="px-5 mt-3 flex flex-col gap-2.5">
+      <div className="px-5 flex flex-col gap-2.5">
         {nearby.map((p) => (
           <PlaceCard
             key={p.id}
@@ -3430,6 +3472,27 @@ function HomeScreen({ setScreen, favorites, toggleFavorite, setSelectedPlace, lo
         ))}
       </div>
 
+      {/* ===== More to Explore ===== */}
+      <div className="px-5">
+        <Kicker>More to Explore</Kicker>
+        <button onClick={() => setScreen("activities")} className="w-full rounded-2xl p-4 flex items-center gap-3 border text-left" style={{ borderColor: "#EFEAE0", backgroundColor: "#fff" }}>
+          <div className="w-11 h-11 rounded-xl flex items-center justify-center text-[22px]" style={{ backgroundColor: "#FFF3E6" }}>🤸</div>
+          <div className="flex-1">
+            <p className="font-semibold text-[14px] text-[#1B2A4A]">Classes & Activities</p>
+            <p className="text-[12px] text-[#8A8474]">Sports, dance, music, art & afterschool programs</p>
+          </div>
+          <ChevronRight size={18} color="#C9C2B2" />
+        </button>
+
+        <button onClick={() => setScreen("community")} className="w-full rounded-2xl p-4 flex items-center gap-3 border text-left mt-2.5" style={{ borderColor: "#EFEAE0", backgroundColor: "#fff" }}>
+          <div className="w-11 h-11 rounded-xl flex items-center justify-center text-[22px]" style={{ backgroundColor: "#FFF3E6" }}>🎪</div>
+          <div className="flex-1">
+            <p className="font-semibold text-[14px] text-[#1B2A4A]">Community Events</p>
+            <p className="text-[12px] text-[#8A8474]">Markets, story hours, festivals & family nights</p>
+          </div>
+          <ChevronRight size={18} color="#C9C2B2" />
+        </button>
+      </div>
     </div>
   );
 }
@@ -4060,8 +4123,8 @@ function MapScreen({ setSelectedPlace, favorites, toggleFavorite, location, onRe
   const located = location.status === "located";
 
   return (
-    <div className="pb-4">
-      <TopBar title="Categories List" hideHome={false} />
+    <div className="pb-4" style={{ backgroundColor: isAdult ? "#1E1A2E" : "transparent", minHeight: "100%" }}>
+      <TopBar title="Categories List" hideHome={false} dark={isAdult} />
       <ModeSwitcher mode={appMode} onSetMode={onSetMode} />
       <div className="px-5 mb-3">
         <div className="flex items-center gap-2">
@@ -7470,15 +7533,15 @@ export default function LittleDayApp() {
     <div
       className="min-h-screen flex justify-center"
       style={{
-        backgroundColor: "#EFEAE0",
+        backgroundColor: appMode === "adult" ? "#1E1A2E" : "#EFEAE0",
         fontFamily: "'Inter', sans-serif",
-        "--accent": "#FF8C61",
-        "--cta": "linear-gradient(135deg,#FF8C61,#FFC857)",
-        "--bg": APP_BG,
+        "--accent": appMode === "adult" ? "#B08AE2" : "#FF8C61",
+        "--cta": appMode === "adult" ? "linear-gradient(135deg,#5B3A8C,#B08AE2)" : "linear-gradient(135deg,#FF8C61,#FFC857)",
+        "--bg": appMode === "adult" ? "#1E1A2E" : APP_BG,
       }}
     >
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Fredoka:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Fredoka:wght@400;500;600;700&family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap');
         input[type="range"] { height: 4px; border-radius: 4px; background: #E7E1D4; }
         @keyframes sheetUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
         @keyframes sheetDown { from { transform: translateY(-100%); } to { transform: translateY(0); } }
