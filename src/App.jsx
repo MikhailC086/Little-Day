@@ -37,6 +37,9 @@ const UNRATED = null;
 // Approximate coordinates [lat, lng] for map markers. Refine with exact
 // values (or a geocoding pass) when you have time.
 const COORDS = {
+  "captain-lawrence": [41.0637, -73.8140], "muse-paintbar-wp": [41.0295, -73.7764],
+  "westchester-wine-warehouse": [41.0505, -73.7963], "ridgefield-playhouse-adult": [41.2822, -73.4993],
+  "brooklyn-bowl": [40.7220, -73.9575], "ron-blacks-beer-hall": [41.0296, -73.7768],
   "muscoot-farm": [41.2340, -73.7160], "katonah-library": [41.2585, -73.6857],
   "john-jay": [41.2466, -73.6636], "caramoor": [41.2430, -73.6670],
   "katonah-museum": [41.2450, -73.6760], "bedford-hills-library": [41.2340, -73.6940],
@@ -1540,6 +1543,7 @@ const CATEGORY_ICON = {
   "Daycare & Preschool": "🏫", "Indoor Play": "🎪", "Theater": "🎭", "Aquarium": "🐠",
   "Indoor Playground": "🎪", "Amusement Park": "🎡", "Zoo": "🦁", "Gardens": "🌷",
   "Gardens & Arts": "🌷", "Children's Museum": "🏛️", "Cinema": "🎬", "Bookstore": "📖", "Concert Venue": "🎶",
+  "Bar": "🍻", "Concerts": "🎸", "Movies": "🎬", "Museums": "🏛️", "Brewery": "🍺", "Wine Tasting": "🍷", "Paint & Sip": "🎨",
 };
 function categoryIcon(place) { return CATEGORY_ICON[place.category] || place.photo || "📍"; }
 
@@ -1551,6 +1555,14 @@ const PRIMARY_GROUPS = [
   { k: "classes", l: "Classes & Care", cats: ["Gym & Classes", "Martial Arts", "Dance Classes", "Music Classes", "Art Studio", "Sports Program", "Afterschool", "Kids' Studio", "Daycare & Preschool"] },
   { k: "shop", l: "Shopping", cats: ["Toy Store", "Store", "Bookstore"] },
 ];
+const ADULT_PRIMARY_GROUPS = [
+  { k: "eat", l: "Eat & Drink", cats: ["Restaurant", "Bar", "Brewery", "Wine Tasting"] },
+  { k: "see", l: "See & Do", cats: ["Concerts", "Movies", "Museums", "Paint & Sip"] },
+];
+function adultPrimaryGroup(place) {
+  const g = ADULT_PRIMARY_GROUPS.find((gr) => gr.cats.includes(place.category));
+  return g ? g.k : "see";
+}
 function SimpleFilterDropdown({ label, icon: Icon, activeKey, options, onSelect }) {
   const [open, setOpen] = useState(false);
   const activeLabel = options.find((o) => o.k === activeKey)?.l || label;
@@ -1587,9 +1599,9 @@ function SimpleFilterDropdown({ label, icon: Icon, activeKey, options, onSelect 
   );
 }
 
-function CategoryFilterButton({ activeKey, onSelect }) {
+function CategoryFilterButton({ activeKey, onSelect, groups = PRIMARY_GROUPS }) {
   const [open, setOpen] = useState(false);
-  const options = [{ k: "all", l: "All categories" }, ...PRIMARY_GROUPS.map((g) => ({ k: g.k, l: g.l }))];
+  const options = [{ k: "all", l: "All categories" }, ...groups.map((g) => ({ k: g.k, l: g.l }))];
   const activeLabel = options.find((o) => o.k === activeKey)?.l || "Filter";
   return (
     <div className="relative shrink-0">
@@ -3880,22 +3892,32 @@ function regionOf(p) {
 }
 
 function MapScreen({ setSelectedPlace, favorites, toggleFavorite, location, onRequestLocation, initialQuery, initialFilter, setScreen, appMode, onSetMode, adultFavorites, onToggleAdultFavorite, onSelectAdultPlace, onSelectGoogle }) {
+  const isAdult = appMode === "adult";
+  const dataset = isAdult ? ADULT_PLACES : PLACES;
+  const groups = isAdult ? ADULT_PRIMARY_GROUPS : PRIMARY_GROUPS;
+  const groupFn = isAdult ? adultPrimaryGroup : primaryGroup;
+  const favList = isAdult ? adultFavorites : favorites;
+  const toggleFav = isAdult ? onToggleAdultFavorite : toggleFavorite;
+  const selectHandler = isAdult ? onSelectAdultPlace : setSelectedPlace;
+  const CardComp = isAdult ? AdultPlaceCard : PlaceCard;
+  const accentColor = isAdult ? "#8B5CF6" : "var(--accent)";
+
   const [filter, setFilter] = useState(initialFilter || "all");
   const [query, setQuery] = useState(initialQuery || "");
   const [stateFilter, setStateFilter] = useState("all");
   const [cityFilter, setCityFilter] = useState("all");
   const stateOptions = useMemo(() => {
-    const states = Array.from(new Set(PLACES.map(stateOf))).sort();
+    const states = Array.from(new Set(dataset.map(stateOf))).sort();
     return [{ k: "all", l: "All states" }, ...states.map((s) => ({ k: s, l: s }))];
-  }, []);
+  }, [dataset]);
   const cityOptions = useMemo(() => {
-    const pool = stateFilter === "all" ? PLACES : PLACES.filter((p) => stateOf(p) === stateFilter);
+    const pool = stateFilter === "all" ? dataset : dataset.filter((p) => stateOf(p) === stateFilter);
     const cities = Array.from(new Set(pool.map(cityOf))).sort();
     return [{ k: "all", l: "All cities" }, ...cities.map((c) => ({ k: c, l: c }))];
-  }, [stateFilter]);
+  }, [stateFilter, dataset]);
   const handleSetState = (s) => { setStateFilter(s); setCityFilter("all"); };
   const filtered = useMemo(() => {
-    let list = filter === "all" ? PLACES : PLACES.filter((p) => primaryGroup(p) === filter);
+    let list = filter === "all" ? dataset : dataset.filter((p) => groupFn(p) === filter);
     if (stateFilter !== "all") list = list.filter((p) => stateOf(p) === stateFilter);
     if (cityFilter !== "all") list = list.filter((p) => cityOf(p) === cityFilter);
     const q = query.trim().toLowerCase();
@@ -3905,32 +3927,18 @@ function MapScreen({ setSelectedPlace, favorites, toggleFavorite, location, onRe
           p.name.toLowerCase().includes(q) ||
           p.town.toLowerCase().includes(q) ||
           p.category.toLowerCase().includes(q) ||
-          regionOf(p).toLowerCase().includes(q)
+          (!isAdult && regionOf(p).toLowerCase().includes(q))
       );
     }
     return list;
-  }, [filter, query, stateFilter, cityFilter]);
+  }, [filter, query, stateFilter, cityFilter, dataset]);
   const { results: gResults, searching: gSearching } = useGoogleSearch(query, filtered.length);
   const located = location.status === "located";
-  if (appMode === "adult") {
-    return (
-      <div className="pb-4">
-        <TopBar title="Categories List" hideHome={false} />
-        <ModeSwitcher mode={appMode} onSetMode={onSetMode} />
-        <AdultHomeContent favorites={adultFavorites} toggleFavorite={onToggleAdultFavorite} setSelectedPlace={onSelectAdultPlace} setScreen={setScreen} appMode={appMode} onSetMode={onSetMode} />
-        {setScreen && (
-          <div className="px-5 -mt-2">
-            <button onClick={() => setScreen("travelSearch")} className="w-full text-center text-[12.5px] font-semibold" style={{ color: "#8B5CF6" }}>
-              ✈️ Somewhere new? Search any area live →
-            </button>
-          </div>
-        )}
-      </div>
-    );
-  }
+
   return (
     <div className="pb-4">
       <TopBar title="Categories List" hideHome={false} />
+      <ModeSwitcher mode={appMode} onSetMode={onSetMode} />
       <div className="px-5 mb-3">
         <div className="flex items-center gap-2">
           <div className="flex-1 flex items-center gap-2 rounded-2xl px-3.5 py-2.5 border bg-white" style={{ borderColor: "#E7E1D4" }}>
@@ -3938,7 +3946,7 @@ function MapScreen({ setSelectedPlace, favorites, toggleFavorite, location, onRe
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search places, or a region: Westchester, CT, Manhattan…"
+              placeholder={isAdult ? "Search restaurants, bars, concerts…" : "Search places, or a region: Westchester, CT, Manhattan…"}
               className="flex-1 text-[14px] outline-none bg-transparent text-[#1B2A4A]"
             />
             {query && (
@@ -3947,15 +3955,15 @@ function MapScreen({ setSelectedPlace, favorites, toggleFavorite, location, onRe
               </button>
             )}
           </div>
-          <CategoryFilterButton activeKey={filter} onSelect={setFilter} />
+          <CategoryFilterButton activeKey={filter} onSelect={setFilter} groups={groups} />
         </div>
         <div className="flex items-center gap-2 mt-2 overflow-x-auto">
           <SimpleFilterDropdown label="State" icon={MapPin} activeKey={stateFilter} options={stateOptions} onSelect={handleSetState} />
           <SimpleFilterDropdown label="City" icon={MapPin} activeKey={cityFilter} options={cityOptions} onSelect={setCityFilter} />
         </div>
         {setScreen && (
-          <button onClick={() => setScreen("travelSearch")} className="w-full text-center mt-2 text-[12.5px] font-semibold" style={{ color: "var(--accent)" }}>
-            ✈️ Traveling further out? Search any area live →
+          <button onClick={() => setScreen("travelSearch")} className="w-full text-center mt-2 text-[12.5px] font-semibold" style={{ color: accentColor }}>
+            ✈️ {isAdult ? "Somewhere new? Search any area live →" : "Traveling further out? Search any area live →"}
           </button>
         )}
       </div>
@@ -3965,8 +3973,8 @@ function MapScreen({ setSelectedPlace, favorites, toggleFavorite, location, onRe
           disabled={location.status === "locating"}
           className="flex items-center gap-1.5 px-3.5 py-2 rounded-full text-sm font-medium border"
           style={{
-            borderColor: located ? "var(--accent)" : "#E7E1D4",
-            color: located ? "var(--accent)" : "#5C5648",
+            borderColor: located ? accentColor : "#E7E1D4",
+            color: located ? accentColor : "#5C5648",
             backgroundColor: "#FFFFFF",
           }}
         >
@@ -3984,7 +3992,7 @@ function MapScreen({ setSelectedPlace, favorites, toggleFavorite, location, onRe
           places={filtered}
           located={located}
           userCoords={location.coords}
-          onSelect={setSelectedPlace}
+          onSelect={selectHandler}
         />
       </div>
 
@@ -3994,8 +4002,8 @@ function MapScreen({ setSelectedPlace, favorites, toggleFavorite, location, onRe
             No places match{query ? ` “${query}”` : " that filter"}. Try a different search or filter.
           </p>
         )}
-        {PRIMARY_GROUPS.map((g) => {
-          const inGroup = filtered.filter((p) => primaryGroup(p) === g.k);
+        {groups.map((g) => {
+          const inGroup = filtered.filter((p) => groupFn(p) === g.k);
           if (!inGroup.length) return null;
           return (
             <div key={g.k}>
@@ -4006,12 +4014,12 @@ function MapScreen({ setSelectedPlace, favorites, toggleFavorite, location, onRe
               </div>
               <div className="flex flex-col gap-2.5">
                 {inGroup.map((p) => (
-                  <PlaceCard
+                  <CardComp
                     key={p.id}
                     place={p}
-                    onSelect={setSelectedPlace}
-                    favorited={favorites.includes(p.id)}
-                    onToggleFavorite={toggleFavorite}
+                    onSelect={selectHandler}
+                    favorited={favList.includes(p.id)}
+                    onToggleFavorite={toggleFav}
                   />
                 ))}
               </div>
@@ -4025,7 +4033,7 @@ function MapScreen({ setSelectedPlace, favorites, toggleFavorite, location, onRe
               <span className="text-[17px]">🌐</span>
               <p className="text-[14px] font-semibold text-[#1B2A4A]">More nearby, from Google</p>
             </div>
-            <p className="text-[11.5px] mb-2" style={{ color: "#B8B0A0" }}>Real places, not yet parent-verified — no nap-time or stroller notes for these.</p>
+            <p className="text-[11.5px] mb-2" style={{ color: "#B8B0A0" }}>Real places, not yet verified by us — no extra notes for these.</p>
             {gSearching && <p className="text-[13px] text-[#8A8474]">Searching…</p>}
             <div className="flex flex-col gap-2.5">
               {gResults.map((p) => (
@@ -4128,7 +4136,6 @@ function ProfileScreen({ onOpenPremium, onOpenPassport, stats, session, onOpenAu
   return (
     <div className="pb-4">
       <TopBar title="My Profile" />
-      <ModeSwitcher mode={appMode} onSetMode={onSetMode} />
       {friendsProps && <FriendsScreen {...friendsProps} appMode={appMode} onSetMode={onSetMode} embedded />}
       <div className="px-2"><div className="mx-3 border-t" style={{ borderColor: "#EFEAE0" }} /></div>
       <div className="px-5">
