@@ -4361,6 +4361,20 @@ function ProfileScreen({ onOpenPremium, onOpenPassport, stats, session, onOpenAu
   return (
     <div className="pb-4">
       <TopBar title="My Profile" />
+      {!session && (
+        <div className="px-5 mb-3">
+          <div className="rounded-2xl p-4 bg-white border" style={{ borderColor: "#EFEAE0" }}>
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full flex items-center justify-center text-[18px]" style={{ backgroundColor: "#FFF3E6" }}>☁️</div>
+              <div className="flex-1">
+                <p className="text-[13.5px] font-semibold text-[#1B2A4A]">Back up & sync your family</p>
+                <p className="text-[11.5px] text-[#8A8474]">Sign in so kids & favorites follow you to any device</p>
+              </div>
+              <button onClick={onOpenAuth} className="text-[12px] font-bold px-3 py-2 rounded-full text-white shrink-0" style={{ background: "var(--cta)" }}>Sign in</button>
+            </div>
+          </div>
+        </div>
+      )}
       {friendsProps && <FriendsScreen {...friendsProps} appMode={appMode} onSetMode={onSetMode} embedded />}
       <div className="px-2"><div className="mx-3 border-t" style={{ borderColor: "#EFEAE0" }} /></div>
       <div className="px-5">
@@ -4376,18 +4390,6 @@ function ProfileScreen({ onOpenPremium, onOpenPassport, stats, session, onOpenAu
           </div>
           <span className="text-[12px] font-medium shrink-0" style={{ color: "var(--accent)" }}>View →</span>
         </button>
-        {!session && (
-          <div className="rounded-2xl p-4 bg-white border mb-3" style={{ borderColor: "#EFEAE0" }}>
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full flex items-center justify-center text-[18px]" style={{ backgroundColor: "#FFF3E6" }}>☁️</div>
-              <div className="flex-1">
-                <p className="text-[13.5px] font-semibold text-[#1B2A4A]">Back up & sync your family</p>
-                <p className="text-[11.5px] text-[#8A8474]">Sign in so kids & favorites follow you to any device</p>
-              </div>
-              <button onClick={onOpenAuth} className="text-[12px] font-bold px-3 py-2 rounded-full text-white shrink-0" style={{ background: "var(--cta)" }}>Sign in</button>
-            </div>
-          </div>
-        )}
 
         <div className="rounded-2xl p-4 bg-white border mb-3" style={{ borderColor: "#EFEAE0" }}>
           <p className="font-semibold text-[#1B2A4A] mb-1">Your name & username</p>
