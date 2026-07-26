@@ -5780,6 +5780,7 @@ export default function LittleDayApp() {
     const fetchOnce = () => supabase.from("user_data").select("*").eq("user_id", effectiveFamilyId).maybeSingle();
     (async () => {
       let { data } = await fetchOnce();
+      console.log("[LDM DEBUG] user_data pull — effectiveFamilyId:", effectiveFamilyId, "session uid:", session?.user?.id, "first result:", data);
       // Right after sign-in there's a brief window where the auth token hasn't fully
       // propagated yet, which can make this query come back empty even though a real
       // row exists. If we get nothing back, wait a beat and try again before giving up.
@@ -5787,6 +5788,7 @@ export default function LittleDayApp() {
         await new Promise((r) => setTimeout(r, 1500));
         if (cancelled) return;
         ({ data } = await fetchOnce());
+        console.log("[LDM DEBUG] user_data pull retry result:", data);
       }
       if (cancelled) return;
       const data2 = data || {};
@@ -5889,13 +5891,20 @@ export default function LittleDayApp() {
   const loadFamilyCircle = async () => {
     if (!backendReady() || !session) { setMyCaregivers([]); setCaregiverLinks([]); return; }
     const { data: mine } = await supabase
-      .from("family_members").select("id, caregiver_id, profiles!family_members_caregiver_id_fkey(display_name, first_name, last_name)")
+      .from("family_members").select("id, caregiver_id")
       .eq("owner_id", session.user.id);
-    setMyCaregivers(mine || []);
     const { data: access } = await supabase
-      .from("family_members").select("id, owner_id, profiles!family_members_owner_id_fkey(display_name, first_name, last_name)")
+      .from("family_members").select("id, owner_id")
       .eq("caregiver_id", session.user.id);
-    setCaregiverLinks(access || []);
+    const allIds = [...(mine || []).map((m) => m.caregiver_id), ...(access || []).map((a) => a.owner_id)];
+    let profileById = {};
+    if (allIds.length) {
+      const { data: profs } = await supabase.rpc("get_profiles_by_ids", { ids: allIds });
+      (profs || []).forEach((p) => { profileById[p.id] = p; });
+    }
+    const label = (p) => p ? ([p.first_name, p.last_name].filter(Boolean).join(" ") || p.display_name || (p.handle ? `@${p.handle}` : "Little Day Memories parent")) : "Little Day Memories parent";
+    setMyCaregivers((mine || []).map((m) => ({ ...m, profiles: { display_name: label(profileById[m.caregiver_id]) } })));
+    setCaregiverLinks((access || []).map((a) => ({ ...a, profiles: { display_name: label(profileById[a.owner_id]) } })));
   };
   useEffect(() => { loadFamilyCircle(); }, [session]);
 
@@ -5959,9 +5968,11 @@ export default function LittleDayApp() {
     if (!backendReady() || !session) return;
     const uid = session.user.id;
     let { data: rows } = await supabase.from("friendships").select("a,b").or(`a.eq.${uid},b.eq.${uid}`);
+    console.log("[LDM DEBUG] friendships pull — uid:", uid, "first result:", rows);
     if (!rows || !rows.length) {
       await new Promise((r) => setTimeout(r, 1500));
       ({ data: rows } = await supabase.from("friendships").select("a,b").or(`a.eq.${uid},b.eq.${uid}`));
+      console.log("[LDM DEBUG] friendships pull retry result:", rows);
     }
     const otherIds = (rows || []).map((r) => (r.a === uid ? r.b : r.a));
     if (!otherIds.length) { setFriends((cur) => cur.filter((f) => !f.real)); return; }
