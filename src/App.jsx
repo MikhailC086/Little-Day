@@ -1324,6 +1324,54 @@ const ADULT_PLACES = [
   },
 ];
 
+// Real, dated events happening in the next few weeks — pulled from each venue's published
+// recurring schedule. Recurring-series dates are our best estimate of the next occurrence;
+// always worth a quick check on the venue's site before heading out.
+const EVENTS = [
+  {
+    id: "ev-levitt-kids", name: "Levitt Pavilion Children's Series", category: "Concert",
+    date: "2026-07-29", time: "7:00 PM", town: "Westport, CT", address: "40 Jesup Rd, Westport, CT 06880",
+    price: "Free", mode: "kids", emoji: "🎤",
+    blurb: "Free touring kids'-music act on the Epstein Stage — part of Westport's long-running summer concert series.",
+    bring: "A blanket or lawn chair — lawn opens at 6pm for picnicking.",
+  },
+  {
+    id: "ev-chirp-ridgefield", name: "CHIRP Concert Series", category: "Concert",
+    date: "2026-07-28", time: "7:00 PM", town: "Ridgefield, CT", address: "Ballard Park, Main St, Ridgefield, CT",
+    price: "Free", mode: "both", emoji: "🎶",
+    blurb: "Free live music in Ballard Park — jazz, folk, and bluegrass acts rotate through the summer, right by the playground.",
+    bring: "A picnic blanket; food & drink vendors are on-site too.",
+  },
+  {
+    id: "ev-ridgehill-yonkers", name: "Ridge Hill Summer Concerts", category: "Concert",
+    date: "2026-07-31", time: "6:30 PM", town: "Yonkers, NY", address: "Ridge Hill, Yonkers, NY 10710",
+    price: "Free", mode: "adult", emoji: "🎷",
+    blurb: "Live jazz, Latin jazz, salsa and Afrobeats outdoors, with on-site restaurant takeout — a relaxed Friday-night date option.",
+    bring: "Nothing required — seating and food are available on-site.",
+  },
+  {
+    id: "ev-kensico-indian-fest", name: "Indian Culture Festival", category: "Festival",
+    date: "2026-08-02", time: "12:00 PM", town: "Valhalla, NY", address: "Kensico Dam Plaza, 1 Bronx River Pkwy, Valhalla, NY",
+    price: "Free", mode: "both", emoji: "🎉",
+    blurb: "40+ performers celebrating Indian dance and music, plus food and craft vendors — a full afternoon festival for the whole family.",
+    bring: "Sun protection — it's an open plaza with limited shade.",
+  },
+  {
+    id: "ev-rock-the-block", name: "Rock the Block", category: "Festival",
+    date: "2026-08-19", time: "5:30 PM", town: "White Plains, NY", address: "Mamaroneck Ave, White Plains, NY 10601",
+    price: "Free", mode: "both", emoji: "🎸",
+    blurb: "White Plains' favorite summer tradition — Mamaroneck Ave closes to traffic for live music, restaurants spilling into the street, and family games.",
+    bring: "Nothing required — it's a walkable street festival.",
+  },
+  {
+    id: "ev-kensico-corn-fest", name: "Corn Festival", category: "Festival",
+    date: "2026-08-16", time: "12:00 PM", town: "Valhalla, NY", address: "Kensico Dam Plaza, 1 Bronx River Pkwy, Valhalla, NY",
+    price: "Free", mode: "kids", emoji: "🌽",
+    blurb: "Fresh Hudson Valley corn, two music stages, a dedicated kids' stage, and free sails on the Beacon Sloop Club's boat, weather permitting.",
+    bring: "Cash for food vendors; check ahead for the boat-sail signup.",
+  },
+];
+
 
 const INTERESTS = [
   { key: "animals", label: "Animals", icon: "🐾" },
@@ -1755,6 +1803,81 @@ function travelCategoryLabel(types) {
   if (t.includes("cafe")) return "Café";
   if (t.includes("tourist_attraction")) return "Attraction";
   return "Family Spot";
+}
+
+function formatEventDate(dateStr) {
+  const d = new Date(dateStr + "T00:00:00");
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const diffDays = Math.round((d - today) / 86400000);
+  const weekday = d.toLocaleDateString("en-US", { weekday: "long" });
+  const md = d.toLocaleDateString("en-US", { month: "long", day: "numeric" });
+  if (diffDays === 0) return `Today · ${md}`;
+  if (diffDays === 1) return `Tomorrow · ${md}`;
+  if (diffDays > 1 && diffDays < 7) return `This ${weekday} · ${md}`;
+  return `${weekday}, ${md}`;
+}
+
+function EventCard({ event, saved, onToggleSave, onSelectPlace }) {
+  const GRADIENTS = {
+    Concert: "linear-gradient(160deg, #FF8C61 0%, #5B3A5C 100%)",
+    Festival: "linear-gradient(160deg, #F5B71F 0%, #FF6F5E 100%)",
+  };
+  return (
+    <div
+      className="relative w-full shrink-0 flex flex-col justify-end text-white overflow-hidden"
+      style={{ height: "100%", background: GRADIENTS[event.category] || "linear-gradient(160deg, #1B2A4A, #5B3A5C)", scrollSnapAlign: "start" }}
+    >
+      <div className="absolute inset-0 flex items-center justify-center text-[120px] opacity-25">{event.emoji}</div>
+      <div className="relative z-10 p-6 pb-10" style={{ background: "linear-gradient(0deg, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.1) 60%, transparent 100%)" }}>
+        <span className="inline-block text-[11px] font-bold px-2.5 py-1 rounded-full mb-3" style={{ backgroundColor: "rgba(255,255,255,0.2)" }}>
+          {event.category.toUpperCase()} · {event.price}
+        </span>
+        <p className="text-[24px] font-bold leading-tight" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>{event.emoji} {event.name}</p>
+        <p className="text-[15px] font-semibold mt-2 opacity-95">{formatEventDate(event.date)} · {event.time}</p>
+        <p className="text-[13.5px] opacity-85 mt-0.5">{event.town}</p>
+        <p className="text-[13.5px] mt-3 leading-snug opacity-90">{event.blurb}</p>
+        {event.bring && <p className="text-[12.5px] mt-2 opacity-75">🎒 Bring: {event.bring}</p>}
+        <div className="flex gap-2 mt-5">
+          <button
+            onClick={() => onToggleSave(event.id)}
+            className="flex-1 rounded-2xl py-3.5 font-semibold text-[14.5px] flex items-center justify-center gap-2"
+            style={{ backgroundColor: saved ? "#fff" : "rgba(255,255,255,0.18)", color: saved ? "#1B2A4A" : "#fff", border: "1.5px solid rgba(255,255,255,0.5)" }}
+          >
+            {saved ? "✓ Added to My Events" : "+ Add to my day"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function EventsScreen({ appMode, onSetMode, savedEvents, onToggleSave }) {
+  const isAdult = appMode === "adult";
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const upcoming = EVENTS
+    .filter((e) => new Date(e.date + "T00:00:00") >= today)
+    .filter((e) => e.mode === "both" || e.mode === appMode || (!isAdult && e.mode === "kids"))
+    .sort((a, b) => a.date.localeCompare(b.date));
+
+  return (
+    <div className="h-screen flex flex-col" style={{ backgroundColor: "#000" }}>
+      <div style={{ backgroundColor: "#FFFBF5" }}>
+        <TopBar title="Upcoming Events" />
+        <ModeSwitcher mode={appMode} onSetMode={onSetMode} />
+      </div>
+      {upcoming.length === 0 ? (
+        <div className="flex-1 flex items-center justify-center px-8" style={{ backgroundColor: "#FFFBF5" }}>
+          <p className="text-[14px] text-[#8A8474] text-center">No upcoming events found for this mode right now — check back soon.</p>
+        </div>
+      ) : (
+        <div className="flex-1 overflow-y-scroll" style={{ scrollSnapType: "y mandatory" }}>
+          {upcoming.map((ev) => (
+            <EventCard key={ev.id} event={ev} saved={savedEvents.includes(ev.id)} onToggleSave={onToggleSave} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
 function TravelSearchScreen({ onBack, onOpenGooglePlace, appMode, onSetMode }) {
@@ -2484,6 +2607,7 @@ function BottomNav({ screen, setScreen, friendsBadge = 0 }) {
   const items = [
     { key: "home", label: "Home", icon: Home },
     { key: "map", label: "Categories", icon: ListIcon },
+    { key: "events", label: "Events", icon: CalendarDays },
     { key: "safety", label: "Safety", icon: Shield },
     { key: "profile", label: "My Profile", icon: User, badge: friendsBadge },
   ];
@@ -6585,6 +6709,9 @@ export default function LittleDayApp() {
   const [favorites, setFavorites] = usePersistentState("favorites", []);
   const [appMode, setAppMode] = usePersistentState("appMode", "kids");
   const [adultFavorites, setAdultFavorites] = usePersistentState("adultFavorites", []);
+  const [savedEvents, setSavedEvents] = usePersistentState("savedEvents", []);
+  const toggleSavedEvent = (id) =>
+    setSavedEvents((cur) => (cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]));
   const [adultSelectedPlace, setAdultSelectedPlace] = useState(null);
   const toggleAdultFavorite = (id) =>
     setAdultFavorites((cur) => (cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]));
@@ -7254,6 +7381,8 @@ export default function LittleDayApp() {
       appMode={appMode} onSetMode={setAppMode} adultFavorites={adultFavorites} onToggleAdultFavorite={toggleAdultFavorite} onSelectAdultPlace={setAdultSelectedPlace} onSelectGoogle={setGooglePlace} />;
   } else if (screen === "favorites") {
     content = <FavoritesScreen favorites={favorites} setSelectedPlace={handleSelectPlace} toggleFavorite={toggleFavorite} savedDays={savedDays} onLoadDay={useSharedDay} onDeleteDay={deleteSavedDay} />;
+  } else if (screen === "events") {
+    content = <EventsScreen appMode={appMode} onSetMode={setAppMode} savedEvents={savedEvents} onToggleSave={toggleSavedEvent} />;
   } else if (screen === "friendDetail") {
     content = (
       <FriendDetailScreen
@@ -7320,7 +7449,7 @@ export default function LittleDayApp() {
     );
   }
 
-  const showNav = ["home", "map", "favorites", "safety", "profile"].includes(screen);
+  const showNav = ["home", "map", "events", "favorites", "safety", "profile"].includes(screen);
 
   const [betaOk, setBetaOk] = usePersistentState("betaOk", false);
   // Sunrise plays once per fresh open (not on tab switches within a session).
