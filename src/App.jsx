@@ -1236,6 +1236,32 @@ const PLACES = [
   },
 ];
 
+// ---- "For myself" mode — a small, real, verified starter set for adult/date-night outings.
+// Separate dataset on purpose: different fields matter here (vibe, reservations, 21+) than for kids (nap time, stroller).
+const ADULT_PLACES = [
+  {
+    id: "captain-lawrence", name: "Captain Lawrence Brewing Co.", category: "Brewery",
+    town: "Elmsford, NY", address: "444 Saw Mill River Rd, Elmsford, NY 10523",
+    website: "captainlawrencebrewing.com", price: "$$", distanceMi: 9,
+    photo: "🍺", vibe: "Lively", reservations: "Walk-in (reservations for groups)",
+    blurb: "Westchester's largest craft brewery — a big taproom, outdoor beer garden, and pub food. Wednesday trivia nights. Closed Mon–Tue.",
+  },
+  {
+    id: "muse-paintbar-wp", name: "Muse Paintbar", category: "Paint & Sip",
+    town: "White Plains, NY", address: "84 Mamaroneck Ave, White Plains, NY 10601",
+    website: "musepaintbar.com", price: "$$", distanceMi: 12,
+    photo: "🎨", vibe: "Romantic / Fun", reservations: "Book a session online",
+    blurb: "Guided step-by-step painting with a full bar and food menu alongside — a relaxed, no-experience-needed date night. Reserve a seat for a specific painting/time.",
+  },
+  {
+    id: "westchester-wine-warehouse", name: "Westchester Wine Warehouse", category: "Wine Tasting",
+    town: "White Plains, NY", address: "53 Tarrytown Rd, White Plains, NY 10607",
+    website: "", price: "$$", distanceMi: 13,
+    photo: "🍷", vibe: "Romantic", reservations: "Check for scheduled tasting events",
+    blurb: "A well-regarded local wine shop that hosts sommelier-led tasting events with food pairings. Best for planning around a specific scheduled tasting rather than a walk-in visit.",
+  },
+];
+
 
 const INTERESTS = [
   { key: "animals", label: "Animals", icon: "🐾" },
@@ -2629,9 +2655,144 @@ function HomeSmartBanners({ kids, companionKidIds, schoolDistrictId, onSetSchool
   );
 }
 
+function ModeSwitcher({ mode, onSetMode }) {
+  return (
+    <div className="px-5 pt-3 pb-1">
+      <div className="flex rounded-full p-1" style={{ backgroundColor: "#F0EEE6" }}>
+        <button
+          onClick={() => onSetMode("kids")}
+          className="flex-1 rounded-full py-2 text-[13px] font-semibold transition-colors"
+          style={{ backgroundColor: mode === "kids" ? "#fff" : "transparent", color: mode === "kids" ? "#1B2A4A" : "#8A8474", boxShadow: mode === "kids" ? "0 1px 3px rgba(0,0,0,0.08)" : "none" }}
+        >
+          👶 For my kids
+        </button>
+        <button
+          onClick={() => onSetMode("adult")}
+          className="flex-1 rounded-full py-2 text-[13px] font-semibold transition-colors"
+          style={{ backgroundColor: mode === "adult" ? "#fff" : "transparent", color: mode === "adult" ? "#1B2A4A" : "#8A8474", boxShadow: mode === "adult" ? "0 1px 3px rgba(0,0,0,0.08)" : "none" }}
+        >
+          🍷 For myself
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function AdultPlaceCard({ place, onSelect, favorited, onToggleFavorite }) {
+  return (
+    <div
+      onClick={() => onSelect(place)}
+      className="flex gap-3 p-3 rounded-2xl bg-white border cursor-pointer active:scale-[0.99] transition-transform"
+      style={{ borderColor: "#EFEAE0" }}
+    >
+      <div className="w-16 h-16 rounded-xl flex items-center justify-center text-3xl shrink-0" style={{ backgroundColor: "#F3ECF7" }}>
+        {place.photo}
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-start justify-between gap-2">
+          <p className="font-semibold text-[15px] text-[#1B2A4A] truncate">{place.name}</p>
+          <button onClick={(e) => { e.stopPropagation(); onToggleFavorite(place.id); }} className="shrink-0">
+            <Heart size={18} color={favorited ? "#8B5CF6" : "#C9C2B2"} fill={favorited ? "#8B5CF6" : "none"} />
+          </button>
+        </div>
+        <p className="text-[13px] text-[#8A8474]">{place.category} · {place.town} · {place.distanceMi} mi</p>
+        <p className="text-[12px] mt-0.5" style={{ color: "#8B5CF6" }}>{place.vibe}{place.price ? ` · ${place.price}` : ""}</p>
+      </div>
+    </div>
+  );
+}
+
+function AdultHomeContent({ favorites, toggleFavorite, setSelectedPlace }) {
+  const [query, setQuery] = useState("");
+  const q = query.trim().toLowerCase();
+  const list = q
+    ? ADULT_PLACES.filter((p) => p.name.toLowerCase().includes(q) || p.category.toLowerCase().includes(q) || p.town.toLowerCase().includes(q))
+    : ADULT_PLACES;
+  return (
+    <div className="pb-4">
+      <div className="px-5 pt-2 pb-3">
+        <p className="text-[13px] font-semibold tracking-wide" style={{ color: "#8B5CF6" }}>FOR MYSELF</p>
+        <h1 className="text-[26px] leading-tight font-bold text-[#1B2A4A]" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+          A night off, just for you
+        </h1>
+      </div>
+      <div className="px-5 mb-4">
+        <div className="rounded-2xl p-3.5" style={{ backgroundColor: "#F3ECF7" }}>
+          <p className="text-[12.5px] leading-snug" style={{ color: "#6B4E8C" }}>
+            A small, separate starter list of date-night & adult spots — kept apart from your kids' favorites and saved days on purpose.
+          </p>
+        </div>
+      </div>
+      <div className="px-5 mb-4">
+        <div className="flex items-center gap-2 rounded-2xl px-3.5 py-2.5 border bg-white" style={{ borderColor: "#E7E1D4" }}>
+          <Search size={17} color="#9C9484" />
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search breweries, wine bars, date spots…"
+            className="flex-1 text-[14px] outline-none bg-transparent text-[#1B2A4A]"
+          />
+          {query && <button onClick={() => setQuery("")}><X size={16} color="#9C9484" /></button>}
+        </div>
+      </div>
+      <div className="px-5 flex flex-col gap-2.5">
+        {list.map((p) => (
+          <AdultPlaceCard key={p.id} place={p} onSelect={setSelectedPlace} favorited={favorites.includes(p.id)} onToggleFavorite={toggleFavorite} />
+        ))}
+        {list.length === 0 && <p className="text-[13px] text-[#8A8474] text-center py-6">No matches — try a different search.</p>}
+      </div>
+    </div>
+  );
+}
+
+function AdultPlaceSheet({ place, onClose, favorited, onToggleFavorite }) {
+  if (!place) return null;
+  const mapsUrl = "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(place.name + " " + place.address);
+  return (
+    <div className="absolute inset-0 z-40 flex items-end" onClick={onClose}>
+      <div className="absolute inset-0 bg-black/30" />
+      <div className="relative w-full rounded-t-3xl bg-white p-6 pb-8" onClick={(e) => e.stopPropagation()} style={{ animation: "sheetUp 0.22s ease-out" }}>
+        <div className="w-10 h-1 rounded-full bg-[#E7E1D4] mx-auto mb-4" />
+        <div className="flex items-start gap-3">
+          <div className="w-12 h-12 rounded-xl flex items-center justify-center text-[24px] shrink-0" style={{ backgroundColor: "#F3ECF7" }}>{place.photo}</div>
+          <div className="flex-1 min-w-0">
+            <p className="text-[17px] font-bold text-[#1B2A4A]" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>{place.name}</p>
+            <p className="text-[13px] text-[#8A8474]">{place.category} · {place.town}</p>
+          </div>
+          <button onClick={() => onToggleFavorite(place.id)} className="shrink-0">
+            <Heart size={20} color={favorited ? "#8B5CF6" : "#C9C2B2"} fill={favorited ? "#8B5CF6" : "none"} />
+          </button>
+        </div>
+        <p className="text-[13.5px] text-[#5C5648] mt-3 leading-relaxed">{place.blurb}</p>
+        <div className="flex gap-2 mt-3">
+          <span className="text-[12px] font-semibold px-2.5 py-1 rounded-full" style={{ backgroundColor: "#F3ECF7", color: "#6B4E8C" }}>{place.vibe}</span>
+          {place.price && <span className="text-[12px] font-semibold px-2.5 py-1 rounded-full" style={{ backgroundColor: "#F3ECF7", color: "#6B4E8C" }}>{place.price}</span>}
+        </div>
+        <div className="rounded-2xl p-3.5 mt-4" style={{ backgroundColor: "#F7F4EC" }}>
+          <p className="text-[12.5px] text-[#8A8474]">{place.address}</p>
+          {place.reservations && <p className="text-[12.5px] text-[#8A8474] mt-1">📅 {place.reservations}</p>}
+        </div>
+        <a href={mapsUrl} target="_blank" rel="noopener noreferrer"
+          className="w-full rounded-2xl py-3.5 mt-4 flex items-center justify-center gap-2 text-white font-semibold text-[14px]" style={{ background: "#8B5CF6" }}>
+          Open in Google Maps
+        </a>
+      </div>
+    </div>
+  );
+}
+
 function HomeScreen({ setScreen, favorites, toggleFavorite, setSelectedPlace, location, onRequestLocation, onSurprise, kids, activeKidId, onSetActive, searchQuery, setSearchQuery, onFilterToCategory, onHowTo, onSelectGoogle,
   companionKidIds, onToggleCompanionKid, schoolDistrictId, onSetSchoolDistrict, completedDays, onOpenBuilder,
+  appMode, onSetMode, adultFavorites, onToggleAdultFavorite, onSelectAdultPlace,
 }) {
+  if (appMode === "adult") {
+    return (
+      <div className="pb-4">
+        <ModeSwitcher mode={appMode} onSetMode={onSetMode} />
+        <AdultHomeContent favorites={adultFavorites} toggleFavorite={onToggleAdultFavorite} setSelectedPlace={onSelectAdultPlace} />
+      </div>
+    );
+  }
   const nearby = PLACES.slice(0, 4);
   const hq = (searchQuery || "").trim().toLowerCase();
   const homeResults = hq
@@ -2645,6 +2806,7 @@ function HomeScreen({ setScreen, favorites, toggleFavorite, setSelectedPlace, lo
   const { results: gResults, searching: gSearching } = useGoogleSearch(searchQuery, homeResults.length);
   return (
     <div className="pb-4">
+      <ModeSwitcher mode={appMode} onSetMode={onSetMode} />
       <div className="px-5 pt-6 pb-2">
         <div className="flex items-center gap-2 mb-4">
           <LittleDaySun size={32} />
@@ -3441,7 +3603,7 @@ function regionOf(p) {
   return "Westchester";
 }
 
-function MapScreen({ setSelectedPlace, favorites, toggleFavorite, location, onRequestLocation, initialQuery, initialFilter, setScreen }) {
+function MapScreen({ setSelectedPlace, favorites, toggleFavorite, location, onRequestLocation, initialQuery, initialFilter, setScreen, appMode, onSetMode, adultFavorites, onToggleAdultFavorite, onSelectAdultPlace }) {
   const [filter, setFilter] = useState(initialFilter || "all");
   const [query, setQuery] = useState(initialQuery || "");
   const filtered = useMemo(() => {
@@ -3459,6 +3621,15 @@ function MapScreen({ setSelectedPlace, favorites, toggleFavorite, location, onRe
     return list;
   }, [filter, query]);
   const located = location.status === "located";
+  if (appMode === "adult") {
+    return (
+      <div className="pb-4">
+        <TopBar title="Categories List" hideHome={false} />
+        <ModeSwitcher mode={appMode} onSetMode={onSetMode} />
+        <AdultHomeContent favorites={adultFavorites} toggleFavorite={onToggleAdultFavorite} setSelectedPlace={onSelectAdultPlace} />
+      </div>
+    );
+  }
   return (
     <div className="pb-4">
       <TopBar title="Categories List" hideHome={false} />
@@ -6036,6 +6207,11 @@ export default function LittleDayApp() {
   const [googlePlace, setGooglePlace] = useState(null);
 
   const [favorites, setFavorites] = usePersistentState("favorites", []);
+  const [appMode, setAppMode] = usePersistentState("appMode", "kids");
+  const [adultFavorites, setAdultFavorites] = usePersistentState("adultFavorites", []);
+  const [adultSelectedPlace, setAdultSelectedPlace] = useState(null);
+  const toggleAdultFavorite = (id) =>
+    setAdultFavorites((cur) => (cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]));
   const location = useGeolocation();
   const [friends, setFriends] = usePersistentState("friends", FRIENDS_SEED);
 
@@ -6657,6 +6833,9 @@ export default function LittleDayApp() {
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
         onFilterToCategory={(k) => { setHomeFilter(k); goTo("map"); }}
+        appMode={appMode} onSetMode={setAppMode}
+        adultFavorites={adultFavorites} onToggleAdultFavorite={toggleAdultFavorite}
+        onSelectAdultPlace={setAdultSelectedPlace}
         onHowTo={() => setShowHowTo(true)}
         onSelectGoogle={setGooglePlace}
         companionKidIds={companionKidIds}
@@ -6693,7 +6872,8 @@ export default function LittleDayApp() {
       />
     );
   } else if (screen === "map") {
-    content = <MapScreen setSelectedPlace={handleSelectPlace} favorites={favorites} toggleFavorite={toggleFavorite} location={location} onRequestLocation={location.request} initialQuery={searchQuery} initialFilter={homeFilter} setScreen={goTo} />;
+    content = <MapScreen setSelectedPlace={handleSelectPlace} favorites={favorites} toggleFavorite={toggleFavorite} location={location} onRequestLocation={location.request} initialQuery={searchQuery} initialFilter={homeFilter} setScreen={goTo}
+      appMode={appMode} onSetMode={setAppMode} adultFavorites={adultFavorites} onToggleAdultFavorite={toggleAdultFavorite} onSelectAdultPlace={setAdultSelectedPlace} />;
   } else if (screen === "favorites") {
     content = <FavoritesScreen favorites={favorites} setSelectedPlace={handleSelectPlace} toggleFavorite={toggleFavorite} savedDays={savedDays} onLoadDay={useSharedDay} onDeleteDay={deleteSavedDay} />;
   } else if (screen === "friends") {
@@ -6861,6 +7041,7 @@ export default function LittleDayApp() {
         )}
         <AuthSheet open={authOpen} onClose={() => setAuthOpen(false)} session={session} />
         <GooglePlaceSheet place={googlePlace} onClose={() => setGooglePlace(null)} />
+        <AdultPlaceSheet place={adultSelectedPlace} onClose={() => setAdultSelectedPlace(null)} favorited={adultSelectedPlace && adultFavorites.includes(adultSelectedPlace.id)} onToggleFavorite={toggleAdultFavorite} />
         <InviteSheet open={inviteOpen} onClose={() => setInviteOpen(false)} onShared={() => { setInviteOpen(false); showToast("Invite link shared!"); }} session={session} />
         <GroupChatSheet open={!!chatGroupId} groupId={chatGroupId} session={session} onClose={() => setChatGroupId(null)} />
       </div>
