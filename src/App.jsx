@@ -1281,42 +1281,42 @@ const PLACES = [
 // Separate dataset on purpose: different fields matter here (vibe, reservations, 21+) than for kids (nap time, stroller).
 const ADULT_PLACES = [
   {
-    id: "captain-lawrence", name: "Captain Lawrence Brewing Co.", category: "Brewery",
+    id: "captain-lawrence", name: "Captain Lawrence Brewing Co.", category: "Brewery", timeOfDay: "both",
     town: "Elmsford, NY", address: "444 Saw Mill River Rd, Elmsford, NY 10523",
     website: "captainlawrencebrewing.com", price: "$$", distanceMi: 9,
     photo: "🍺", vibe: "Lively", reservations: "Walk-in (reservations for groups)",
     blurb: "Westchester's largest craft brewery — a big taproom, outdoor beer garden, and pub food. Wednesday trivia nights. Closed Mon–Tue.",
   },
   {
-    id: "muse-paintbar-wp", name: "Muse Paintbar", category: "Paint & Sip",
+    id: "muse-paintbar-wp", name: "Muse Paintbar", category: "Paint & Sip", timeOfDay: "both",
     town: "White Plains, NY", address: "84 Mamaroneck Ave, White Plains, NY 10601",
     website: "musepaintbar.com", price: "$$", distanceMi: 12,
     photo: "🎨", vibe: "Romantic / Fun", reservations: "Book a session online",
     blurb: "Guided step-by-step painting with a full bar and food menu alongside — a relaxed, no-experience-needed date night. Reserve a seat for a specific painting/time.",
   },
   {
-    id: "westchester-wine-warehouse", name: "Westchester Wine Warehouse", category: "Wine Tasting",
+    id: "westchester-wine-warehouse", name: "Westchester Wine Warehouse", category: "Wine Tasting", timeOfDay: "day",
     town: "White Plains, NY", address: "53 Tarrytown Rd, White Plains, NY 10607",
     website: "", price: "$$", distanceMi: 13,
     photo: "🍷", vibe: "Romantic", reservations: "Check for scheduled tasting events",
     blurb: "A well-regarded local wine shop that hosts sommelier-led tasting events with food pairings. Best for planning around a specific scheduled tasting rather than a walk-in visit.",
   },
   {
-    id: "ridgefield-playhouse-adult", name: "The Ridgefield Playhouse", category: "Concerts",
+    id: "ridgefield-playhouse-adult", name: "The Ridgefield Playhouse", category: "Concerts", timeOfDay: "night",
     town: "Ridgefield, CT", address: "80 East Ridge Rd, Ridgefield, CT 06877",
     website: "ridgefieldplayhouse.org", price: "$$$", distanceMi: 27,
     photo: "🎸", vibe: "Lively", reservations: "Book tickets online — shows sell out",
     blurb: "A 500-seat nonprofit theater bringing in national touring acts, comedians, and tribute bands — genuinely no bad seat in the house. A bar serves wine and beer. Bring: your ticket and a valid ID if you're buying from the bar.",
   },
   {
-    id: "brooklyn-bowl", name: "Brooklyn Bowl", category: "Concerts",
+    id: "brooklyn-bowl", name: "Brooklyn Bowl", category: "Concerts", timeOfDay: "night",
     town: "Brooklyn, NY", address: "61 Wythe Ave, Brooklyn, NY 11249",
     website: "brooklynbowl.com", price: "$$", distanceMi: 33,
     photo: "🎳", vibe: "Lively", reservations: "Check show calendar — some events are 21+",
     blurb: "Live music, bowling, and a full bar/kitchen under one roof in Williamsburg. Some evening shows are 21+ only, so double check the specific event before you go. Bring: valid ID — checked at the door for evening shows.",
   },
   {
-    id: "ron-blacks-beer-hall", name: "Ron Black's Beer Hall", category: "Bar",
+    id: "ron-blacks-beer-hall", name: "Ron Black's Beer Hall", category: "Bar", timeOfDay: "night",
     town: "White Plains, NY", address: "181 Mamaroneck Ave, White Plains, NY 10601",
     website: "", price: "$$", distanceMi: 13,
     photo: "🍻", vibe: "Lively", reservations: "Walk-in — arrive early on trivia nights",
@@ -2973,9 +2973,36 @@ function DayNightToggle({ appMode, onSetMode }) {
   );
 }
 
+function TimeOfDayToggle({ value, onChange }) {
+  const isNight = value === "night";
+  return (
+    <div className="flex rounded-full p-1 mb-3" style={{ backgroundColor: "rgba(255,255,255,0.08)" }}>
+      <button
+        onClick={() => onChange("day")}
+        className="flex-1 rounded-full py-2 text-[13px] font-semibold flex items-center justify-center gap-1.5"
+        style={{ backgroundColor: !isNight ? "#B08AE2" : "transparent", color: !isNight ? "#1E1A2E" : "#8A81A3" }}
+      >
+        ☀️ Daytime
+      </button>
+      <button
+        onClick={() => onChange("night")}
+        className="flex-1 rounded-full py-2 text-[13px] font-semibold flex items-center justify-center gap-1.5"
+        style={{ backgroundColor: isNight ? "#B08AE2" : "transparent", color: isNight ? "#1E1A2E" : "#8A81A3" }}
+      >
+        🌙 Nighttime
+      </button>
+    </div>
+  );
+}
+
 function buildNightPlan(prefs) {
   let pool = [...ADULT_PLACES];
-  if (prefs.vibe && prefs.vibe !== "any") pool = pool.filter((p) => p.vibe === prefs.vibe);
+  const timeFiltered = pool.filter((p) => !p.timeOfDay || p.timeOfDay === "both" || p.timeOfDay === prefs.timeOfDay);
+  if (timeFiltered.length >= prefs.stops) pool = timeFiltered; // prefer places that fit the chosen time of day
+  if (prefs.vibe && prefs.vibe !== "any") {
+    const vibeFiltered = pool.filter((p) => p.vibe === prefs.vibe);
+    if (vibeFiltered.length >= prefs.stops) pool = vibeFiltered;
+  }
   if (pool.length < prefs.stops) pool = [...ADULT_PLACES]; // fall back rather than come up short
   // Shuffle lightly for variety, but keep categories from repeating back to back.
   const shuffled = [...pool].sort(() => Math.random() - 0.5);
@@ -2994,7 +3021,7 @@ function buildNightPlan(prefs) {
   return picked.slice(0, prefs.stops).map((p, i) => ({ place: p, time: prefs.startHour + i * 2 }));
 }
 
-function AdultHomeContent({ favorites, toggleFavorite, setSelectedPlace, setScreen, appMode, onSetMode }) {
+function AdultHomeContent({ favorites, toggleFavorite, setSelectedPlace, setScreen, appMode, onSetMode, adultTimeOfDay, onSetAdultTimeOfDay }) {
   const [query, setQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [stateFilter, setStateFilter] = useState("all");
@@ -3012,6 +3039,7 @@ function AdultHomeContent({ favorites, toggleFavorite, setSelectedPlace, setScre
   const handleSetState = (s) => { setStateFilter(s); setCityFilter("all"); };
   const q = query.trim().toLowerCase();
   const list = ADULT_PLACES.filter((p) => {
+    if (p.timeOfDay && p.timeOfDay !== "both" && p.timeOfDay !== adultTimeOfDay) return false;
     if (categoryFilter !== "all" && p.category !== categoryFilter) return false;
     if (stateFilter !== "all" && stateOf(p) !== stateFilter) return false;
     if (cityFilter !== "all" && cityOf(p) !== cityFilter) return false;
@@ -3033,18 +3061,19 @@ function AdultHomeContent({ favorites, toggleFavorite, setSelectedPlace, setScre
     <div className="pb-4" style={{ backgroundColor: "#1E1A2E", minHeight: "100%" }}>
       {/* ===== Masthead ===== */}
       <div className="px-5 pt-5 pb-4 text-center border-b" style={{ borderColor: "rgba(255,255,255,0.12)" }}>
-        <div className="text-[26px] mb-1">🌙</div>
+        <div className="text-[26px] mb-1">{adultTimeOfDay === "night" ? "🌙" : "☀️"}</div>
         <p className="text-[10.5px] font-bold tracking-[0.16em] uppercase" style={{ color: "#B08AE2" }}>
-          {dateStr} · Tonight's Issue
+          {dateStr} · {adultTimeOfDay === "night" ? "Tonight's" : "Today's"} Issue
         </p>
         <h1 style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 25, color: "#F5F3FF", marginTop: 4, lineHeight: 1.15 }}>
-          What's the plan tonight?
+          What's the plan {adultTimeOfDay === "night" ? "tonight" : "today"}?
         </h1>
       </div>
 
-      {/* ===== Tonight's Notes ===== */}
+      {/* ===== Notes ===== */}
       <div className="px-5">
-        <Kicker>Tonight's Notes</Kicker>
+        <Kicker>{adultTimeOfDay === "night" ? "Tonight's" : "Today's"} Notes</Kicker>
+
         <div className="rounded-2xl p-3.5" style={{ backgroundColor: "rgba(176,138,226,0.12)", border: "1px solid rgba(176,138,226,0.25)" }}>
           <p className="text-[12.5px] leading-snug" style={{ color: "#D8CCEF" }}>
             A small, separate list of date-night & adult spots — kept apart from your kids' favorites and saved days on purpose.
@@ -3056,14 +3085,14 @@ function AdultHomeContent({ favorites, toggleFavorite, setSelectedPlace, setScre
       {setScreen && (
         <div className="px-5">
           <Kicker>Ready?</Kicker>
-          <DayNightToggle appMode={appMode} onSetMode={onSetMode} />
+          <TimeOfDayToggle value={adultTimeOfDay} onChange={onSetAdultTimeOfDay} />
           <button
             onClick={() => setScreen("adultPlanner")}
             className="w-full rounded-2xl py-4 flex items-center justify-center gap-2 text-white font-semibold text-[16px] shadow-sm"
             style={{ background: "linear-gradient(135deg,#5B3A8C,#B08AE2)" }}
           >
             <Sparkles size={19} />
-            Plan My Night
+            {adultTimeOfDay === "night" ? "Plan My Night" : "Plan My Day"}
           </button>
         </div>
       )}
@@ -3110,9 +3139,9 @@ function AdultHomeContent({ favorites, toggleFavorite, setSelectedPlace, setScre
         </>
       )}
 
-      {/* ===== Tonight's Picks ===== */}
+      {/* ===== Picks ===== */}
       <div className="px-5">
-        <Kicker>Tonight's Picks</Kicker>
+        <Kicker>{adultTimeOfDay === "night" ? "Tonight's" : "Today's"} Picks</Kicker>
         <div className="flex flex-col gap-2.5">
           {list.map((p) => (
             <AdultPlaceCard key={p.id} place={p} onSelect={setSelectedPlace} favorited={favorites.includes(p.id)} onToggleFavorite={toggleFavorite} />
@@ -3124,19 +3153,28 @@ function AdultHomeContent({ favorites, toggleFavorite, setSelectedPlace, setScre
   );
 }
 
-function AdultPlannerScreen({ onBack, onSelectAdultPlace, appMode, onSetMode }) {
+function AdultPlannerScreen({ onBack, onSelectAdultPlace, appMode, onSetMode, adultTimeOfDay, onSetAdultTimeOfDay }) {
+  const isNight = adultTimeOfDay === "night";
   const [stops, setStops] = useState(2);
-  const [startHour, setStartHour] = useState(19);
+  const [startHour, setStartHour] = useState(isNight ? 19 : 12);
   const [vibe, setVibe] = useState("any");
   const [plan, setPlan] = useState(null);
+  const hourOptions = isNight ? [17, 18, 19, 20, 21] : [10, 11, 12, 13, 14, 15, 16];
 
-  const generate = () => setPlan(buildNightPlan({ stops, startHour, vibe }));
+  const handleSetTimeOfDay = (v) => {
+    onSetAdultTimeOfDay(v);
+    setStartHour(v === "night" ? 19 : 12);
+    setPlan(null);
+  };
+
+  const generate = () => setPlan(buildNightPlan({ stops, startHour, vibe, timeOfDay: adultTimeOfDay }));
 
   return (
     <div className="min-h-screen pb-8" style={{ backgroundColor: "#1E1A2E" }}>
-      <TopBar title="Plan My Night" onBack={onBack} dark />
+      <TopBar title={isNight ? "Plan My Night" : "Plan My Day"} onBack={onBack} dark />
       <ModeSwitcher mode={appMode} onSetMode={onSetMode} />
       <div className="px-5 pt-2">
+        <TimeOfDayToggle value={adultTimeOfDay} onChange={handleSetTimeOfDay} />
         {!plan ? (
           <>
             <p className="text-[13px] font-semibold mb-2" style={{ color: "#F5F3FF" }}>How many stops?</p>
@@ -3151,7 +3189,7 @@ function AdultPlannerScreen({ onBack, onSelectAdultPlace, appMode, onSetMode }) 
 
             <p className="text-[13px] font-semibold mb-2" style={{ color: "#F5F3FF" }}>Start time</p>
             <div className="flex gap-2 mb-5 overflow-x-auto">
-              {[17, 18, 19, 20, 21].map((h) => (
+              {hourOptions.map((h) => (
                 <button key={h} onClick={() => setStartHour(h)} className="shrink-0 rounded-full px-4 py-2 border font-semibold text-[13px]"
                   style={{ borderColor: startHour === h ? "#B08AE2" : "rgba(255,255,255,0.15)", backgroundColor: startHour === h ? "rgba(176,138,226,0.15)" : "#292440", color: startHour === h ? "#B08AE2" : "#D8CCEF" }}>
                   {formatHour(h)}
@@ -3171,7 +3209,7 @@ function AdultPlannerScreen({ onBack, onSelectAdultPlace, appMode, onSetMode }) 
 
             <button onClick={generate} className="w-full rounded-2xl py-4 flex items-center justify-center gap-2 text-white font-semibold text-[16px] shadow-sm" style={{ background: "linear-gradient(135deg,#5B3A8C,#B08AE2)" }}>
               <Sparkles size={19} />
-              Build my night
+              {isNight ? "Build my night" : "Build my day"}
             </button>
           </>
         ) : (
@@ -3233,13 +3271,13 @@ function AdultPlaceSheet({ place, onClose, favorited, onToggleFavorite }) {
 
 function HomeScreen({ setScreen, favorites, toggleFavorite, setSelectedPlace, location, onRequestLocation, onSurprise, kids, activeKidId, onSetActive, searchQuery, setSearchQuery, onFilterToCategory, onHowTo, onSelectGoogle,
   companionKidIds, onToggleCompanionKid, schoolDistrictId, onSetSchoolDistrict, completedDays, onOpenBuilder,
-  appMode, onSetMode, adultFavorites, onToggleAdultFavorite, onSelectAdultPlace,
+  appMode, onSetMode, adultFavorites, onToggleAdultFavorite, onSelectAdultPlace, adultTimeOfDay, onSetAdultTimeOfDay,
 }) {
   if (appMode === "adult") {
     return (
       <div className="pb-4">
         <ModeSwitcher mode={appMode} onSetMode={onSetMode} />
-        <AdultHomeContent favorites={adultFavorites} toggleFavorite={onToggleAdultFavorite} setSelectedPlace={onSelectAdultPlace} setScreen={setScreen} appMode={appMode} onSetMode={onSetMode} />
+        <AdultHomeContent favorites={adultFavorites} toggleFavorite={onToggleAdultFavorite} setSelectedPlace={onSelectAdultPlace} setScreen={setScreen} appMode={appMode} onSetMode={onSetMode} adultTimeOfDay={adultTimeOfDay} onSetAdultTimeOfDay={onSetAdultTimeOfDay} />
       </div>
     );
   }
@@ -6750,6 +6788,7 @@ export default function LittleDayApp() {
   const [lastPrefs, setLastPrefs] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [homeFilter, setHomeFilter] = useState("all");
+  const [adultTimeOfDay, setAdultTimeOfDay] = usePersistentState("adultTimeOfDay", "day");
   const [showHowTo, setShowHowTo] = useState(false);
   const [, setWeatherV] = useState(0);
   useEffect(() => { fetchLiveWeather().then(() => setWeatherV((v) => v + 1)); }, []);
@@ -7402,6 +7441,7 @@ export default function LittleDayApp() {
         appMode={appMode} onSetMode={setAppMode}
         adultFavorites={adultFavorites} onToggleAdultFavorite={toggleAdultFavorite}
         onSelectAdultPlace={setAdultSelectedPlace}
+        adultTimeOfDay={adultTimeOfDay} onSetAdultTimeOfDay={setAdultTimeOfDay}
         onHowTo={() => setShowHowTo(true)}
         onSelectGoogle={setGooglePlace}
         companionKidIds={companionKidIds}
@@ -7415,7 +7455,7 @@ export default function LittleDayApp() {
   } else if (screen === "planner") {
     content = <PlannerScreen onBack={() => goTo("home")} onGenerate={handleGenerate} locationLabel={location.label} initialAge={ageToBand(ageFromBirthday(activeKid?.birthday))} activeKidName={activeKid?.name || ""} companionKids={kids.filter((k) => companionKidIds.includes(k.id))} />;
   } else if (screen === "adultPlanner") {
-    content = <AdultPlannerScreen onBack={() => goTo("home")} onSelectAdultPlace={setAdultSelectedPlace} appMode={appMode} onSetMode={setAppMode} />;
+    content = <AdultPlannerScreen onBack={() => goTo("home")} onSelectAdultPlace={setAdultSelectedPlace} appMode={appMode} onSetMode={setAppMode} adultTimeOfDay={adultTimeOfDay} onSetAdultTimeOfDay={setAdultTimeOfDay} />;
   } else if (screen === "planning") {
     content = <PlanningScreen onDone={() => setScreen("itinerary")} />;
   } else if (screen === "itinerary") {
