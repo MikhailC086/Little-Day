@@ -54,6 +54,8 @@ const COORDS = {
   "central-park-zoo": [40.7678, -73.9718], "childrens-museum-manhattan": [40.7859, -73.9776],
   "prospect-park-zoo": [40.6608, -73.9626], "brooklyn-childrens-museum": [40.6735, -73.9418],
   "ny-hall-of-science": [40.7469, -73.8493], "li-childrens-museum": [40.7280, -73.6004],
+  "levitt-pavilion": [41.1400, -73.3590], "ridgefield-playhouse-kids": [41.2820, -73.4990],
+  "brooklyn-crab": [40.6740, -74.0110], "ellens-stardust-diner": [40.7650, -73.9830],
   "legoland": [40.9600, -73.8600], "bronx-zoo": [40.8500, -73.8770],
   "blue-dolphin": [41.2590, -73.6850], "mtkisco-diner": [41.2040, -73.7230],
   "belizzie": [41.2045, -73.7250], "little-kebab": [41.2050, -73.7280],
@@ -406,6 +408,42 @@ const PLACES = [
     photo: "🧸",
     blurb: "A former airplane hangar turned two-story museum with 12 galleries, plus a seasonal outdoor play area with a vegetable garden kids can harvest from. Best for ages 3–10 by the museum's own recommendation.",
     changingTable: true, stroller: true, food: UNRATED, crowd: UNRATED, shade: "N/A (indoor)", bathrooms: UNRATED, parking: "Free lot on-site",
+  },
+  {
+    id: "levitt-pavilion", name: "Levitt Pavilion for the Performing Arts", category: "Concert Venue",
+    tags: ["outdoor", "free", "seasonal"], ring: "big",
+    town: "Westport, CT", address: "40 Jesup Rd, Westport, CT 06880",
+    website: "levittpavilion.com", ageRange: "All ages", price: "Free", distanceMi: 33,
+    photo: "🎶",
+    blurb: "A free outdoor children's concert series on select Tuesdays/Wednesdays through the summer — real touring kids'-music acts, not just a local cover band. What to bring: a blanket or lawn chair for the grass; lawn opens at 6pm for picnicking, the show starts at 7pm.",
+    changingTable: UNRATED, stroller: true, food: UNRATED, crowd: UNRATED, shade: "Mixed", bathrooms: UNRATED, parking: "Street/nearby lots",
+  },
+  {
+    id: "ridgefield-playhouse-kids", name: "The Ridgefield Playhouse — Children's Series", category: "Theater",
+    tags: ["indoor", "rain-friendly", "paid"], ring: "adventure",
+    town: "Ridgefield, CT", address: "80 East Ridge Rd, Ridgefield, CT 06877",
+    website: "ridgefieldplayhouse.org", ageRange: "3–10", price: "$$", distanceMi: 27,
+    photo: "🎭",
+    blurb: "An intimate 500-seat theater with a real Children's Series — Cinderella, Beauty and the Beast, Jack and the Beanstalk and more, sometimes with a meet-and-greet after. What to bring: tickets are timed and sell out, so book ahead online.",
+    changingTable: UNRATED, stroller: UNRATED, food: UNRATED, crowd: UNRATED, shade: "N/A (indoor)", bathrooms: UNRATED, parking: "Street/nearby lots",
+  },
+  {
+    id: "brooklyn-crab", name: "Brooklyn Crab", category: "Restaurant",
+    tags: ["outdoor", "seasonal"], ring: "adventure",
+    town: "Brooklyn, NY", address: "24 Reed St, Brooklyn, NY 11231",
+    website: "brooklyncrab.com", ageRange: "All ages", price: "$$", distanceMi: 33,
+    photo: "🦀",
+    blurb: "A big waterfront seafood spot in Red Hook with an outdoor backyard built for kids to burn energy — mini golf, bean bag toss, a sandbox — while you actually get to eat. Seasonal, so check that the backyard is open before you go in colder months.",
+    changingTable: UNRATED, stroller: UNRATED, food: true, crowd: UNRATED, shade: "Mixed", bathrooms: UNRATED, parking: "Street parking nearby",
+  },
+  {
+    id: "ellens-stardust-diner", name: "Ellen's Stardust Diner", category: "Restaurant",
+    tags: ["indoor", "rain-friendly"], ring: "adventure",
+    town: "Manhattan, NY", address: "1650 Broadway, New York, NY 10019",
+    website: "ellensstardustdiner.com", ageRange: "All ages", price: "$$", distanceMi: 38,
+    photo: "🎤",
+    blurb: "A retro 1950s diner in the Theater District where the waitstaff are Broadway performers who sing while they serve you. A genuinely fun, no-extra-ticket-needed bit of NYC theater built right into dinner. Expect a wait — it's popular, and doesn't take reservations for small groups.",
+    changingTable: UNRATED, stroller: UNRATED, food: true, crowd: true, shade: "N/A (indoor)", bathrooms: UNRATED, parking: "Street/garage nearby",
   },
   {
     id: "hudson-river-museum", name: "Hudson River Museum & Planetarium", category: "Museum",
@@ -1260,6 +1298,20 @@ const ADULT_PLACES = [
     photo: "🍷", vibe: "Romantic", reservations: "Check for scheduled tasting events",
     blurb: "A well-regarded local wine shop that hosts sommelier-led tasting events with food pairings. Best for planning around a specific scheduled tasting rather than a walk-in visit.",
   },
+  {
+    id: "ridgefield-playhouse-adult", name: "The Ridgefield Playhouse", category: "Live Music",
+    town: "Ridgefield, CT", address: "80 East Ridge Rd, Ridgefield, CT 06877",
+    website: "ridgefieldplayhouse.org", price: "$$$", distanceMi: 27,
+    photo: "🎸", vibe: "Lively", reservations: "Book tickets online — shows sell out",
+    blurb: "A 500-seat nonprofit theater bringing in national touring acts, comedians, and tribute bands — genuinely no bad seat in the house. A bar serves wine and beer. Bring: your ticket and a valid ID if you're buying from the bar.",
+  },
+  {
+    id: "brooklyn-bowl", name: "Brooklyn Bowl", category: "Live Music",
+    town: "Brooklyn, NY", address: "61 Wythe Ave, Brooklyn, NY 11249",
+    website: "brooklynbowl.com", price: "$$", distanceMi: 33,
+    photo: "🎳", vibe: "Lively", reservations: "Check show calendar — some events are 21+",
+    blurb: "Live music, bowling, and a full bar/kitchen under one roof in Williamsburg. Some evening shows are 21+ only, so double check the specific event before you go. Bring: valid ID — checked at the door for evening shows.",
+  },
 ];
 
 
@@ -1362,6 +1414,7 @@ const HOURS = {
   "central-park-zoo": [10, 17], "childrens-museum-manhattan": [10, 17],
   "prospect-park-zoo": [10, 17], "brooklyn-childrens-museum": [10, 17],
   "ny-hall-of-science": [9.5, 17.5], "li-childrens-museum": [10, 17],
+  "levitt-pavilion": [18, 21], "ridgefield-playhouse-kids": [10, 21], "brooklyn-crab": [12, 22], "ellens-stardust-diner": [11, 23],
   "hudson-river-museum": [12, 17], "legoland": [10, 19], "bronx-zoo": [10, 16.5],
   "blue-dolphin": [7, 22], "mtkisco-diner": [6, 22], "belizzie": [11, 21],
   "little-kebab": [11, 21.5], "taco-street": [11.5, 21], "table-nine": [11, 21], "bedford-hills-diner": [7, 21],
@@ -1479,7 +1532,7 @@ const CATEGORY_ICON = {
   "Sports Program": "⚽", "Afterschool": "🎒", "Kids' Studio": "🧩",
   "Daycare & Preschool": "🏫", "Indoor Play": "🎪", "Theater": "🎭", "Aquarium": "🐠",
   "Indoor Playground": "🎪", "Amusement Park": "🎡", "Zoo": "🦁", "Gardens": "🌷",
-  "Gardens & Arts": "🌷", "Children's Museum": "🏛️", "Cinema": "🎬", "Bookstore": "📖",
+  "Gardens & Arts": "🌷", "Children's Museum": "🏛️", "Cinema": "🎬", "Bookstore": "📖", "Concert Venue": "🎶",
 };
 function categoryIcon(place) { return CATEGORY_ICON[place.category] || place.photo || "📍"; }
 
@@ -1487,7 +1540,7 @@ function categoryIcon(place) { return CATEGORY_ICON[place.category] || place.pho
 const PRIMARY_GROUPS = [
   { k: "play", l: "Play & Outdoors", cats: ["Playground", "Park", "Pool", "Trail", "Beach", "Farm", "Nature Center", "Indoor Play", "Indoor Playground", "Amusement Park", "Zoo", "Gardens", "Gardens & Arts"] },
   { k: "eat", l: "Eat & Treats", cats: ["Restaurant", "Ice Cream", "Farmers Market"] },
-  { k: "learn", l: "Learn & Explore", cats: ["Library", "Museum", "Historic Site", "Theater", "Aquarium", "Children's Museum", "Cinema"] },
+  { k: "learn", l: "Learn & Explore", cats: ["Library", "Museum", "Historic Site", "Theater", "Aquarium", "Children's Museum", "Cinema", "Concert Venue"] },
   { k: "classes", l: "Classes & Care", cats: ["Gym & Classes", "Martial Arts", "Dance Classes", "Music Classes", "Art Studio", "Sports Program", "Afterschool", "Kids' Studio", "Daycare & Preschool"] },
   { k: "shop", l: "Shopping", cats: ["Toy Store", "Store", "Bookstore"] },
 ];
@@ -1598,11 +1651,15 @@ function useGoogleSearch(query, curatedCount) {
         const g = window.google;
         if (!g?.maps?.places?.Place?.searchByText) { setResults([]); return; }
         setSearching(true);
+        // No hardcoded region — if the person types "Ridgefield CT" or "Manhattan pizza",
+        // Google's text search already understands the place name in the query itself.
+        // We only add a loose Westchester-area bias as a soft nudge for vague queries
+        // like "playground", not a hard restriction.
         const { places } = await g.maps.places.Place.searchByText({
-          textQuery: q + " Westchester County NY",
+          textQuery: q,
           fields: ["id", "displayName", "formattedAddress", "location", "types"],
-          maxResultCount: 6,
-          locationBias: { center: { lat: 41.2587, lng: -73.6854 }, radius: 40000 },
+          maxResultCount: 8,
+          locationBias: { center: { lat: 41.2587, lng: -73.6854 }, radius: 60000 },
         });
         if (!cancelled) setResults((places || []).map(googleToPlace));
       } catch (e) {
@@ -3603,7 +3660,7 @@ function regionOf(p) {
   return "Westchester";
 }
 
-function MapScreen({ setSelectedPlace, favorites, toggleFavorite, location, onRequestLocation, initialQuery, initialFilter, setScreen, appMode, onSetMode, adultFavorites, onToggleAdultFavorite, onSelectAdultPlace }) {
+function MapScreen({ setSelectedPlace, favorites, toggleFavorite, location, onRequestLocation, initialQuery, initialFilter, setScreen, appMode, onSetMode, adultFavorites, onToggleAdultFavorite, onSelectAdultPlace, onSelectGoogle }) {
   const [filter, setFilter] = useState(initialFilter || "all");
   const [query, setQuery] = useState(initialQuery || "");
   const filtered = useMemo(() => {
@@ -3620,6 +3677,7 @@ function MapScreen({ setSelectedPlace, favorites, toggleFavorite, location, onRe
     }
     return list;
   }, [filter, query]);
+  const { results: gResults, searching: gSearching } = useGoogleSearch(query, filtered.length);
   const located = location.status === "located";
   if (appMode === "adult") {
     return (
@@ -3716,6 +3774,34 @@ function MapScreen({ setSelectedPlace, favorites, toggleFavorite, location, onRe
             </div>
           );
         })}
+
+        {(gResults.length > 0 || gSearching) && (
+          <div>
+            <div className="flex items-center gap-2 mb-2 mt-1">
+              <span className="text-[17px]">🌐</span>
+              <p className="text-[14px] font-semibold text-[#1B2A4A]">More nearby, from Google</p>
+            </div>
+            <p className="text-[11.5px] mb-2" style={{ color: "#B8B0A0" }}>Real places, not yet parent-verified — no nap-time or stroller notes for these.</p>
+            {gSearching && <p className="text-[13px] text-[#8A8474]">Searching…</p>}
+            <div className="flex flex-col gap-2.5">
+              {gResults.map((p) => (
+                <button
+                  key={p.id}
+                  onClick={() => onSelectGoogle && onSelectGoogle(p)}
+                  className="flex items-center gap-3 p-3 rounded-2xl bg-white border text-left"
+                  style={{ borderColor: "#EFEAE0" }}
+                >
+                  <div className="w-12 h-12 rounded-xl flex items-center justify-center text-[22px] shrink-0" style={{ backgroundColor: "#F3F5F9" }}>{p.photo}</div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[14px] font-semibold text-[#1B2A4A] truncate">{p.name}</p>
+                    <p className="text-[12px] text-[#8A8474] truncate">{p.category} · {p.town}</p>
+                  </div>
+                  <ChevronRight size={16} color="#B08A5A" className="shrink-0" />
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -6908,7 +6994,7 @@ export default function LittleDayApp() {
     );
   } else if (screen === "map") {
     content = <MapScreen setSelectedPlace={handleSelectPlace} favorites={favorites} toggleFavorite={toggleFavorite} location={location} onRequestLocation={location.request} initialQuery={searchQuery} initialFilter={homeFilter} setScreen={goTo}
-      appMode={appMode} onSetMode={setAppMode} adultFavorites={adultFavorites} onToggleAdultFavorite={toggleAdultFavorite} onSelectAdultPlace={setAdultSelectedPlace} />;
+      appMode={appMode} onSetMode={setAppMode} adultFavorites={adultFavorites} onToggleAdultFavorite={toggleAdultFavorite} onSelectAdultPlace={setAdultSelectedPlace} onSelectGoogle={setGooglePlace} />;
   } else if (screen === "favorites") {
     content = <FavoritesScreen favorites={favorites} setSelectedPlace={handleSelectPlace} toggleFavorite={toggleFavorite} savedDays={savedDays} onLoadDay={useSharedDay} onDeleteDay={deleteSavedDay} />;
   } else if (screen === "friends") {
