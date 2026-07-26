@@ -5,7 +5,7 @@ import {
   Sun, MapPin, Clock, DollarSign, Heart, ChevronLeft, ChevronRight,
   Home, Map as MapIcon, List as ListIcon, User, Sparkles, Droplets, Trees, Baby,
   ParkingCircle, ToggleLeft as Accessible, Utensils, Star, Navigation,
-  Users, CheckCircle2, Cloud, CloudRain, UserPlus, Share2, Check, X, CalendarDays, Send, Shuffle, Bookmark, Moon, MessageCircle, Search, Flame, Plus, Trash2, HelpCircle, Phone, Shield
+  Users, CheckCircle2, Cloud, CloudRain, UserPlus, Share2, Check, X, CalendarDays, Send, Shuffle, Bookmark, Moon, MessageCircle, Search, Flame, Plus, Trash2, HelpCircle, Phone, Shield, SlidersHorizontal
 } from "lucide-react";
 
 /* Persist state to this device's browser storage (survives refresh/close).
@@ -1465,6 +1465,42 @@ const PRIMARY_GROUPS = [
   { k: "classes", l: "Classes & Care", cats: ["Gym & Classes", "Martial Arts", "Dance Classes", "Music Classes", "Art Studio", "Sports Program", "Afterschool", "Kids' Studio", "Daycare & Preschool"] },
   { k: "shop", l: "Shopping", cats: ["Toy Store", "Store", "Bookstore"] },
 ];
+function CategoryFilterButton({ activeKey, onSelect }) {
+  const [open, setOpen] = useState(false);
+  const options = [{ k: "all", l: "All categories" }, ...PRIMARY_GROUPS.map((g) => ({ k: g.k, l: g.l }))];
+  const activeLabel = options.find((o) => o.k === activeKey)?.l || "Filter";
+  return (
+    <div className="relative shrink-0">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className="w-9 h-9 rounded-full flex items-center justify-center border shrink-0"
+        style={{ borderColor: activeKey && activeKey !== "all" ? "var(--accent)" : "#E7E1D4", backgroundColor: activeKey && activeKey !== "all" ? "#FFF6F0" : "#fff" }}
+        title={activeLabel}
+      >
+        <SlidersHorizontal size={16} color={activeKey && activeKey !== "all" ? "var(--accent)" : "#9C9484"} />
+      </button>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-20" onClick={() => setOpen(false)} />
+          <div className="absolute right-0 top-11 z-30 rounded-2xl bg-white border shadow-lg py-1.5 w-[190px]" style={{ borderColor: "#EFEAE0" }}>
+            {options.map((o) => (
+              <button
+                key={o.k}
+                onClick={() => { onSelect(o.k); setOpen(false); }}
+                className="w-full text-left px-4 py-2.5 text-[13.5px] flex items-center justify-between"
+                style={{ color: activeKey === o.k ? "var(--accent)" : "#1B2A4A", fontWeight: activeKey === o.k ? 700 : 500 }}
+              >
+                {o.l}
+                {activeKey === o.k && <Check size={15} />}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 function primaryGroup(place) {
   for (const g of PRIMARY_GROUPS) if (g.cats.includes(place.category)) return g.k;
   return "play"; // sensible default so nothing ever disappears
@@ -2593,7 +2629,7 @@ function HomeSmartBanners({ kids, companionKidIds, schoolDistrictId, onSetSchool
   );
 }
 
-function HomeScreen({ setScreen, favorites, toggleFavorite, setSelectedPlace, location, onRequestLocation, onSurprise, kids, activeKidId, onSetActive, searchQuery, setSearchQuery, onHowTo, onSelectGoogle,
+function HomeScreen({ setScreen, favorites, toggleFavorite, setSelectedPlace, location, onRequestLocation, onSurprise, kids, activeKidId, onSetActive, searchQuery, setSearchQuery, onFilterToCategory, onHowTo, onSelectGoogle,
   companionKidIds, onToggleCompanionKid, schoolDistrictId, onSetSchoolDistrict, completedDays, onOpenBuilder,
 }) {
   const nearby = PLACES.slice(0, 4);
@@ -2667,17 +2703,20 @@ function HomeScreen({ setScreen, favorites, toggleFavorite, setSelectedPlace, lo
       </div>
 
       <div className="px-5 mt-1">
-        <div className="flex items-center gap-2 rounded-2xl px-3.5 py-2.5 border bg-white" style={{ borderColor: "#E7E1D4" }}>
-          <Search size={17} color="#9C9484" />
-          <input
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search places, towns, or categories"
-            className="flex-1 text-[14px] outline-none bg-transparent text-[#1B2A4A]"
-          />
-          {searchQuery && (
-            <button onClick={() => setSearchQuery("")}><X size={16} color="#9C9484" /></button>
-          )}
+        <div className="flex items-center gap-2">
+          <div className="flex-1 flex items-center gap-2 rounded-2xl px-3.5 py-2.5 border bg-white" style={{ borderColor: "#E7E1D4" }}>
+            <Search size={17} color="#9C9484" />
+            <input
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search places, towns, or categories"
+              className="flex-1 text-[14px] outline-none bg-transparent text-[#1B2A4A]"
+            />
+            {searchQuery && (
+              <button onClick={() => setSearchQuery("")}><X size={16} color="#9C9484" /></button>
+            )}
+          </div>
+          {onFilterToCategory && <CategoryFilterButton activeKey="all" onSelect={onFilterToCategory} />}
         </div>
         {hq && (
           <div className="mt-2 rounded-2xl border bg-white overflow-hidden" style={{ borderColor: "#EFEAE0" }}>
@@ -3402,8 +3441,8 @@ function regionOf(p) {
   return "Westchester";
 }
 
-function MapScreen({ setSelectedPlace, favorites, toggleFavorite, location, onRequestLocation, initialQuery, setScreen }) {
-  const [filter, setFilter] = useState("all");
+function MapScreen({ setSelectedPlace, favorites, toggleFavorite, location, onRequestLocation, initialQuery, initialFilter, setScreen }) {
+  const [filter, setFilter] = useState(initialFilter || "all");
   const [query, setQuery] = useState(initialQuery || "");
   const filtered = useMemo(() => {
     let list = filter === "all" ? PLACES : PLACES.filter((p) => primaryGroup(p) === filter);
@@ -3424,19 +3463,22 @@ function MapScreen({ setSelectedPlace, favorites, toggleFavorite, location, onRe
     <div className="pb-4">
       <TopBar title="Categories List" hideHome={false} />
       <div className="px-5 mb-3">
-        <div className="flex items-center gap-2 rounded-2xl px-3.5 py-2.5 border bg-white" style={{ borderColor: "#E7E1D4" }}>
-          <Search size={17} color="#9C9484" />
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search places, or a region: Westchester, CT, Manhattan…"
-            className="flex-1 text-[14px] outline-none bg-transparent text-[#1B2A4A]"
-          />
-          {query && (
-            <button onClick={() => setQuery("")}>
-              <X size={16} color="#9C9484" />
-            </button>
-          )}
+        <div className="flex items-center gap-2">
+          <div className="flex-1 flex items-center gap-2 rounded-2xl px-3.5 py-2.5 border bg-white" style={{ borderColor: "#E7E1D4" }}>
+            <Search size={17} color="#9C9484" />
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search places, or a region: Westchester, CT, Manhattan…"
+              className="flex-1 text-[14px] outline-none bg-transparent text-[#1B2A4A]"
+            />
+            {query && (
+              <button onClick={() => setQuery("")}>
+                <X size={16} color="#9C9484" />
+              </button>
+            )}
+          </div>
+          <CategoryFilterButton activeKey={filter} onSelect={setFilter} />
         </div>
         {setScreen && (
           <button onClick={() => setScreen("travelSearch")} className="w-full text-center mt-2 text-[12.5px] font-semibold" style={{ color: "var(--accent)" }}>
@@ -5983,6 +6025,7 @@ export default function LittleDayApp() {
   const [surpriseMode, setSurpriseMode] = useState(false);
   const [lastPrefs, setLastPrefs] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [homeFilter, setHomeFilter] = useState("all");
   const [showHowTo, setShowHowTo] = useState(false);
   const [, setWeatherV] = useState(0);
   useEffect(() => { fetchLiveWeather().then(() => setWeatherV((v) => v + 1)); }, []);
@@ -6623,6 +6666,7 @@ export default function LittleDayApp() {
         onSetActive={setActiveKidId}
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
+        onFilterToCategory={(k) => { setHomeFilter(k); goTo("map"); }}
         onHowTo={() => setShowHowTo(true)}
         onSelectGoogle={setGooglePlace}
         companionKidIds={companionKidIds}
@@ -6659,7 +6703,7 @@ export default function LittleDayApp() {
       />
     );
   } else if (screen === "map") {
-    content = <MapScreen setSelectedPlace={handleSelectPlace} favorites={favorites} toggleFavorite={toggleFavorite} location={location} onRequestLocation={location.request} initialQuery={searchQuery} setScreen={goTo} />;
+    content = <MapScreen setSelectedPlace={handleSelectPlace} favorites={favorites} toggleFavorite={toggleFavorite} location={location} onRequestLocation={location.request} initialQuery={searchQuery} initialFilter={homeFilter} setScreen={goTo} />;
   } else if (screen === "favorites") {
     content = <FavoritesScreen favorites={favorites} setSelectedPlace={handleSelectPlace} toggleFavorite={toggleFavorite} savedDays={savedDays} onLoadDay={useSharedDay} onDeleteDay={deleteSavedDay} />;
   } else if (screen === "friends") {
