@@ -3505,16 +3505,6 @@ function MapScreen({ setSelectedPlace, favorites, toggleFavorite, location, onRe
             : "Use my location"}
         </button>
       </div>
-      <div className="px-5 mb-3 flex gap-2 overflow-x-auto">
-        {[
-          { k: "all", l: "All" },
-          ...PRIMARY_GROUPS.map((g) => ({ k: g.k, l: g.l.split(" ")[0] })),
-        ].map((f) => (
-          <Pill key={f.k} active={filter === f.k} onClick={() => setFilter(f.k)}>
-            {f.l}
-          </Pill>
-        ))}
-      </div>
 
       <div className="mx-5 rounded-2xl relative overflow-hidden" style={{ height: 240 }}>
         <MapView
