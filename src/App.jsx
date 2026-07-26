@@ -49,6 +49,11 @@ const COORDS = {
   "greenburgh-nature": [41.0200, -73.8000], "westchester-childrens-museum": [40.9680, -73.6730],
   "playland": [40.9670, -73.6710], "maritime-aquarium": [41.0960, -73.4180],
   "stepping-stones": [41.1170, -73.4210], "hudson-river-museum": [40.9470, -73.8950],
+  "bruce-museum": [41.0198, -73.6227], "stamford-nature-center": [41.1290, -73.5590],
+  "greenwich-point": [41.0080, -73.5570],
+  "central-park-zoo": [40.7678, -73.9718], "childrens-museum-manhattan": [40.7859, -73.9776],
+  "prospect-park-zoo": [40.6608, -73.9626], "brooklyn-childrens-museum": [40.6735, -73.9418],
+  "ny-hall-of-science": [40.7469, -73.8493], "li-childrens-museum": [40.7280, -73.6004],
   "legoland": [40.9600, -73.8600], "bronx-zoo": [40.8500, -73.8770],
   "blue-dolphin": [41.2590, -73.6850], "mtkisco-diner": [41.2040, -73.7230],
   "belizzie": [41.2045, -73.7250], "little-kebab": [41.2050, -73.7280],
@@ -318,6 +323,89 @@ const PLACES = [
     photo: "🧩",
     blurb: "A top-rated children's museum with science, art, reading and pretend-play exhibits. Quieter hours tend to be weekday afternoons; a family bathroom is up front.",
     changingTable: true, stroller: true, food: UNRATED, crowd: UNRATED, shade: "N/A (indoor)", bathrooms: UNRATED, parking: "Lot",
+  },
+  // ---- Connecticut day trips (Fairfield County, just over the border) ----
+  {
+    id: "bruce-museum", name: "Bruce Museum", category: "Museum",
+    tags: ["indoor", "rain-friendly", "learning", "paid"], ring: "adventure",
+    town: "Greenwich, CT", address: "1 Museum Drive, Greenwich, CT 06830",
+    website: "brucemuseum.org", ageRange: "3–12", price: "$$", distanceMi: 29,
+    photo: "🔬",
+    blurb: "An art, science and natural-history museum overlooking Greenwich Harbor, with more than a dozen changing exhibitions a year. Open Tue–Sun 10–5 (closed Mondays); Tuesdays are free for everyone, kids under 5 always free.",
+    changingTable: UNRATED, stroller: true, food: true, crowd: UNRATED, shade: "N/A (indoor)", bathrooms: UNRATED, parking: "Free lot on-site",
+  },
+  {
+    id: "stamford-nature-center", name: "Stamford Museum & Nature Center", category: "Nature Center",
+    tags: ["outdoor", "animals", "learning", "paid"], ring: "adventure",
+    town: "Stamford, CT", address: "39 Scofieldtown Road, Stamford, CT 06903",
+    website: "stamfordmuseum.org", ageRange: "1–10", price: "$$", distanceMi: 26,
+    photo: "🐐",
+    blurb: "A 118-acre property with a real working farm (Heckscher Farm — goats, llamas, a Highland cow), an otter pond, a big kid-scaled playground and 80 acres of easy trails. Plenty of room to run before or after the animals.",
+    changingTable: UNRATED, stroller: true, food: UNRATED, crowd: UNRATED, shade: true, bathrooms: UNRATED, parking: "Free lot on-site",
+  },
+  {
+    id: "greenwich-point", name: "Greenwich Point Park (Tod's Point)", category: "Beach",
+    tags: ["outdoor", "beach", "seasonal", "free"], ring: "big",
+    town: "Old Greenwich, CT", address: "1 Greenwich Point Rd, Old Greenwich, CT 06870",
+    website: "greenwichct.gov", ageRange: "1–12", price: "$", distanceMi: 31,
+    photo: "🏖️",
+    blurb: "147 acres of beach, parkland and walking paths on Long Island Sound. Heads up: unlike the free Westchester parks in this app, non-Greenwich residents need to buy a day pass at the gate — worth calling ahead to confirm current visitor rules.",
+    changingTable: UNRATED, stroller: UNRATED, food: UNRATED, crowd: UNRATED, shade: UNRATED, bathrooms: UNRATED, parking: "Pay lot at the gate (residents/pass holders)",
+  },
+  // ---- NYC boroughs & Long Island (families cross into Westchester's neighbors often) ----
+  {
+    id: "central-park-zoo", name: "Central Park Zoo (Tisch Children's Zoo)", category: "Zoo",
+    tags: ["outdoor", "animals", "paid"], ring: "big",
+    town: "Manhattan, NY", address: "East 64th St & 5th Ave, New York, NY 10021",
+    website: "centralparkzoo.com", ageRange: "1–10", price: "$$", distanceMi: 38,
+    photo: "🦭",
+    blurb: "A compact, stroller-friendly zoo right inside Central Park — sea lions, snow leopards, red pandas, and the Tisch Children's Zoo where kids can feed goats and sheep. All tickets are timed and must be reserved online in advance.",
+    changingTable: UNRATED, stroller: true, food: true, crowd: UNRATED, shade: UNRATED, bathrooms: UNRATED, parking: "Street/garage nearby — most families take the subway or train in",
+  },
+  {
+    id: "childrens-museum-manhattan", name: "Children's Museum of Manhattan", category: "Children's Museum",
+    tags: ["indoor", "rain-friendly", "learning", "paid"], ring: "adventure",
+    town: "Manhattan, NY", address: "212 W 83rd St, New York, NY 10024",
+    website: "cmom.org", ageRange: "6mo–8", price: "$$", distanceMi: 37,
+    photo: "🎨",
+    blurb: "Five floors of hands-on exhibits on the Upper West Side, with a lot geared toward kids 6 and under. Closed Mondays. A good rainy-day pick if you're already headed into the city.",
+    changingTable: true, stroller: true, food: UNRATED, crowd: UNRATED, shade: "N/A (indoor)", bathrooms: UNRATED, parking: "Street/garage nearby — most families take the subway or train in",
+  },
+  {
+    id: "prospect-park-zoo", name: "Prospect Park Zoo", category: "Zoo",
+    tags: ["outdoor", "animals", "paid"], ring: "big",
+    town: "Brooklyn, NY", address: "450 Flatbush Ave, Brooklyn, NY 11225",
+    website: "prospectparkzoo.com", ageRange: "1–10", price: "$", distanceMi: 34,
+    photo: "🦁",
+    blurb: "A small, manageable 12-acre zoo inside Prospect Park — often recommended over the bigger Bronx Zoo for families with younger kids who'd get overwhelmed. Sea lion feedings a couple times a day. Tickets are timed, online only.",
+    changingTable: UNRATED, stroller: true, food: UNRATED, crowd: UNRATED, shade: UNRATED, bathrooms: UNRATED, parking: "Free street parking on Flatbush Ave",
+  },
+  {
+    id: "brooklyn-childrens-museum", name: "Brooklyn Children's Museum", category: "Children's Museum",
+    tags: ["indoor", "rain-friendly", "learning", "paid"], ring: "adventure",
+    town: "Brooklyn, NY", address: "145 Brooklyn Ave, Brooklyn, NY 11213",
+    website: "brooklynkids.org", ageRange: "0–10", price: "$$", distanceMi: 33,
+    photo: "🏛️",
+    blurb: "The world's first children's museum (opened in 1899), in Crown Heights. A toddler-specific area called Totally Tots plus a whole floor of hands-on nature and world-culture exhibits. Closed Mondays.",
+    changingTable: true, stroller: true, food: true, crowd: UNRATED, shade: "N/A (indoor)", bathrooms: UNRATED, parking: "Street parking nearby",
+  },
+  {
+    id: "ny-hall-of-science", name: "New York Hall of Science", category: "Museum",
+    tags: ["indoor", "outdoor", "rain-friendly", "learning", "paid"], ring: "adventure",
+    town: "Corona, Queens, NY", address: "47-01 111th St, Corona, NY 11368",
+    website: "nysci.org", ageRange: "2–12", price: "$$", distanceMi: 41,
+    photo: "🚀",
+    blurb: "NYC's only hands-on science center — 450+ exhibits plus an outdoor Science Playground and Rocket Park mini-golf (weather permitting). Has an on-site parking lot, which is rare for a NYC attraction. Free Friday 2–5pm and Sunday 10–11am.",
+    changingTable: UNRATED, stroller: true, food: true, crowd: UNRATED, shade: UNRATED, bathrooms: UNRATED, parking: "On-site lot, $10-15",
+  },
+  {
+    id: "li-childrens-museum", name: "Long Island Children's Museum", category: "Children's Museum",
+    tags: ["indoor", "rain-friendly", "learning", "paid"], ring: "adventure",
+    town: "Garden City, NY (Long Island)", address: "11 Davis Ave, Garden City, NY 11530",
+    website: "licm.org", ageRange: "6mo–10", price: "$$", distanceMi: 35,
+    photo: "🧸",
+    blurb: "A former airplane hangar turned two-story museum with 12 galleries, plus a seasonal outdoor play area with a vegetable garden kids can harvest from. Best for ages 3–10 by the museum's own recommendation.",
+    changingTable: true, stroller: true, food: UNRATED, crowd: UNRATED, shade: "N/A (indoor)", bathrooms: UNRATED, parking: "Free lot on-site",
   },
   {
     id: "hudson-river-museum", name: "Hudson River Museum & Planetarium", category: "Museum",
@@ -1244,6 +1332,10 @@ const HOURS = {
   "teatown": [9, 17], "kensico-dam": [7, 19], "saxon-woods": [8, 18],
   "greenburgh-nature": [9.5, 16.5], "westchester-childrens-museum": [10, 17],
   "playland": [11, 21], "maritime-aquarium": [10, 17], "stepping-stones": [10, 17],
+  "bruce-museum": [10, 17], "stamford-nature-center": [9, 17], "greenwich-point": [7, 19],
+  "central-park-zoo": [10, 17], "childrens-museum-manhattan": [10, 17],
+  "prospect-park-zoo": [10, 17], "brooklyn-childrens-museum": [10, 17],
+  "ny-hall-of-science": [9.5, 17.5], "li-childrens-museum": [10, 17],
   "hudson-river-museum": [12, 17], "legoland": [10, 19], "bronx-zoo": [10, 16.5],
   "blue-dolphin": [7, 22], "mtkisco-diner": [6, 22], "belizzie": [11, 21],
   "little-kebab": [11, 21.5], "taco-street": [11.5, 21], "table-nine": [11, 21], "bedford-hills-diner": [7, 21],
@@ -1462,6 +1554,142 @@ function useGoogleSearch(query, curatedCount) {
   return { results, searching };
 }
 
+function travelCategoryEmoji(types) {
+  const t = types || [];
+  if (t.includes("zoo")) return "🦁";
+  if (t.includes("aquarium")) return "🐠";
+  if (t.includes("amusement_park")) return "🎡";
+  if (t.includes("museum")) return "🏛️";
+  if (t.includes("park")) return "🌳";
+  if (t.includes("beach")) return "🏖️";
+  if (t.includes("bowling_alley")) return "🎳";
+  if (t.includes("movie_theater")) return "🎬";
+  if (t.includes("restaurant") || t.includes("cafe")) return "🍽️";
+  if (t.includes("tourist_attraction")) return "📍";
+  return "📍";
+}
+function travelCategoryLabel(types) {
+  const t = types || [];
+  if (t.includes("zoo")) return "Zoo";
+  if (t.includes("aquarium")) return "Aquarium";
+  if (t.includes("amusement_park")) return "Amusement Park";
+  if (t.includes("museum")) return "Museum";
+  if (t.includes("park")) return "Park";
+  if (t.includes("bowling_alley")) return "Bowling";
+  if (t.includes("movie_theater")) return "Movie Theater";
+  if (t.includes("restaurant")) return "Restaurant";
+  if (t.includes("cafe")) return "Café";
+  if (t.includes("tourist_attraction")) return "Attraction";
+  return "Family Spot";
+}
+
+function TravelSearchScreen({ onBack, onOpenGooglePlace }) {
+  const { isLoaded, loadError } = useJsApiLoader({ id: "little-day-gmaps", googleMapsApiKey: GMAPS_KEY, libraries: GMAPS_LIBRARIES });
+  const [query, setQuery] = useState("");
+  const [status, setStatus] = useState("idle"); // idle | searching | done | error
+  const [results, setResults] = useState([]);
+  const [searchedFor, setSearchedFor] = useState("");
+  const serviceRef = useRef(null);
+
+  const runSearch = () => {
+    if (!query.trim() || !isLoaded || !window.google) return;
+    setStatus("searching");
+    setResults([]);
+    const geocoder = new window.google.maps.Geocoder();
+    geocoder.geocode({ address: query.trim() }, (geoResults, geoStatus) => {
+      if (geoStatus !== "OK" || !geoResults || !geoResults[0]) {
+        setStatus("error");
+        return;
+      }
+      const loc = geoResults[0].geometry.location;
+      if (!serviceRef.current) {
+        serviceRef.current = new window.google.maps.places.PlacesService(document.createElement("div"));
+      }
+      serviceRef.current.textSearch(
+        { query: "family friendly things to do with kids", location: loc, radius: 16000 },
+        (places, placesStatus) => {
+          if (placesStatus !== window.google.maps.places.PlacesServiceStatus.OK || !places) {
+            setStatus("error");
+            return;
+          }
+          setResults(places.slice(0, 20));
+          setSearchedFor(geoResults[0].formatted_address);
+          setStatus("done");
+        }
+      );
+    });
+  };
+
+  return (
+    <div className="min-h-screen pb-8" style={{ backgroundColor: "#FFFBF5" }}>
+      <TopBar title="Search Any Area" onBack={onBack} />
+      <div className="px-5 pt-2">
+        <div className="rounded-2xl p-3.5 mb-4" style={{ backgroundColor: "#FFF3E6" }}>
+          <p className="text-[12.5px] leading-snug" style={{ color: "#8A6A3D" }}>
+            ✈️ Traveling or headed out of our curated area? Search live results from Google here — real places, but not yet parent-verified (no nap-time or stroller notes).
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2 rounded-2xl px-3.5 py-2.5 border bg-white mb-4" style={{ borderColor: "#E7E1D4" }}>
+          <Search size={17} color="#9C9484" />
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && runSearch()}
+            placeholder="e.g. Ridgefield CT, Boston, Miami…"
+            className="flex-1 text-[14px] outline-none bg-transparent text-[#1B2A4A]"
+          />
+        </div>
+        <button
+          onClick={runSearch}
+          disabled={!query.trim() || status === "searching" || !isLoaded}
+          className="w-full rounded-2xl py-3.5 text-white font-semibold text-[14.5px] disabled:opacity-50"
+          style={{ background: "var(--cta)" }}
+        >
+          {status === "searching" ? "Searching…" : "Search"}
+        </button>
+
+        {loadError && <p className="text-[13px] text-center mt-4" style={{ color: "#C05621" }}>Map couldn't load — check the Google Maps API key.</p>}
+        {status === "error" && <p className="text-[13px] text-center mt-4" style={{ color: "#C05621" }}>Couldn't find that place, or no results nearby — try a different spelling or a bigger town name.</p>}
+
+        {status === "done" && (
+          <>
+            <p className="text-[12px] text-[#8A8474] mt-5 mb-2">Results near {searchedFor}</p>
+            <div className="flex flex-col gap-2">
+              {results.map((r) => (
+                <button
+                  key={r.place_id}
+                  onClick={() => onOpenGooglePlace({
+                    name: r.name,
+                    address: r.formatted_address,
+                    photo: travelCategoryEmoji(r.types),
+                    category: travelCategoryLabel(r.types),
+                    town: searchedFor,
+                    rating: r.rating,
+                  })}
+                  className="flex items-center gap-3 p-3 rounded-2xl bg-white border text-left"
+                  style={{ borderColor: "#EFEAE0" }}
+                >
+                  <div className="w-12 h-12 rounded-xl flex items-center justify-center text-[22px] shrink-0" style={{ backgroundColor: "#FFF3E6" }}>{travelCategoryEmoji(r.types)}</div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[14px] font-semibold text-[#1B2A4A] truncate">{r.name}</p>
+                    <p className="text-[12px] text-[#8A8474] truncate">
+                      {travelCategoryLabel(r.types)}{r.rating ? ` · ⭐ ${r.rating}` : ""}
+                    </p>
+                    <p className="text-[11.5px] text-[#B8B0A0] truncate">{r.formatted_address}</p>
+                  </div>
+                  <ChevronRight size={16} color="#B08A5A" className="shrink-0" />
+                </button>
+              ))}
+              {results.length === 0 && <p className="text-[13px] text-[#8A8474] text-center mt-4">No family spots found nearby — try a bigger town or city name.</p>}
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function GooglePlaceSheet({ place, onClose }) {
   if (!place) return null;
   const mapsUrl = "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(place.name + " " + place.address);
@@ -1474,7 +1702,7 @@ function GooglePlaceSheet({ place, onClose }) {
           <div className="w-12 h-12 rounded-xl flex items-center justify-center text-[24px] shrink-0" style={{ backgroundColor: "#FFF3E6" }}>{place.photo}</div>
           <div className="flex-1 min-w-0">
             <p className="text-[17px] font-bold text-[#1B2A4A]" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>{place.name}</p>
-            <p className="text-[13px] text-[#8A8474]">{place.category} · {place.town}</p>
+            <p className="text-[13px] text-[#8A8474]">{place.category} · {place.town}{place.rating ? ` · ⭐ ${place.rating}` : ""}</p>
           </div>
         </div>
         {place.address && <p className="text-[13px] text-[#5C5648] mt-3">{place.address}</p>}
@@ -3163,7 +3391,18 @@ function MapView({ places, located, userCoords, onSelect }) {
   return <GoogleMapView places={places} located={located} userCoords={userCoords} onSelect={onSelect} />;
 }
 
-function MapScreen({ setSelectedPlace, favorites, toggleFavorite, location, onRequestLocation, initialQuery }) {
+function regionOf(p) {
+  const t = p.town || "";
+  if (t.includes(", CT")) return "Connecticut";
+  if (t.includes("Manhattan")) return "Manhattan";
+  if (t.includes("Brooklyn")) return "Brooklyn";
+  if (t.includes("Queens")) return "Queens";
+  if (t.includes("Bronx")) return "Bronx";
+  if (t.includes("Long Island")) return "Long Island";
+  return "Westchester";
+}
+
+function MapScreen({ setSelectedPlace, favorites, toggleFavorite, location, onRequestLocation, initialQuery, setScreen }) {
   const [filter, setFilter] = useState("all");
   const [query, setQuery] = useState(initialQuery || "");
   const filtered = useMemo(() => {
@@ -3174,7 +3413,8 @@ function MapScreen({ setSelectedPlace, favorites, toggleFavorite, location, onRe
         (p) =>
           p.name.toLowerCase().includes(q) ||
           p.town.toLowerCase().includes(q) ||
-          p.category.toLowerCase().includes(q)
+          p.category.toLowerCase().includes(q) ||
+          regionOf(p).toLowerCase().includes(q)
       );
     }
     return list;
@@ -3189,7 +3429,7 @@ function MapScreen({ setSelectedPlace, favorites, toggleFavorite, location, onRe
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search places, towns, or type"
+            placeholder="Search places, or a region: Westchester, CT, Manhattan…"
             className="flex-1 text-[14px] outline-none bg-transparent text-[#1B2A4A]"
           />
           {query && (
@@ -3198,6 +3438,11 @@ function MapScreen({ setSelectedPlace, favorites, toggleFavorite, location, onRe
             </button>
           )}
         </div>
+        {setScreen && (
+          <button onClick={() => setScreen("travelSearch")} className="w-full text-center mt-2 text-[12.5px] font-semibold" style={{ color: "var(--accent)" }}>
+            ✈️ Traveling further out? Search any area live →
+          </button>
+        )}
       </div>
       <div className="px-5 mb-3">
         <button
@@ -6414,7 +6659,7 @@ export default function LittleDayApp() {
       />
     );
   } else if (screen === "map") {
-    content = <MapScreen setSelectedPlace={handleSelectPlace} favorites={favorites} toggleFavorite={toggleFavorite} location={location} onRequestLocation={location.request} initialQuery={searchQuery} />;
+    content = <MapScreen setSelectedPlace={handleSelectPlace} favorites={favorites} toggleFavorite={toggleFavorite} location={location} onRequestLocation={location.request} initialQuery={searchQuery} setScreen={goTo} />;
   } else if (screen === "favorites") {
     content = <FavoritesScreen favorites={favorites} setSelectedPlace={handleSelectPlace} toggleFavorite={toggleFavorite} savedDays={savedDays} onLoadDay={useSharedDay} onDeleteDay={deleteSavedDay} />;
   } else if (screen === "friends") {
@@ -6456,6 +6701,8 @@ export default function LittleDayApp() {
       favorites={favorites} savedDays={savedDays} onViewSaved={() => goTo("favorites")}
       forceEditNameToken={forceEditNameToken}
     />;
+  } else if (screen === "travelSearch") {
+    content = <TravelSearchScreen onBack={() => goTo("map")} onOpenGooglePlace={(p) => setGooglePlace(p)} />;
   } else if (screen === "safety") {
     content = <SafetyScreen />;
   } else if (screen === "community") {
