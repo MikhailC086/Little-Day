@@ -1299,18 +1299,25 @@ const ADULT_PLACES = [
     blurb: "A well-regarded local wine shop that hosts sommelier-led tasting events with food pairings. Best for planning around a specific scheduled tasting rather than a walk-in visit.",
   },
   {
-    id: "ridgefield-playhouse-adult", name: "The Ridgefield Playhouse", category: "Live Music",
+    id: "ridgefield-playhouse-adult", name: "The Ridgefield Playhouse", category: "Concerts",
     town: "Ridgefield, CT", address: "80 East Ridge Rd, Ridgefield, CT 06877",
     website: "ridgefieldplayhouse.org", price: "$$$", distanceMi: 27,
     photo: "🎸", vibe: "Lively", reservations: "Book tickets online — shows sell out",
     blurb: "A 500-seat nonprofit theater bringing in national touring acts, comedians, and tribute bands — genuinely no bad seat in the house. A bar serves wine and beer. Bring: your ticket and a valid ID if you're buying from the bar.",
   },
   {
-    id: "brooklyn-bowl", name: "Brooklyn Bowl", category: "Live Music",
+    id: "brooklyn-bowl", name: "Brooklyn Bowl", category: "Concerts",
     town: "Brooklyn, NY", address: "61 Wythe Ave, Brooklyn, NY 11249",
     website: "brooklynbowl.com", price: "$$", distanceMi: 33,
     photo: "🎳", vibe: "Lively", reservations: "Check show calendar — some events are 21+",
     blurb: "Live music, bowling, and a full bar/kitchen under one roof in Williamsburg. Some evening shows are 21+ only, so double check the specific event before you go. Bring: valid ID — checked at the door for evening shows.",
+  },
+  {
+    id: "ron-blacks-beer-hall", name: "Ron Black's Beer Hall", category: "Bar",
+    town: "White Plains, NY", address: "181 Mamaroneck Ave, White Plains, NY 10601",
+    website: "", price: "$$", distanceMi: 13,
+    photo: "🍻", vibe: "Lively", reservations: "Walk-in — arrive early on trivia nights",
+    blurb: "A lively beer hall with a real weekly Trivia Night every Tuesday at 8pm — $100 cash prize to the winning team, plus bonus prizes all night. Bring: a team (up to a handful of people) and your general-knowledge confidence. Valid ID required at the bar.",
   },
 ];
 
@@ -1544,6 +1551,42 @@ const PRIMARY_GROUPS = [
   { k: "classes", l: "Classes & Care", cats: ["Gym & Classes", "Martial Arts", "Dance Classes", "Music Classes", "Art Studio", "Sports Program", "Afterschool", "Kids' Studio", "Daycare & Preschool"] },
   { k: "shop", l: "Shopping", cats: ["Toy Store", "Store", "Bookstore"] },
 ];
+function SimpleFilterDropdown({ label, icon: Icon, activeKey, options, onSelect }) {
+  const [open, setOpen] = useState(false);
+  const activeLabel = options.find((o) => o.k === activeKey)?.l || label;
+  const isActive = activeKey && activeKey !== "all";
+  return (
+    <div className="relative shrink-0">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className="h-9 px-3 rounded-full flex items-center gap-1.5 border shrink-0"
+        style={{ borderColor: isActive ? "var(--accent)" : "#E7E1D4", backgroundColor: isActive ? "#FFF6F0" : "#fff" }}
+      >
+        {Icon && <Icon size={14} color={isActive ? "var(--accent)" : "#9C9484"} />}
+        <span className="text-[12.5px] font-semibold whitespace-nowrap" style={{ color: isActive ? "var(--accent)" : "#5C5648" }}>{activeLabel}</span>
+      </button>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-20" onClick={() => setOpen(false)} />
+          <div className="absolute left-0 top-11 z-30 rounded-2xl bg-white border shadow-lg py-1.5 w-[190px] max-h-[280px] overflow-y-auto" style={{ borderColor: "#EFEAE0" }}>
+            {options.map((o) => (
+              <button
+                key={o.k}
+                onClick={() => { onSelect(o.k); setOpen(false); }}
+                className="w-full text-left px-4 py-2.5 text-[13.5px] flex items-center justify-between"
+                style={{ color: activeKey === o.k ? "var(--accent)" : "#1B2A4A", fontWeight: activeKey === o.k ? 700 : 500 }}
+              >
+                {o.l}
+                {activeKey === o.k && <Check size={15} />}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 function CategoryFilterButton({ activeKey, onSelect }) {
   const [open, setOpen] = useState(false);
   const options = [{ k: "all", l: "All categories" }, ...PRIMARY_GROUPS.map((g) => ({ k: g.k, l: g.l }))];
@@ -1702,7 +1745,8 @@ function travelCategoryLabel(types) {
   return "Family Spot";
 }
 
-function TravelSearchScreen({ onBack, onOpenGooglePlace }) {
+function TravelSearchScreen({ onBack, onOpenGooglePlace, appMode, onSetMode }) {
+  const isAdult = appMode === "adult";
   const { isLoaded, loadError } = useJsApiLoader({ id: "little-day-gmaps", googleMapsApiKey: GMAPS_KEY, libraries: GMAPS_LIBRARIES });
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("idle"); // idle | searching | done | error
@@ -1724,8 +1768,11 @@ function TravelSearchScreen({ onBack, onOpenGooglePlace }) {
       if (!serviceRef.current) {
         serviceRef.current = new window.google.maps.places.PlacesService(document.createElement("div"));
       }
+      const searchText = isAdult
+        ? "restaurants bars concerts movies museums date night things to do"
+        : "family friendly things to do with kids";
       serviceRef.current.textSearch(
-        { query: "family friendly things to do with kids", location: loc, radius: 16000 },
+        { query: searchText, location: loc, radius: 16000 },
         (places, placesStatus) => {
           if (placesStatus !== window.google.maps.places.PlacesServiceStatus.OK || !places) {
             setStatus("error");
@@ -1742,10 +1789,13 @@ function TravelSearchScreen({ onBack, onOpenGooglePlace }) {
   return (
     <div className="min-h-screen pb-8" style={{ backgroundColor: "#FFFBF5" }}>
       <TopBar title="Search Any Area" onBack={onBack} />
+      <ModeSwitcher mode={appMode} onSetMode={onSetMode} />
       <div className="px-5 pt-2">
-        <div className="rounded-2xl p-3.5 mb-4" style={{ backgroundColor: "#FFF3E6" }}>
-          <p className="text-[12.5px] leading-snug" style={{ color: "#8A6A3D" }}>
-            ✈️ Traveling or headed out of our curated area? Search live results from Google here — real places, but not yet parent-verified (no nap-time or stroller notes).
+        <div className="rounded-2xl p-3.5 mb-4" style={{ backgroundColor: isAdult ? "#F3ECF7" : "#FFF3E6" }}>
+          <p className="text-[12.5px] leading-snug" style={{ color: isAdult ? "#6B4E8C" : "#8A6A3D" }}>
+            {isAdult
+              ? "✈️ Heading somewhere new? Search live results from Google here — restaurants, bars, concerts, museums, movies, anywhere in the US. Real places, not yet verified by us."
+              : "✈️ Traveling or headed out of our curated area? Search live results from Google here — real places, but not yet parent-verified (no nap-time or stroller notes)."}
           </p>
         </div>
 
@@ -1755,7 +1805,7 @@ function TravelSearchScreen({ onBack, onOpenGooglePlace }) {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && runSearch()}
-            placeholder="e.g. Ridgefield CT, Boston, Miami…"
+            placeholder="Any US city or town — Ridgefield CT, Boston, Miami…"
             className="flex-1 text-[14px] outline-none bg-transparent text-[#1B2A4A]"
           />
         </div>
@@ -1763,7 +1813,7 @@ function TravelSearchScreen({ onBack, onOpenGooglePlace }) {
           onClick={runSearch}
           disabled={!query.trim() || status === "searching" || !isLoaded}
           className="w-full rounded-2xl py-3.5 text-white font-semibold text-[14.5px] disabled:opacity-50"
-          style={{ background: "var(--cta)" }}
+          style={{ background: isAdult ? "#8B5CF6" : "var(--cta)" }}
         >
           {status === "searching" ? "Searching…" : "Search"}
         </button>
@@ -2422,9 +2472,8 @@ function BottomNav({ screen, setScreen, friendsBadge = 0 }) {
   const items = [
     { key: "home", label: "Home", icon: Home },
     { key: "map", label: "Categories", icon: ListIcon },
-    { key: "friends", label: "Friends", icon: Users, badge: friendsBadge },
     { key: "safety", label: "Safety", icon: Shield },
-    { key: "profile", label: "My Profile", icon: User },
+    { key: "profile", label: "My Profile", icon: User, badge: friendsBadge },
   ];
   return (
     <div
@@ -2442,12 +2491,18 @@ function BottomNav({ screen, setScreen, friendsBadge = 0 }) {
             <div className="relative">
               <Icon size={22} color={active ? "var(--accent)" : "#9C9484"} strokeWidth={active ? 2.4 : 2} />
               {!!badge && (
-                <span
-                  className="absolute -top-1.5 -right-2 min-w-[16px] h-4 px-1 rounded-full flex items-center justify-center text-[10px] font-bold text-white"
-                  style={{ background: "var(--cta)" }}
-                >
-                  {badge > 9 ? "9+" : badge}
-                </span>
+                <>
+                  <span
+                    className="absolute -top-1.5 -right-2 min-w-[16px] h-4 rounded-full"
+                    style={{ background: "var(--cta)", animation: "alertPulse 1.6s ease-out infinite" }}
+                  />
+                  <span
+                    className="absolute -top-1.5 -right-2 min-w-[16px] h-4 px-1 rounded-full flex items-center justify-center text-[10px] font-bold text-white"
+                    style={{ background: "var(--cta)" }}
+                  >
+                    {badge > 9 ? "9+" : badge}
+                  </span>
+                </>
               )}
             </div>
             <span
@@ -2759,12 +2814,74 @@ function AdultPlaceCard({ place, onSelect, favorited, onToggleFavorite }) {
   );
 }
 
-function AdultHomeContent({ favorites, toggleFavorite, setSelectedPlace }) {
+const ADULT_CATEGORIES = ["Restaurant", "Bar", "Movies", "Concerts", "Museums", "Brewery", "Wine Tasting", "Paint & Sip"];
+
+function DayNightToggle({ appMode, onSetMode }) {
+  const isNight = appMode === "adult";
+  return (
+    <button
+      onClick={() => onSetMode(isNight ? "kids" : "adult")}
+      className="flex items-center gap-2 mx-auto mb-3 rounded-full px-1 py-1 border"
+      style={{ borderColor: isNight ? "#8B5CF6" : "var(--accent)", backgroundColor: isNight ? "#1B1530" : "#FFF6F0" }}
+    >
+      <span
+        className="w-7 h-7 rounded-full flex items-center justify-center text-[14px] transition-transform"
+        style={{ backgroundColor: isNight ? "#8B5CF6" : "var(--cta)", transform: isNight ? "translateX(0)" : "translateX(0)" }}
+      >
+        {isNight ? "🌙" : "☀️"}
+      </span>
+      <span className="text-[12.5px] font-semibold pr-2" style={{ color: isNight ? "#fff" : "#1B2A4A" }}>
+        {isNight ? "Plan My Night" : "Plan My Day"}
+      </span>
+    </button>
+  );
+}
+
+function buildNightPlan(prefs) {
+  let pool = [...ADULT_PLACES];
+  if (prefs.vibe && prefs.vibe !== "any") pool = pool.filter((p) => p.vibe === prefs.vibe);
+  if (pool.length < prefs.stops) pool = [...ADULT_PLACES]; // fall back rather than come up short
+  // Shuffle lightly for variety, but keep categories from repeating back to back.
+  const shuffled = [...pool].sort(() => Math.random() - 0.5);
+  const picked = [];
+  const usedCats = new Set();
+  for (const p of shuffled) {
+    if (picked.length >= prefs.stops) break;
+    if (usedCats.has(p.category) && usedCats.size < pool.length) continue;
+    picked.push(p);
+    usedCats.add(p.category);
+  }
+  for (const p of shuffled) {
+    if (picked.length >= prefs.stops) break;
+    if (!picked.includes(p)) picked.push(p);
+  }
+  return picked.slice(0, prefs.stops).map((p, i) => ({ place: p, time: prefs.startHour + i * 2 }));
+}
+
+function AdultHomeContent({ favorites, toggleFavorite, setSelectedPlace, setScreen, appMode, onSetMode }) {
   const [query, setQuery] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("all");
+  const [stateFilter, setStateFilter] = useState("all");
+  const [cityFilter, setCityFilter] = useState("all");
+  const categoryOptions = [{ k: "all", l: "All categories" }, ...ADULT_CATEGORIES.map((c) => ({ k: c, l: c }))];
+  const stateOptions = useMemo(() => {
+    const states = Array.from(new Set(ADULT_PLACES.map(stateOf))).sort();
+    return [{ k: "all", l: "All states" }, ...states.map((s) => ({ k: s, l: s }))];
+  }, []);
+  const cityOptions = useMemo(() => {
+    const pool = stateFilter === "all" ? ADULT_PLACES : ADULT_PLACES.filter((p) => stateOf(p) === stateFilter);
+    const cities = Array.from(new Set(pool.map(cityOf))).sort();
+    return [{ k: "all", l: "All cities" }, ...cities.map((c) => ({ k: c, l: c }))];
+  }, [stateFilter]);
+  const handleSetState = (s) => { setStateFilter(s); setCityFilter("all"); };
   const q = query.trim().toLowerCase();
-  const list = q
-    ? ADULT_PLACES.filter((p) => p.name.toLowerCase().includes(q) || p.category.toLowerCase().includes(q) || p.town.toLowerCase().includes(q))
-    : ADULT_PLACES;
+  const list = ADULT_PLACES.filter((p) => {
+    if (categoryFilter !== "all" && p.category !== categoryFilter) return false;
+    if (stateFilter !== "all" && stateOf(p) !== stateFilter) return false;
+    if (cityFilter !== "all" && cityOf(p) !== cityFilter) return false;
+    if (q && !(p.name.toLowerCase().includes(q) || p.category.toLowerCase().includes(q) || p.town.toLowerCase().includes(q))) return false;
+    return true;
+  });
   return (
     <div className="pb-4">
       <div className="px-5 pt-2 pb-3">
@@ -2780,23 +2897,114 @@ function AdultHomeContent({ favorites, toggleFavorite, setSelectedPlace }) {
           </p>
         </div>
       </div>
-      <div className="px-5 mb-4">
-        <div className="flex items-center gap-2 rounded-2xl px-3.5 py-2.5 border bg-white" style={{ borderColor: "#E7E1D4" }}>
-          <Search size={17} color="#9C9484" />
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search breweries, wine bars, date spots…"
-            className="flex-1 text-[14px] outline-none bg-transparent text-[#1B2A4A]"
-          />
-          {query && <button onClick={() => setQuery("")}><X size={16} color="#9C9484" /></button>}
+      {setScreen && (
+        <div className="px-5 mb-4">
+          <DayNightToggle appMode={appMode} onSetMode={onSetMode} />
+          <button
+            onClick={() => setScreen("adultPlanner")}
+            className="w-full rounded-2xl py-4 flex items-center justify-center gap-2 text-white font-semibold text-[16px] shadow-sm"
+            style={{ background: "#8B5CF6" }}
+          >
+            <Sparkles size={19} />
+            Plan My Night
+          </button>
+        </div>
+      )}
+      <div className="px-5 mb-3">
+        <div className="flex items-center gap-2">
+          <div className="flex-1 flex items-center gap-2 rounded-2xl px-3.5 py-2.5 border bg-white" style={{ borderColor: "#E7E1D4" }}>
+            <Search size={17} color="#9C9484" />
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search restaurants, bars, concerts…"
+              className="flex-1 text-[14px] outline-none bg-transparent text-[#1B2A4A]"
+            />
+            {query && <button onClick={() => setQuery("")}><X size={16} color="#9C9484" /></button>}
+          </div>
+          <SimpleFilterDropdown label="Category" activeKey={categoryFilter} options={categoryOptions} onSelect={setCategoryFilter} />
+        </div>
+        <div className="flex items-center gap-2 mt-2 overflow-x-auto">
+          <SimpleFilterDropdown label="State" icon={MapPin} activeKey={stateFilter} options={stateOptions} onSelect={handleSetState} />
+          <SimpleFilterDropdown label="City" icon={MapPin} activeKey={cityFilter} options={cityOptions} onSelect={setCityFilter} />
         </div>
       </div>
       <div className="px-5 flex flex-col gap-2.5">
         {list.map((p) => (
           <AdultPlaceCard key={p.id} place={p} onSelect={setSelectedPlace} favorited={favorites.includes(p.id)} onToggleFavorite={toggleFavorite} />
         ))}
-        {list.length === 0 && <p className="text-[13px] text-[#8A8474] text-center py-6">No matches — try a different search.</p>}
+        {list.length === 0 && <p className="text-[13px] text-[#8A8474] text-center py-6">No matches yet for this filter — try widening it, or use "Search any area live" from Categories for real-time results anywhere.</p>}
+      </div>
+    </div>
+  );
+}
+
+function AdultPlannerScreen({ onBack, onSelectAdultPlace, appMode, onSetMode }) {
+  const [stops, setStops] = useState(2);
+  const [startHour, setStartHour] = useState(19);
+  const [vibe, setVibe] = useState("any");
+  const [plan, setPlan] = useState(null);
+
+  const generate = () => setPlan(buildNightPlan({ stops, startHour, vibe }));
+
+  return (
+    <div className="min-h-screen pb-8" style={{ backgroundColor: "#FFFBF5" }}>
+      <TopBar title="Plan My Night" onBack={onBack} />
+      <ModeSwitcher mode={appMode} onSetMode={onSetMode} />
+      <div className="px-5 pt-2">
+        {!plan ? (
+          <>
+            <p className="text-[13px] font-semibold text-[#1B2A4A] mb-2">How many stops?</p>
+            <div className="flex gap-2 mb-5">
+              {[1, 2, 3].map((n) => (
+                <button key={n} onClick={() => setStops(n)} className="flex-1 rounded-2xl py-3 border font-semibold text-[14px]"
+                  style={{ borderColor: stops === n ? "#8B5CF6" : "#E7E1D4", backgroundColor: stops === n ? "#F3ECF7" : "#fff", color: stops === n ? "#8B5CF6" : "#5C5648" }}>
+                  {n}
+                </button>
+              ))}
+            </div>
+
+            <p className="text-[13px] font-semibold text-[#1B2A4A] mb-2">Start time</p>
+            <div className="flex gap-2 mb-5 overflow-x-auto">
+              {[17, 18, 19, 20, 21].map((h) => (
+                <button key={h} onClick={() => setStartHour(h)} className="shrink-0 rounded-full px-4 py-2 border font-semibold text-[13px]"
+                  style={{ borderColor: startHour === h ? "#8B5CF6" : "#E7E1D4", backgroundColor: startHour === h ? "#F3ECF7" : "#fff", color: startHour === h ? "#8B5CF6" : "#5C5648" }}>
+                  {formatHour(h)}
+                </button>
+              ))}
+            </div>
+
+            <p className="text-[13px] font-semibold text-[#1B2A4A] mb-2">Vibe</p>
+            <div className="flex gap-2 mb-6 flex-wrap">
+              {["any", "Romantic", "Lively"].map((v) => (
+                <button key={v} onClick={() => setVibe(v)} className="rounded-full px-4 py-2 border font-semibold text-[13px]"
+                  style={{ borderColor: vibe === v ? "#8B5CF6" : "#E7E1D4", backgroundColor: vibe === v ? "#F3ECF7" : "#fff", color: vibe === v ? "#8B5CF6" : "#5C5648" }}>
+                  {v === "any" ? "Any" : v}
+                </button>
+              ))}
+            </div>
+
+            <button onClick={generate} className="w-full rounded-2xl py-4 flex items-center justify-center gap-2 text-white font-semibold text-[16px] shadow-sm" style={{ background: "#8B5CF6" }}>
+              <Sparkles size={19} />
+              Build my night
+            </button>
+          </>
+        ) : (
+          <>
+            <p className="text-[13px] text-[#8A8474] mb-4">Starting around {formatHour(startHour)} — tap a stop for details.</p>
+            <div className="flex flex-col gap-3">
+              {plan.map((stop, i) => (
+                <div key={stop.place.id}>
+                  <p className="text-[12px] font-semibold mb-1.5" style={{ color: "#8B5CF6" }}>{formatHour(stop.time)}</p>
+                  <AdultPlaceCard place={stop.place} onSelect={onSelectAdultPlace} favorited={false} onToggleFavorite={() => {}} />
+                </div>
+              ))}
+            </div>
+            <button onClick={() => setPlan(null)} className="w-full rounded-2xl py-3.5 mt-6 font-semibold text-[14px] border" style={{ borderColor: "#8B5CF6", color: "#8B5CF6" }}>
+              Start over
+            </button>
+          </>
+        )}
       </div>
     </div>
   );
@@ -2846,7 +3054,7 @@ function HomeScreen({ setScreen, favorites, toggleFavorite, setSelectedPlace, lo
     return (
       <div className="pb-4">
         <ModeSwitcher mode={appMode} onSetMode={onSetMode} />
-        <AdultHomeContent favorites={adultFavorites} toggleFavorite={onToggleAdultFavorite} setSelectedPlace={onSelectAdultPlace} />
+        <AdultHomeContent favorites={adultFavorites} toggleFavorite={onToggleAdultFavorite} setSelectedPlace={onSelectAdultPlace} setScreen={setScreen} appMode={appMode} onSetMode={onSetMode} />
       </div>
     );
   }
@@ -2979,6 +3187,7 @@ function HomeScreen({ setScreen, favorites, toggleFavorite, setSelectedPlace, lo
       </div>
 
       <div className="px-5 mt-4">
+        <DayNightToggle appMode={appMode} onSetMode={onSetMode} />
         <button
           onClick={() => setScreen("planner")}
           className="w-full rounded-2xl py-4 flex items-center justify-center gap-2 text-white font-semibold text-[16px] shadow-sm"
@@ -3649,6 +3858,16 @@ function MapView({ places, located, userCoords, onSelect }) {
   return <GoogleMapView places={places} located={located} userCoords={userCoords} onSelect={onSelect} />;
 }
 
+function stateOf(p) {
+  const t = p.town || "";
+  if (t.includes(", CT")) return "CT";
+  return "NY";
+}
+function cityOf(p) {
+  const t = p.town || "";
+  return t.split(",")[0].replace(/\s*\(.*\)\s*/g, "").trim();
+}
+
 function regionOf(p) {
   const t = p.town || "";
   if (t.includes(", CT")) return "Connecticut";
@@ -3663,8 +3882,22 @@ function regionOf(p) {
 function MapScreen({ setSelectedPlace, favorites, toggleFavorite, location, onRequestLocation, initialQuery, initialFilter, setScreen, appMode, onSetMode, adultFavorites, onToggleAdultFavorite, onSelectAdultPlace, onSelectGoogle }) {
   const [filter, setFilter] = useState(initialFilter || "all");
   const [query, setQuery] = useState(initialQuery || "");
+  const [stateFilter, setStateFilter] = useState("all");
+  const [cityFilter, setCityFilter] = useState("all");
+  const stateOptions = useMemo(() => {
+    const states = Array.from(new Set(PLACES.map(stateOf))).sort();
+    return [{ k: "all", l: "All states" }, ...states.map((s) => ({ k: s, l: s }))];
+  }, []);
+  const cityOptions = useMemo(() => {
+    const pool = stateFilter === "all" ? PLACES : PLACES.filter((p) => stateOf(p) === stateFilter);
+    const cities = Array.from(new Set(pool.map(cityOf))).sort();
+    return [{ k: "all", l: "All cities" }, ...cities.map((c) => ({ k: c, l: c }))];
+  }, [stateFilter]);
+  const handleSetState = (s) => { setStateFilter(s); setCityFilter("all"); };
   const filtered = useMemo(() => {
     let list = filter === "all" ? PLACES : PLACES.filter((p) => primaryGroup(p) === filter);
+    if (stateFilter !== "all") list = list.filter((p) => stateOf(p) === stateFilter);
+    if (cityFilter !== "all") list = list.filter((p) => cityOf(p) === cityFilter);
     const q = query.trim().toLowerCase();
     if (q) {
       list = list.filter(
@@ -3676,7 +3909,7 @@ function MapScreen({ setSelectedPlace, favorites, toggleFavorite, location, onRe
       );
     }
     return list;
-  }, [filter, query]);
+  }, [filter, query, stateFilter, cityFilter]);
   const { results: gResults, searching: gSearching } = useGoogleSearch(query, filtered.length);
   const located = location.status === "located";
   if (appMode === "adult") {
@@ -3684,7 +3917,14 @@ function MapScreen({ setSelectedPlace, favorites, toggleFavorite, location, onRe
       <div className="pb-4">
         <TopBar title="Categories List" hideHome={false} />
         <ModeSwitcher mode={appMode} onSetMode={onSetMode} />
-        <AdultHomeContent favorites={adultFavorites} toggleFavorite={onToggleAdultFavorite} setSelectedPlace={onSelectAdultPlace} />
+        <AdultHomeContent favorites={adultFavorites} toggleFavorite={onToggleAdultFavorite} setSelectedPlace={onSelectAdultPlace} setScreen={setScreen} appMode={appMode} onSetMode={onSetMode} />
+        {setScreen && (
+          <div className="px-5 -mt-2">
+            <button onClick={() => setScreen("travelSearch")} className="w-full text-center text-[12.5px] font-semibold" style={{ color: "#8B5CF6" }}>
+              ✈️ Somewhere new? Search any area live →
+            </button>
+          </div>
+        )}
       </div>
     );
   }
@@ -3708,6 +3948,10 @@ function MapScreen({ setSelectedPlace, favorites, toggleFavorite, location, onRe
             )}
           </div>
           <CategoryFilterButton activeKey={filter} onSelect={setFilter} />
+        </div>
+        <div className="flex items-center gap-2 mt-2 overflow-x-auto">
+          <SimpleFilterDropdown label="State" icon={MapPin} activeKey={stateFilter} options={stateOptions} onSelect={handleSetState} />
+          <SimpleFilterDropdown label="City" icon={MapPin} activeKey={cityFilter} options={cityOptions} onSelect={setCityFilter} />
         </div>
         {setScreen && (
           <button onClick={() => setScreen("travelSearch")} className="w-full text-center mt-2 text-[12.5px] font-semibold" style={{ color: "var(--accent)" }}>
@@ -3871,6 +4115,7 @@ function ProfileScreen({ onOpenPremium, onOpenPassport, stats, session, onOpenAu
   profileNames, onSaveProfileNames, myCaregivers, caregiverLinks, caregiverInvite, onCreateCaregiverInvite, onRemoveCaregiverAccess, activeFamilyId, onSwitchFamily,
   favorites, savedDays, onViewSaved, forceEditNameToken,
   appMode, onSetMode,
+  friendsProps,
 }) {
   const activeKid = kids.find((k) => k.id === activeKidId) || kids[0] || null;
   const [nameForm, setNameForm] = useState(profileNames || { firstName: "", lastName: "", handle: "" });
@@ -3884,6 +4129,8 @@ function ProfileScreen({ onOpenPremium, onOpenPassport, stats, session, onOpenAu
     <div className="pb-4">
       <TopBar title="My Profile" />
       <ModeSwitcher mode={appMode} onSetMode={onSetMode} />
+      {friendsProps && <FriendsScreen {...friendsProps} appMode={appMode} onSetMode={onSetMode} embedded />}
+      <div className="px-2"><div className="mx-3 border-t" style={{ borderColor: "#EFEAE0" }} /></div>
       <div className="px-5">
         <button
           onClick={onViewSaved}
@@ -4758,6 +5005,7 @@ function FriendsScreen({ onOpenInvite,
   onOpenChat,
   appMode,
   onSetMode,
+  embedded,
 }) {
   const [newName, setNewName] = useState("");
   const [phoneInput, setPhoneInput] = useState("");
@@ -4789,9 +5037,9 @@ function FriendsScreen({ onOpenInvite,
   });
 
   return (
-    <div className="pb-4">
-      <TopBar title="Friends & play dates" />
-      <ModeSwitcher mode={appMode} onSetMode={onSetMode} />
+    <div className={embedded ? "" : "pb-4"}>
+      {!embedded && <TopBar title="Friends & play dates" />}
+      {!embedded && <ModeSwitcher mode={appMode} onSetMode={onSetMode} />}
 
       <div className="px-5 mb-5">
         <p className="text-[13px] font-semibold text-[#1B2A4A] mb-2">💬 Chats about your days</p>
@@ -6829,13 +7077,13 @@ export default function LittleDayApp() {
       setFriends((cur) => cur.filter((x) => x.id !== f.id));
     }
     showToast(`Removed ${f.name} from your friends`);
-    goTo("friends");
+    goTo("profile");
   };
 
   const goTo = (next) => {
     setPrevScreen(screen);
     setScreen(next);
-    if (next === "friends") { setFriendsBadge(0); loadRealPlayDates(); }
+    if (next === "profile") { setFriendsBadge(0); loadRealPlayDates(); }
   };
 
   const handleSelectPlace = (place) => {
@@ -6969,6 +7217,8 @@ export default function LittleDayApp() {
     );
   } else if (screen === "planner") {
     content = <PlannerScreen onBack={() => goTo("home")} onGenerate={handleGenerate} locationLabel={location.label} initialAge={ageToBand(ageFromBirthday(activeKid?.birthday))} activeKidName={activeKid?.name || ""} companionKids={kids.filter((k) => companionKidIds.includes(k.id))} />;
+  } else if (screen === "adultPlanner") {
+    content = <AdultPlannerScreen onBack={() => goTo("home")} onSelectAdultPlace={setAdultSelectedPlace} appMode={appMode} onSetMode={setAppMode} />;
   } else if (screen === "planning") {
     content = <PlanningScreen onDone={() => setScreen("itinerary")} />;
   } else if (screen === "itinerary") {
@@ -6997,32 +7247,12 @@ export default function LittleDayApp() {
       appMode={appMode} onSetMode={setAppMode} adultFavorites={adultFavorites} onToggleAdultFavorite={toggleAdultFavorite} onSelectAdultPlace={setAdultSelectedPlace} onSelectGoogle={setGooglePlace} />;
   } else if (screen === "favorites") {
     content = <FavoritesScreen favorites={favorites} setSelectedPlace={handleSelectPlace} toggleFavorite={toggleFavorite} savedDays={savedDays} onLoadDay={useSharedDay} onDeleteDay={deleteSavedDay} />;
-  } else if (screen === "friends") {
-    content = (
-      <FriendsScreen
-        appMode={appMode} onSetMode={setAppMode}
-        onOpenInvite={() => setInviteOpen(true)}
-        friends={friends}
-        sharedDays={sharedDays}
-        playDates={playDates}
-        onAccept={acceptPlayDate}
-        onDecline={declinePlayDate}
-        onUseDay={useSharedDay}
-        onAddFriend={addFriend}
-        onSelectFriend={openFriendDetail}
-        setSelectedPlace={handleSelectPlace}
-        session={session}
-        onSearchProfiles={searchRealProfiles}
-        onAddRealFriend={addRealFriend}
-        onOpenChat={(gid) => setChatGroupId(gid)}
-      />
-    );
   } else if (screen === "friendDetail") {
     content = (
       <FriendDetailScreen
         friend={selectedFriend}
         kids={friendKids}
-        onBack={() => goTo("friends")}
+        onBack={() => goTo("profile")}
         onPlanDay={() => { showToast("Build a day, then invite " + selectedFriend.name.split(" ")[0] + " to join!"); goTo("home"); }}
         onRemoveFriend={removeFriend}
       />
@@ -7037,9 +7267,17 @@ export default function LittleDayApp() {
       favorites={favorites} savedDays={savedDays} onViewSaved={() => goTo("favorites")}
       forceEditNameToken={forceEditNameToken}
       appMode={appMode} onSetMode={setAppMode}
+      friendsProps={{
+        onOpenInvite: () => setInviteOpen(true),
+        friends, sharedDays, playDates,
+        onAccept: acceptPlayDate, onDecline: declinePlayDate, onUseDay: useSharedDay,
+        onAddFriend: addFriend, onSelectFriend: openFriendDetail, setSelectedPlace: handleSelectPlace,
+        session, onSearchProfiles: searchRealProfiles, onAddRealFriend: addRealFriend,
+        onOpenChat: (gid) => setChatGroupId(gid),
+      }}
     />;
   } else if (screen === "travelSearch") {
-    content = <TravelSearchScreen onBack={() => goTo("map")} onOpenGooglePlace={(p) => setGooglePlace(p)} />;
+    content = <TravelSearchScreen onBack={() => goTo("map")} onOpenGooglePlace={(p) => setGooglePlace(p)} appMode={appMode} onSetMode={setAppMode} />;
   } else if (screen === "safety") {
     content = <SafetyScreen appMode={appMode} onSetMode={setAppMode} />;
   } else if (screen === "community") {
@@ -7075,7 +7313,7 @@ export default function LittleDayApp() {
     );
   }
 
-  const showNav = ["home", "map", "friends", "favorites", "safety", "profile"].includes(screen);
+  const showNav = ["home", "map", "favorites", "safety", "profile"].includes(screen);
 
   const [betaOk, setBetaOk] = usePersistentState("betaOk", false);
   // Sunrise plays once per fresh open (not on tab switches within a session).
@@ -7120,6 +7358,7 @@ export default function LittleDayApp() {
         @keyframes raysShimmer { 0%, 100% { opacity: 0.55; } 50% { opacity: 1; } }
         @keyframes confettiFall { 0% { transform: translateY(-20px) rotate(0deg); opacity: 1; } 100% { transform: translateY(760px) rotate(600deg); opacity: 0.9; } }
         @keyframes burstPop { 0% { transform: scale(0.3) rotate(-8deg); opacity: 0; } 55% { transform: scale(1.2) rotate(4deg); opacity: 1; } 100% { transform: scale(1) rotate(0deg); opacity: 1; } }
+        @keyframes alertPulse { 0% { transform: scale(1); opacity: 0.7; } 70% { transform: scale(2.2); opacity: 0; } 100% { transform: scale(2.2); opacity: 0; } }
       `}</style>
       <div
         className="w-full flex flex-col relative"
