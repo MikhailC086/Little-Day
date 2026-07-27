@@ -3137,7 +3137,7 @@ function AdultHomeContent({ favorites, toggleFavorite, setSelectedPlace, setScre
           </div>
           <SimpleFilterDropdown label="Category" activeKey={categoryFilter} options={categoryOptions} onSelect={setCategoryFilter} />
         </div>
-        <div className="flex items-center gap-2 mt-2 overflow-x-auto">
+        <div className="flex items-center gap-2 mt-2">
           <SimpleFilterDropdown label="State" icon={MapPin} activeKey={stateFilter} options={stateOptions} onSelect={handleSetState} />
           <SimpleFilterDropdown label="City" icon={MapPin} activeKey={cityFilter} options={cityOptions} onSelect={setCityFilter} />
         </div>
@@ -3402,6 +3402,9 @@ function HomeScreen({ setScreen, favorites, toggleFavorite, setSelectedPlace, lo
           </div>
           {onFilterToCategory && <CategoryFilterButton activeKey="all" onSelect={onFilterToCategory} />}
         </div>
+        <button onClick={() => onFilterToCategory && onFilterToCategory("all")} className="mt-1.5 text-[11.5px] font-medium" style={{ color: "#B8B0A0" }}>
+          Looking for State/City filters? They're on the Categories tab →
+        </button>
         {hq && (
           <div className="mt-2 rounded-2xl border bg-white overflow-hidden" style={{ borderColor: "#EFEAE0" }}>
             {homeResults.length === 0 && gResults.length === 0 ? (
@@ -4213,10 +4216,13 @@ function MapScreen({ setSelectedPlace, favorites, toggleFavorite, location, onRe
           </div>
           <CategoryFilterButton activeKey={filter} onSelect={setFilter} groups={groups} />
         </div>
-        <div className="flex items-center gap-2 mt-2 overflow-x-auto">
+        <div className="flex items-center gap-2 mt-2">
           <SimpleFilterDropdown label="State" icon={MapPin} activeKey={stateFilter} options={stateOptions} onSelect={handleSetState} />
           <SimpleFilterDropdown label="City" icon={MapPin} activeKey={cityFilter} options={cityOptions} onSelect={setCityFilter} />
         </div>
+        <p className="text-[11px] mt-1.5" style={{ color: "#B8B0A0" }}>
+          Filters our curated list only ({stateOptions.length - 1} states covered). For anywhere else — try typing a search above, or use "Search any area live" below.
+        </p>
         {setScreen && (
           <button onClick={() => setScreen("travelSearch")} className="w-full text-center mt-2 text-[12.5px] font-semibold" style={{ color: accentColor }}>
             ✈️ {isAdult ? "Somewhere new? Search any area live →" : "Traveling further out? Search any area live →"}
@@ -5136,11 +5142,22 @@ function useGeolocation() {
     setState((s) => ({ ...s, status: "locating" }));
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        setState({
-          status: "located",
-          coords: { lat: pos.coords.latitude, lng: pos.coords.longitude },
-          label: "your location",
-        });
+        const coords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        setState({ status: "located", coords, label: "your location" });
+        // Reverse-geocode to a real city/state name instead of showing raw coordinates.
+        // Falls back gracefully to "your location" if the Maps script isn't loaded yet.
+        const g = window.google;
+        if (g?.maps?.Geocoder) {
+          new g.maps.Geocoder().geocode({ location: coords }, (results, status) => {
+            if (status !== "OK" || !results || !results[0]) return;
+            const comps = results[0].address_components || [];
+            const city = comps.find((c) => c.types.includes("locality"))?.long_name
+              || comps.find((c) => c.types.includes("postal_town"))?.long_name
+              || comps.find((c) => c.types.includes("administrative_area_level_2"))?.long_name;
+            const state = comps.find((c) => c.types.includes("administrative_area_level_1"))?.short_name;
+            if (city) setState((s) => ({ ...s, label: state ? `${city}, ${state}` : city }));
+          });
+        }
       },
       () => setState((s) => ({ ...s, status: "denied", label: "Westchester, NY" })),
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
@@ -5154,7 +5171,7 @@ function LocationBar({ location, onRequest }) {
   let text;
   if (status === "locating") text = "Locating you…";
   else if (status === "located")
-    text = `Showing places near you · ${coords.lat.toFixed(3)}, ${coords.lng.toFixed(3)}`;
+    text = `Showing places near ${label}`;
   else if (status === "denied" || status === "unsupported")
     text = "Location off — showing Westchester, NY";
   else text = "Tap to use your location · Westchester, NY";
