@@ -4233,14 +4233,17 @@ function MapScreen({ setSelectedPlace, favorites, toggleFavorite, location, onRe
     }
     return list;
   }, [filter, query, stateFilter, cityFilter, dataset]);
-  const { results: gResults, searching: gSearching } = useGoogleSearch(query, filtered.length, location?.coords);
-  const located = location.status === "located";
   const nearestCuratedMi = useMemo(() => {
     if (!location?.coords) return null;
     const dists = dataset.map((p) => { const pc = placeCoords(p); return pc ? haversineMiles(location.coords, pc) : Infinity; });
     return Math.min(...dists);
   }, [location?.coords, dataset]);
   const farFromCoverage = nearestCuratedMi !== null && nearestCuratedMi > 60;
+  // When you're far from our curated area, don't make you type anything — just go
+  // ahead and pull real live results near your actual location automatically.
+  const effectiveQuery = query.trim() || (farFromCoverage ? (isAdult ? "restaurants bars things to do" : "family friendly things to do playgrounds") : "");
+  const { results: gResults, searching: gSearching } = useGoogleSearch(effectiveQuery, farFromCoverage ? 0 : filtered.length, location?.coords);
+  const located = location.status === "located";
 
   return (
     <div className="pb-4" style={{ backgroundColor: isAdult ? theme.bg : "transparent", minHeight: "100%" }}>
@@ -4315,7 +4318,7 @@ function MapScreen({ setSelectedPlace, favorites, toggleFavorite, location, onRe
 
       <div className="mx-5 rounded-2xl relative overflow-hidden" style={{ height: 240 }}>
         <MapView
-          places={filtered}
+          places={(farFromCoverage && !query.trim()) ? [] : filtered}
           located={located}
           userCoords={location.coords}
           onSelect={selectHandler}
@@ -4323,12 +4326,12 @@ function MapScreen({ setSelectedPlace, favorites, toggleFavorite, location, onRe
       </div>
 
       <div className="px-5 mt-4 flex flex-col gap-2.5">
-        {filtered.length === 0 && (
+        {!(farFromCoverage && !query.trim()) && filtered.length === 0 && (
           <p className="text-[13px] text-[#8A8474] text-center py-4">
             No places match{query ? ` “${query}”` : " that filter"}. Try a different search or filter.
           </p>
         )}
-        {groups.map((g) => {
+        {!(farFromCoverage && !query.trim()) && groups.map((g) => {
           const inGroup = filtered.filter((p) => groupFn(p) === g.k);
           if (!inGroup.length) return null;
           return (
@@ -4359,7 +4362,7 @@ function MapScreen({ setSelectedPlace, favorites, toggleFavorite, location, onRe
           <div>
             <div className="flex items-center gap-2 mb-2 mt-1">
               <span className="text-[17px]">🌐</span>
-              <p className="text-[14px] font-semibold text-[#1B2A4A]">More nearby, from Google</p>
+              <p className="text-[14px] font-semibold text-[#1B2A4A]">{farFromCoverage && !query.trim() ? "Near you, live from Google" : "More nearby, from Google"}</p>
             </div>
             <p className="text-[11.5px] mb-2" style={{ color: "#B8B0A0" }}>Real places, not yet verified by us — no extra notes for these.</p>
             {gSearching && <p className="text-[13px] text-[#8A8474]">Searching…</p>}
