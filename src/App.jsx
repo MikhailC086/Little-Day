@@ -2927,25 +2927,26 @@ function ModeSwitcher({ mode, onSetMode }) {
   );
 }
 
-function AdultPlaceCard({ place, onSelect, favorited, onToggleFavorite }) {
+function AdultPlaceCard({ place, onSelect, favorited, onToggleFavorite, theme }) {
+  const t = theme || getAdultTheme("night");
   return (
     <div
       onClick={() => onSelect(place)}
       className="flex gap-3 p-3 rounded-2xl border cursor-pointer active:scale-[0.99] transition-transform"
-      style={{ borderColor: "rgba(255,255,255,0.1)", backgroundColor: "#292440" }}
+      style={{ borderColor: t.cardBorder, backgroundColor: t.card }}
     >
-      <div className="w-16 h-16 rounded-xl flex items-center justify-center text-3xl shrink-0" style={{ backgroundColor: "rgba(176,138,226,0.15)" }}>
+      <div className="w-16 h-16 rounded-xl flex items-center justify-center text-3xl shrink-0" style={{ backgroundColor: t.accentSoft }}>
         {place.photo}
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-start justify-between gap-2">
-          <p className="font-semibold text-[15px] truncate" style={{ color: "#F5F3FF" }}>{place.name}</p>
+          <p className="font-semibold text-[15px] truncate" style={{ color: t.text }}>{place.name}</p>
           <button onClick={(e) => { e.stopPropagation(); onToggleFavorite(place.id); }} className="shrink-0">
-            <Heart size={18} color={favorited ? "#B08AE2" : "#5C5470"} fill={favorited ? "#B08AE2" : "none"} />
+            <Heart size={18} color={favorited ? t.accent : t.heartOff} fill={favorited ? t.accent : "none"} />
           </button>
         </div>
-        <p className="text-[13px]" style={{ color: "#8A81A3" }}>{place.category} · {place.town} · {place.distanceMi} mi</p>
-        <p className="text-[12px] mt-0.5" style={{ color: "#B08AE2" }}>{place.vibe}{place.price ? ` · ${place.price}` : ""}</p>
+        <p className="text-[13px]" style={{ color: t.muted }}>{place.category} · {place.town} · {place.distanceMi} mi</p>
+        <p className="text-[12px] mt-0.5" style={{ color: t.accent }}>{place.vibe}{place.price ? ` · ${place.price}` : ""}</p>
       </div>
     </div>
   );
@@ -2974,21 +2975,40 @@ function DayNightToggle({ appMode, onSetMode }) {
   );
 }
 
+function getAdultTheme(t) {
+  if (t === "night") {
+    return {
+      bg: "#1E1A2E", card: "#292440", cardBorder: "rgba(255,255,255,0.1)",
+      text: "#F5F3FF", muted: "#8A81A3", accent: "#B08AE2", accentSoft: "rgba(176,138,226,0.15)",
+      cta: "linear-gradient(135deg,#5B3A8C,#B08AE2)", inputBg: "#292440", inputBorder: "rgba(255,255,255,0.15)",
+      heartOff: "#5C5470", toggleTrack: "rgba(255,255,255,0.08)",
+    };
+  }
+  return {
+    bg: "#F3E8D3", card: "#FFFFFF", cardBorder: "#E8D9B8",
+    text: "#2B2620", muted: "#9C8D6E", accent: "#B8863B", accentSoft: "rgba(184,134,59,0.12)",
+    cta: "linear-gradient(135deg,#9A6E22,#E8C674)", inputBg: "#FFFFFF", inputBorder: "#E8D9B8",
+    heartOff: "#D8C6A0", toggleTrack: "rgba(184,134,59,0.1)",
+  };
+}
+
 function TimeOfDayToggle({ value, onChange }) {
   const isNight = value === "night";
+  const dayTheme = getAdultTheme("day");
+  const nightTheme = getAdultTheme("night");
   return (
-    <div className="flex rounded-full p-1 mb-3" style={{ backgroundColor: "rgba(255,255,255,0.08)" }}>
+    <div className="flex rounded-full p-1 mb-3" style={{ backgroundColor: isNight ? nightTheme.toggleTrack : dayTheme.toggleTrack, border: `1px solid ${isNight ? nightTheme.cardBorder : dayTheme.cardBorder}` }}>
       <button
         onClick={() => onChange("day")}
         className="flex-1 rounded-full py-2 text-[13px] font-semibold flex items-center justify-center gap-1.5"
-        style={{ backgroundColor: !isNight ? "#B08AE2" : "transparent", color: !isNight ? "#1E1A2E" : "#8A81A3" }}
+        style={{ backgroundColor: !isNight ? dayTheme.accent : "transparent", color: !isNight ? "#fff" : (isNight ? nightTheme.muted : dayTheme.muted) }}
       >
         ☀️ Daytime
       </button>
       <button
         onClick={() => onChange("night")}
         className="flex-1 rounded-full py-2 text-[13px] font-semibold flex items-center justify-center gap-1.5"
-        style={{ backgroundColor: isNight ? "#B08AE2" : "transparent", color: isNight ? "#1E1A2E" : "#8A81A3" }}
+        style={{ backgroundColor: isNight ? nightTheme.accent : "transparent", color: isNight ? "#fff" : (isNight ? nightTheme.muted : dayTheme.muted) }}
       >
         🌙 Nighttime
       </button>
@@ -3053,30 +3073,32 @@ function AdultHomeContent({ favorites, toggleFavorite, setSelectedPlace, setScre
     .filter((e) => new Date(e.date + "T00:00:00") >= new Date(new Date().setHours(0, 0, 0, 0)))
     .sort((a, b) => a.date.localeCompare(b.date))
     .slice(0, 4);
+  const theme = getAdultTheme(adultTimeOfDay);
+  const isNight = adultTimeOfDay === "night";
 
   const Kicker = ({ children }) => (
-    <p className="text-[10.5px] font-bold tracking-[0.16em] uppercase mb-2 mt-6" style={{ color: "#B08AE2" }}>{children}</p>
+    <p className="text-[10.5px] font-bold tracking-[0.16em] uppercase mb-2 mt-6" style={{ color: theme.accent }}>{children}</p>
   );
 
   return (
-    <div className="pb-4" style={{ backgroundColor: "#1E1A2E", minHeight: "100%" }}>
+    <div className="pb-4" style={{ backgroundColor: theme.bg, minHeight: "100%" }}>
       {/* ===== Masthead ===== */}
-      <div className="px-5 pt-5 pb-4 text-center border-b" style={{ borderColor: "rgba(255,255,255,0.12)" }}>
-        <div className="text-[26px] mb-1">{adultTimeOfDay === "night" ? "🌙" : "☀️"}</div>
-        <p className="text-[10.5px] font-bold tracking-[0.16em] uppercase" style={{ color: "#B08AE2" }}>
-          {dateStr} · {adultTimeOfDay === "night" ? "Tonight's" : "Today's"} Issue
+      <div className="px-5 pt-5 pb-4 text-center border-b" style={{ borderColor: theme.cardBorder }}>
+        <div className="text-[26px] mb-1">{isNight ? "🌙" : "☀️"}</div>
+        <p className="text-[10.5px] font-bold tracking-[0.16em] uppercase" style={{ color: theme.accent }}>
+          {dateStr} · {isNight ? "Tonight's" : "Today's"} Issue
         </p>
-        <h1 style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 25, color: "#F5F3FF", marginTop: 4, lineHeight: 1.15 }}>
-          What's the plan {adultTimeOfDay === "night" ? "tonight" : "today"}?
+        <h1 style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 25, color: theme.text, marginTop: 4, lineHeight: 1.15 }}>
+          What's the plan {isNight ? "tonight" : "today"}?
         </h1>
       </div>
 
       {/* ===== Notes ===== */}
       <div className="px-5">
-        <Kicker>{adultTimeOfDay === "night" ? "Tonight's" : "Today's"} Notes</Kicker>
+        <Kicker>{isNight ? "Tonight's" : "Today's"} Notes</Kicker>
 
-        <div className="rounded-2xl p-3.5" style={{ backgroundColor: "rgba(176,138,226,0.12)", border: "1px solid rgba(176,138,226,0.25)" }}>
-          <p className="text-[12.5px] leading-snug" style={{ color: "#D8CCEF" }}>
+        <div className="rounded-2xl p-3.5" style={{ backgroundColor: theme.accentSoft, border: `1px solid ${theme.accentSoft}` }}>
+          <p className="text-[12.5px] leading-snug" style={{ color: isNight ? "#D8CCEF" : "#6B4E1E" }}>
             A small, separate list of date-night & adult spots — kept apart from your kids' favorites and saved days on purpose.
           </p>
         </div>
@@ -3090,10 +3112,10 @@ function AdultHomeContent({ favorites, toggleFavorite, setSelectedPlace, setScre
           <button
             onClick={() => setScreen("adultPlanner")}
             className="w-full rounded-2xl py-4 flex items-center justify-center gap-2 text-white font-semibold text-[16px] shadow-sm"
-            style={{ background: "linear-gradient(135deg,#5B3A8C,#B08AE2)" }}
+            style={{ background: theme.cta }}
           >
             <Sparkles size={19} />
-            {adultTimeOfDay === "night" ? "Plan My Night" : "Plan My Day"}
+            {isNight ? "Plan My Night" : "Plan My Day"}
           </button>
         </div>
       )}
@@ -3102,16 +3124,16 @@ function AdultHomeContent({ favorites, toggleFavorite, setSelectedPlace, setScre
       <div className="px-5">
         <Kicker>Browse</Kicker>
         <div className="flex items-center gap-2">
-          <div className="flex-1 flex items-center gap-2 rounded-2xl px-3.5 py-2.5 border" style={{ borderColor: "rgba(255,255,255,0.15)", backgroundColor: "#292440" }}>
-            <Search size={17} color="#8A81A3" />
+          <div className="flex-1 flex items-center gap-2 rounded-2xl px-3.5 py-2.5 border" style={{ borderColor: theme.inputBorder, backgroundColor: theme.inputBg }}>
+            <Search size={17} color={theme.muted} />
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search restaurants, bars, concerts…"
               className="flex-1 text-[14px] outline-none bg-transparent"
-              style={{ color: "#F5F3FF" }}
+              style={{ color: theme.text }}
             />
-            {query && <button onClick={() => setQuery("")}><X size={16} color="#8A81A3" /></button>}
+            {query && <button onClick={() => setQuery("")}><X size={16} color={theme.muted} /></button>}
           </div>
           <SimpleFilterDropdown label="Category" activeKey={categoryFilter} options={categoryOptions} onSelect={setCategoryFilter} />
         </div>
@@ -3129,11 +3151,11 @@ function AdultHomeContent({ favorites, toggleFavorite, setSelectedPlace, setScre
           </div>
           <div className="flex items-start gap-3 overflow-x-auto px-5 pb-1" style={{ scrollbarWidth: "none" }}>
             {upcomingAdultEvents.map((ev) => (
-              <div key={ev.id} className="shrink-0 rounded-2xl p-3.5" style={{ width: 200, backgroundColor: "#292440", border: "1px solid rgba(255,255,255,0.1)" }}>
+              <div key={ev.id} className="shrink-0 rounded-2xl p-3.5" style={{ width: 200, backgroundColor: theme.card, border: `1px solid ${theme.cardBorder}` }}>
                 <div className="text-[24px]">{ev.emoji}</div>
-                <p className="font-semibold text-[13.5px] mt-1" style={{ color: "#F5F3FF" }}>{ev.name}</p>
-                <p className="text-[11px] mt-1" style={{ color: "#B08AE2" }}>{formatEventDate(ev.date)}</p>
-                <p className="text-[11px]" style={{ color: "#8A81A3" }}>{ev.town}</p>
+                <p className="font-semibold text-[13.5px] mt-1" style={{ color: theme.text }}>{ev.name}</p>
+                <p className="text-[11px] mt-1" style={{ color: theme.accent }}>{formatEventDate(ev.date)}</p>
+                <p className="text-[11px]" style={{ color: theme.muted }}>{ev.town}</p>
               </div>
             ))}
           </div>
@@ -3142,12 +3164,12 @@ function AdultHomeContent({ favorites, toggleFavorite, setSelectedPlace, setScre
 
       {/* ===== Picks ===== */}
       <div className="px-5">
-        <Kicker>{adultTimeOfDay === "night" ? "Tonight's" : "Today's"} Picks</Kicker>
+        <Kicker>{isNight ? "Tonight's" : "Today's"} Picks</Kicker>
         <div className="flex flex-col gap-2.5">
           {list.map((p) => (
-            <AdultPlaceCard key={p.id} place={p} onSelect={setSelectedPlace} favorited={favorites.includes(p.id)} onToggleFavorite={toggleFavorite} />
+            <AdultPlaceCard key={p.id} place={p} onSelect={setSelectedPlace} favorited={favorites.includes(p.id)} onToggleFavorite={toggleFavorite} theme={theme} />
           ))}
-          {list.length === 0 && <p className="text-[13px] text-center py-6" style={{ color: "#8A81A3" }}>No matches yet for this filter — try widening it, or use "Search any area live" from Categories for real-time results anywhere.</p>}
+          {list.length === 0 && <p className="text-[13px] text-center py-6" style={{ color: theme.muted }}>No matches yet for this filter — try widening it, or use "Search any area live" from Categories for real-time results anywhere.</p>}
         </div>
       </div>
     </div>
@@ -3156,6 +3178,7 @@ function AdultHomeContent({ favorites, toggleFavorite, setSelectedPlace, setScre
 
 function AdultPlannerScreen({ onBack, onSelectAdultPlace, appMode, onSetMode, adultTimeOfDay, onSetAdultTimeOfDay }) {
   const isNight = adultTimeOfDay === "night";
+  const theme = getAdultTheme(adultTimeOfDay);
   const [stops, setStops] = useState(2);
   const [startHour, setStartHour] = useState(isNight ? 19 : 12);
   const [vibe, setVibe] = useState("any");
@@ -3171,60 +3194,60 @@ function AdultPlannerScreen({ onBack, onSelectAdultPlace, appMode, onSetMode, ad
   const generate = () => setPlan(buildNightPlan({ stops, startHour, vibe, timeOfDay: adultTimeOfDay }));
 
   return (
-    <div className="min-h-screen pb-8" style={{ backgroundColor: "#1E1A2E" }}>
-      <TopBar title={isNight ? "Plan My Night" : "Plan My Day"} onBack={onBack} dark />
+    <div className="min-h-screen pb-8" style={{ backgroundColor: theme.bg }}>
+      <TopBar title={isNight ? "Plan My Night" : "Plan My Day"} onBack={onBack} dark={isNight} />
       <ModeSwitcher mode={appMode} onSetMode={onSetMode} />
       <div className="px-5 pt-2">
         <TimeOfDayToggle value={adultTimeOfDay} onChange={handleSetTimeOfDay} />
         {!plan ? (
           <>
-            <p className="text-[13px] font-semibold mb-2" style={{ color: "#F5F3FF" }}>How many stops?</p>
+            <p className="text-[13px] font-semibold mb-2" style={{ color: theme.text }}>How many stops?</p>
             <div className="flex gap-2 mb-5">
               {[1, 2, 3].map((n) => (
                 <button key={n} onClick={() => setStops(n)} className="flex-1 rounded-2xl py-3 border font-semibold text-[14px]"
-                  style={{ borderColor: stops === n ? "#B08AE2" : "rgba(255,255,255,0.15)", backgroundColor: stops === n ? "rgba(176,138,226,0.15)" : "#292440", color: stops === n ? "#B08AE2" : "#D8CCEF" }}>
+                  style={{ borderColor: stops === n ? theme.accent : theme.inputBorder, backgroundColor: stops === n ? theme.accentSoft : theme.inputBg, color: stops === n ? theme.accent : theme.muted }}>
                   {n}
                 </button>
               ))}
             </div>
 
-            <p className="text-[13px] font-semibold mb-2" style={{ color: "#F5F3FF" }}>Start time</p>
+            <p className="text-[13px] font-semibold mb-2" style={{ color: theme.text }}>Start time</p>
             <div className="flex gap-2 mb-5 overflow-x-auto">
               {hourOptions.map((h) => (
                 <button key={h} onClick={() => setStartHour(h)} className="shrink-0 rounded-full px-4 py-2 border font-semibold text-[13px]"
-                  style={{ borderColor: startHour === h ? "#B08AE2" : "rgba(255,255,255,0.15)", backgroundColor: startHour === h ? "rgba(176,138,226,0.15)" : "#292440", color: startHour === h ? "#B08AE2" : "#D8CCEF" }}>
+                  style={{ borderColor: startHour === h ? theme.accent : theme.inputBorder, backgroundColor: startHour === h ? theme.accentSoft : theme.inputBg, color: startHour === h ? theme.accent : theme.muted }}>
                   {formatHour(h)}
                 </button>
               ))}
             </div>
 
-            <p className="text-[13px] font-semibold mb-2" style={{ color: "#F5F3FF" }}>Vibe</p>
+            <p className="text-[13px] font-semibold mb-2" style={{ color: theme.text }}>Vibe</p>
             <div className="flex gap-2 mb-6 flex-wrap">
               {["any", "Romantic", "Lively"].map((v) => (
                 <button key={v} onClick={() => setVibe(v)} className="rounded-full px-4 py-2 border font-semibold text-[13px]"
-                  style={{ borderColor: vibe === v ? "#B08AE2" : "rgba(255,255,255,0.15)", backgroundColor: vibe === v ? "rgba(176,138,226,0.15)" : "#292440", color: vibe === v ? "#B08AE2" : "#D8CCEF" }}>
+                  style={{ borderColor: vibe === v ? theme.accent : theme.inputBorder, backgroundColor: vibe === v ? theme.accentSoft : theme.inputBg, color: vibe === v ? theme.accent : theme.muted }}>
                   {v === "any" ? "Any" : v}
                 </button>
               ))}
             </div>
 
-            <button onClick={generate} className="w-full rounded-2xl py-4 flex items-center justify-center gap-2 text-white font-semibold text-[16px] shadow-sm" style={{ background: "linear-gradient(135deg,#5B3A8C,#B08AE2)" }}>
+            <button onClick={generate} className="w-full rounded-2xl py-4 flex items-center justify-center gap-2 text-white font-semibold text-[16px] shadow-sm" style={{ background: theme.cta }}>
               <Sparkles size={19} />
               {isNight ? "Build my night" : "Build my day"}
             </button>
           </>
         ) : (
           <>
-            <p className="text-[13px] mb-4" style={{ color: "#8A81A3" }}>Starting around {formatHour(startHour)} — tap a stop for details.</p>
+            <p className="text-[13px] mb-4" style={{ color: theme.muted }}>Starting around {formatHour(startHour)} — tap a stop for details.</p>
             <div className="flex flex-col gap-3">
               {plan.map((stop, i) => (
                 <div key={stop.place.id}>
-                  <p className="text-[12px] font-semibold mb-1.5" style={{ color: "#B08AE2" }}>{formatHour(stop.time)}</p>
-                  <AdultPlaceCard place={stop.place} onSelect={onSelectAdultPlace} favorited={false} onToggleFavorite={() => {}} />
+                  <p className="text-[12px] font-semibold mb-1.5" style={{ color: theme.accent }}>{formatHour(stop.time)}</p>
+                  <AdultPlaceCard place={stop.place} onSelect={onSelectAdultPlace} favorited={false} onToggleFavorite={() => {}} theme={theme} />
                 </div>
               ))}
             </div>
-            <button onClick={() => setPlan(null)} className="w-full rounded-2xl py-3.5 mt-6 font-semibold text-[14px] border" style={{ borderColor: "#B08AE2", color: "#B08AE2" }}>
+            <button onClick={() => setPlan(null)} className="w-full rounded-2xl py-3.5 mt-6 font-semibold text-[14px] border" style={{ borderColor: theme.accent, color: theme.accent }}>
               Start over
             </button>
           </>
@@ -3234,35 +3257,36 @@ function AdultPlannerScreen({ onBack, onSelectAdultPlace, appMode, onSetMode, ad
   );
 }
 
-function AdultPlaceSheet({ place, onClose, favorited, onToggleFavorite }) {
+function AdultPlaceSheet({ place, onClose, favorited, onToggleFavorite, adultTimeOfDay }) {
   if (!place) return null;
+  const theme = getAdultTheme(adultTimeOfDay);
   const mapsUrl = "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(place.name + " " + place.address);
   return (
     <div className="absolute inset-0 z-40 flex items-end" onClick={onClose}>
       <div className="absolute inset-0 bg-black/30" />
-      <div className="relative w-full rounded-t-3xl p-6 pb-8" onClick={(e) => e.stopPropagation()} style={{ animation: "sheetUp 0.22s ease-out", backgroundColor: "#292440" }}>
-        <div className="w-10 h-1 rounded-full mx-auto mb-4" style={{ backgroundColor: "rgba(255,255,255,0.2)" }} />
+      <div className="relative w-full rounded-t-3xl p-6 pb-8" onClick={(e) => e.stopPropagation()} style={{ animation: "sheetUp 0.22s ease-out", backgroundColor: theme.card }}>
+        <div className="w-10 h-1 rounded-full mx-auto mb-4" style={{ backgroundColor: theme.cardBorder }} />
         <div className="flex items-start gap-3">
-          <div className="w-12 h-12 rounded-xl flex items-center justify-center text-[24px] shrink-0" style={{ backgroundColor: "rgba(176,138,226,0.15)" }}>{place.photo}</div>
+          <div className="w-12 h-12 rounded-xl flex items-center justify-center text-[24px] shrink-0" style={{ backgroundColor: theme.accentSoft }}>{place.photo}</div>
           <div className="flex-1 min-w-0">
-            <p className="text-[17px] font-bold" style={{ fontFamily: "'Space Grotesk', sans-serif", color: "#F5F3FF" }}>{place.name}</p>
-            <p className="text-[13px]" style={{ color: "#8A81A3" }}>{place.category} · {place.town}</p>
+            <p className="text-[17px] font-bold" style={{ fontFamily: "'Space Grotesk', sans-serif", color: theme.text }}>{place.name}</p>
+            <p className="text-[13px]" style={{ color: theme.muted }}>{place.category} · {place.town}</p>
           </div>
           <button onClick={() => onToggleFavorite(place.id)} className="shrink-0">
-            <Heart size={20} color={favorited ? "#B08AE2" : "#5C5470"} fill={favorited ? "#B08AE2" : "none"} />
+            <Heart size={20} color={favorited ? theme.accent : theme.heartOff} fill={favorited ? theme.accent : "none"} />
           </button>
         </div>
-        <p className="text-[13.5px] mt-3 leading-relaxed" style={{ color: "#D8CCEF" }}>{place.blurb}</p>
+        <p className="text-[13.5px] mt-3 leading-relaxed" style={{ color: theme.muted }}>{place.blurb}</p>
         <div className="flex gap-2 mt-3">
-          <span className="text-[12px] font-semibold px-2.5 py-1 rounded-full" style={{ backgroundColor: "rgba(176,138,226,0.15)", color: "#B08AE2" }}>{place.vibe}</span>
-          {place.price && <span className="text-[12px] font-semibold px-2.5 py-1 rounded-full" style={{ backgroundColor: "rgba(176,138,226,0.15)", color: "#B08AE2" }}>{place.price}</span>}
+          <span className="text-[12px] font-semibold px-2.5 py-1 rounded-full" style={{ backgroundColor: theme.accentSoft, color: theme.accent }}>{place.vibe}</span>
+          {place.price && <span className="text-[12px] font-semibold px-2.5 py-1 rounded-full" style={{ backgroundColor: theme.accentSoft, color: theme.accent }}>{place.price}</span>}
         </div>
-        <div className="rounded-2xl p-3.5 mt-4" style={{ backgroundColor: "rgba(255,255,255,0.05)" }}>
-          <p className="text-[12.5px]" style={{ color: "#8A81A3" }}>{place.address}</p>
-          {place.reservations && <p className="text-[12.5px] mt-1" style={{ color: "#8A81A3" }}>📅 {place.reservations}</p>}
+        <div className="rounded-2xl p-3.5 mt-4" style={{ backgroundColor: theme.accentSoft }}>
+          <p className="text-[12.5px]" style={{ color: theme.muted }}>{place.address}</p>
+          {place.reservations && <p className="text-[12.5px] mt-1" style={{ color: theme.muted }}>📅 {place.reservations}</p>}
         </div>
         <a href={mapsUrl} target="_blank" rel="noopener noreferrer"
-          className="w-full rounded-2xl py-3.5 mt-4 flex items-center justify-center gap-2 text-white font-semibold text-[14px]" style={{ background: "linear-gradient(135deg,#5B3A8C,#B08AE2)" }}>
+          className="w-full rounded-2xl py-3.5 mt-4 flex items-center justify-center gap-2 text-white font-semibold text-[14px]" style={{ background: theme.cta }}>
           Open in Google Maps
         </a>
       </div>
@@ -4117,8 +4141,9 @@ function regionOf(p) {
   return "Westchester";
 }
 
-function MapScreen({ setSelectedPlace, favorites, toggleFavorite, location, onRequestLocation, initialQuery, initialFilter, setScreen, appMode, onSetMode, adultFavorites, onToggleAdultFavorite, onSelectAdultPlace, onSelectGoogle }) {
+function MapScreen({ setSelectedPlace, favorites, toggleFavorite, location, onRequestLocation, initialQuery, initialFilter, setScreen, appMode, onSetMode, adultFavorites, onToggleAdultFavorite, onSelectAdultPlace, onSelectGoogle, adultTimeOfDay, onSetAdultTimeOfDay }) {
   const isAdult = appMode === "adult";
+  const theme = isAdult ? getAdultTheme(adultTimeOfDay) : null;
   const dataset = isAdult ? ADULT_PLACES : PLACES;
   const groups = isAdult ? ADULT_PRIMARY_GROUPS : PRIMARY_GROUPS;
   const groupFn = isAdult ? adultPrimaryGroup : primaryGroup;
@@ -4126,7 +4151,7 @@ function MapScreen({ setSelectedPlace, favorites, toggleFavorite, location, onRe
   const toggleFav = isAdult ? onToggleAdultFavorite : toggleFavorite;
   const selectHandler = isAdult ? onSelectAdultPlace : setSelectedPlace;
   const CardComp = isAdult ? AdultPlaceCard : PlaceCard;
-  const accentColor = isAdult ? "#8B5CF6" : "var(--accent)";
+  const accentColor = isAdult ? theme.accent : "var(--accent)";
 
   const [filter, setFilter] = useState(initialFilter || "all");
   const [query, setQuery] = useState(initialQuery || "");
@@ -4162,9 +4187,14 @@ function MapScreen({ setSelectedPlace, favorites, toggleFavorite, location, onRe
   const located = location.status === "located";
 
   return (
-    <div className="pb-4" style={{ backgroundColor: isAdult ? "#1E1A2E" : "transparent", minHeight: "100%" }}>
-      <TopBar title="Categories List" hideHome={false} dark={isAdult} />
+    <div className="pb-4" style={{ backgroundColor: isAdult ? theme.bg : "transparent", minHeight: "100%" }}>
+      <TopBar title="Categories List" hideHome={false} dark={isAdult && adultTimeOfDay === "night"} />
       <ModeSwitcher mode={appMode} onSetMode={onSetMode} />
+      {isAdult && (
+        <div className="px-5 mb-1">
+          <TimeOfDayToggle value={adultTimeOfDay} onChange={onSetAdultTimeOfDay} />
+        </div>
+      )}
       <div className="px-5 mb-3">
         <div className="flex items-center gap-2">
           <div className="flex-1 flex items-center gap-2 rounded-2xl px-3.5 py-2.5 border bg-white" style={{ borderColor: "#E7E1D4" }}>
@@ -4246,6 +4276,7 @@ function MapScreen({ setSelectedPlace, favorites, toggleFavorite, location, onRe
                     onSelect={selectHandler}
                     favorited={favList.includes(p.id)}
                     onToggleFavorite={toggleFav}
+                    theme={theme}
                   />
                 ))}
               </div>
@@ -7484,7 +7515,8 @@ export default function LittleDayApp() {
     );
   } else if (screen === "map") {
     content = <MapScreen setSelectedPlace={handleSelectPlace} favorites={favorites} toggleFavorite={toggleFavorite} location={location} onRequestLocation={location.request} initialQuery={searchQuery} initialFilter={homeFilter} setScreen={goTo}
-      appMode={appMode} onSetMode={setAppMode} adultFavorites={adultFavorites} onToggleAdultFavorite={toggleAdultFavorite} onSelectAdultPlace={setAdultSelectedPlace} onSelectGoogle={setGooglePlace} />;
+      appMode={appMode} onSetMode={setAppMode} adultFavorites={adultFavorites} onToggleAdultFavorite={toggleAdultFavorite} onSelectAdultPlace={setAdultSelectedPlace} onSelectGoogle={setGooglePlace}
+      adultTimeOfDay={adultTimeOfDay} onSetAdultTimeOfDay={setAdultTimeOfDay} />;
   } else if (screen === "favorites") {
     content = <FavoritesScreen favorites={favorites} setSelectedPlace={handleSelectPlace} toggleFavorite={toggleFavorite} savedDays={savedDays} onLoadDay={useSharedDay} onDeleteDay={deleteSavedDay} />;
   } else if (screen === "events") {
@@ -7576,11 +7608,13 @@ export default function LittleDayApp() {
     <div
       className="min-h-screen flex justify-center"
       style={{
-        backgroundColor: appMode === "adult" ? "#1E1A2E" : "#EFEAE0",
+        backgroundColor: appMode === "adult" ? (adultTimeOfDay === "night" ? "#1E1A2E" : "#F3E8D3") : "#EFEAE0",
         fontFamily: "'Inter', sans-serif",
-        "--accent": appMode === "adult" ? "#B08AE2" : "#FF8C61",
-        "--cta": appMode === "adult" ? "linear-gradient(135deg,#5B3A8C,#B08AE2)" : "linear-gradient(135deg,#FF8C61,#FFC857)",
-        "--bg": appMode === "adult" ? "#1E1A2E" : APP_BG,
+        "--accent": appMode === "adult" ? (adultTimeOfDay === "night" ? "#B08AE2" : "#B8863B") : "#FF8C61",
+        "--cta": appMode === "adult"
+          ? (adultTimeOfDay === "night" ? "linear-gradient(135deg,#5B3A8C,#B08AE2)" : "linear-gradient(135deg,#9A6E22,#E8C674)")
+          : "linear-gradient(135deg,#FF8C61,#FFC857)",
+        "--bg": appMode === "adult" ? (adultTimeOfDay === "night" ? "#1E1A2E" : "#F3E8D3") : APP_BG,
       }}
     >
       <style>{`
@@ -7645,7 +7679,7 @@ export default function LittleDayApp() {
         )}
         <AuthSheet open={authOpen} onClose={() => setAuthOpen(false)} session={session} />
         <GooglePlaceSheet place={googlePlace} onClose={() => setGooglePlace(null)} />
-        <AdultPlaceSheet place={adultSelectedPlace} onClose={() => setAdultSelectedPlace(null)} favorited={adultSelectedPlace && adultFavorites.includes(adultSelectedPlace.id)} onToggleFavorite={toggleAdultFavorite} />
+        <AdultPlaceSheet place={adultSelectedPlace} onClose={() => setAdultSelectedPlace(null)} favorited={adultSelectedPlace && adultFavorites.includes(adultSelectedPlace.id)} onToggleFavorite={toggleAdultFavorite} adultTimeOfDay={adultTimeOfDay} />
         <InviteSheet open={inviteOpen} onClose={() => setInviteOpen(false)} onShared={() => { setInviteOpen(false); showToast("Invite link shared!"); }} session={session} />
         <GroupChatSheet open={!!chatGroupId} groupId={chatGroupId} session={session} onClose={() => setChatGroupId(null)} />
       </div>
