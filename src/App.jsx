@@ -1766,40 +1766,58 @@ function googleToPlace(g) {
 // Uses the classic PlacesService.textSearch — the same proven-working method as
 // the "Search any area" screen, rather than the newer Place.searchByText API
 // (which needs a separately-enabled, less broadly available API on some accounts).
-function useGoogleSearch(query, curatedCount, userCoords) {
+function useGoogleSearch(query, curatedCount, userCoords, skipBias) {
   const [results, setResults] = useState([]);
   const [searching, setSearching] = useState(false);
+  const [errorInfo, setErrorInfo] = useState(null);
   const serviceRef = useRef(null);
   useEffect(() => {
     const q = (query || "").trim();
     // Only reach for Google when our own list is thin — this keeps calls (and cost) low.
-    if (q.length < 3 || curatedCount >= 3) { setResults([]); setSearching(false); return; }
+    if (q.length < 3 || curatedCount >= 3) { setResults([]); setSearching(false); setErrorInfo(null); return; }
     let cancelled = false;
     const timer = setTimeout(() => {
       const g = window.google;
-      if (!g?.maps?.places?.PlacesService) { setResults([]); return; }
+      console.log("[LDM DEBUG] useGoogleSearch — google loaded:", !!g, "places lib:", !!g?.maps?.places, "PlacesService:", !!g?.maps?.places?.PlacesService, "query:", q);
+      if (!g?.maps?.places?.PlacesService) {
+        setResults([]); setSearching(false);
+        setErrorInfo("Google Maps Places library isn't loaded on this screen yet.");
+        return;
+      }
       setSearching(true);
+      setErrorInfo(null);
       if (!serviceRef.current) {
         serviceRef.current = new g.maps.places.PlacesService(document.createElement("div"));
       }
       // Bias toward wherever the person actually is, if we know it (e.g. they tapped
       // "Use my location") — otherwise fall back to a loose Westchester-area nudge.
-      // Either way this is a soft bias, not a hard restriction: typing a specific place
-      // name ("Ridgefield CT", "Syracuse NY playgrounds") still searches that area.
-      const biasCenter = userCoords || { lat: 41.2587, lng: -73.6854 };
+      // Skipped entirely when the person explicitly picked a different state/city —
+      // in that case the query text itself ("... in Texas") should drive the search,
+      // not a bias toward Westchester or their real location.
+      const request = { query: q };
+      if (!skipBias) {
+        const biasCenter = userCoords || { lat: 41.2587, lng: -73.6854 };
+        request.location = new g.maps.LatLng(biasCenter.lat, biasCenter.lng);
+        request.radius = 60000;
+      }
       serviceRef.current.textSearch(
-        { query: q, location: new g.maps.LatLng(biasCenter.lat, biasCenter.lng), radius: 60000 },
+        request,
         (places, status) => {
+          console.log("[LDM DEBUG] useGoogleSearch — status:", status, "results:", places?.length);
           if (cancelled) return;
-          if (status !== g.maps.places.PlacesServiceStatus.OK || !places) { setResults([]); setSearching(false); return; }
+          if (status !== g.maps.places.PlacesServiceStatus.OK || !places) {
+            setResults([]); setSearching(false);
+            setErrorInfo(`Google returned: ${status}`);
+            return;
+          }
           setResults(places.slice(0, 8).map(googleToPlace));
           setSearching(false);
         }
       );
     }, 600);
     return () => { cancelled = true; clearTimeout(timer); };
-  }, [query, curatedCount, userCoords]);
-  return { results, searching };
+  }, [query, curatedCount, userCoords, skipBias]);
+  return { results, searching, errorInfo };
 }
 
 function travelCategoryEmoji(types) {
@@ -3073,21 +3091,28 @@ function AdultHomeContent({ favorites, toggleFavorite, setSelectedPlace, setScre
   const [stateFilter, setStateFilter] = useState("all");
   const [cityFilter, setCityFilter] = useState("all");
   const categoryOptions = [{ k: "all", l: "All categories" }, ...ADULT_CATEGORIES.map((c) => ({ k: c, l: c }))];
-  const stateOptions = useMemo(() => {
-    const states = Array.from(new Set(ADULT_PLACES.map(stateOf))).sort();
-    return [{ k: "all", l: "All states" }, ...states.map((s) => ({ k: s, l: s }))];
-  }, []);
+  const nameToAbbrev = useMemo(() => Object.fromEntries(Object.entries(CURATED_STATE_NAMES).map(([a, n]) => [n, a])), []);
+  const stateOptions = useMemo(() => [{ k: "all", l: "All states (nationwide)" }, ...US_STATES.map((s) => ({ k: s, l: s }))], []);
+  const isCuratedState = stateFilter !== "all" && !!nameToAbbrev[stateFilter];
   const cityOptions = useMemo(() => {
-    const pool = stateFilter === "all" ? ADULT_PLACES : ADULT_PLACES.filter((p) => stateOf(p) === stateFilter);
-    const cities = Array.from(new Set(pool.map(cityOf))).sort();
-    return [{ k: "all", l: "All cities" }, ...cities.map((c) => ({ k: c, l: c }))];
-  }, [stateFilter]);
+    if (stateFilter === "all") {
+      const cities = Array.from(new Set(ADULT_PLACES.map(cityOf))).sort();
+      return [{ k: "all", l: "All cities" }, ...cities.map((c) => ({ k: c, l: c }))];
+    }
+    if (isCuratedState) {
+      const pool = ADULT_PLACES.filter((p) => stateOf(p) === nameToAbbrev[stateFilter]);
+      const cities = Array.from(new Set(pool.map(cityOf))).sort();
+      return [{ k: "all", l: "All cities" }, ...cities.map((c) => ({ k: c, l: c }))];
+    }
+    return [{ k: "all", l: "Try Categories tab for live results" }];
+  }, [stateFilter, isCuratedState, nameToAbbrev]);
   const handleSetState = (s) => { setStateFilter(s); setCityFilter("all"); };
   const q = query.trim().toLowerCase();
-  const list = ADULT_PLACES.filter((p) => {
+  const manualStateSelected = stateFilter !== "all" && !isCuratedState;
+  const list = manualStateSelected ? [] : ADULT_PLACES.filter((p) => {
     if (p.timeOfDay && p.timeOfDay !== "both" && p.timeOfDay !== adultTimeOfDay) return false;
     if (categoryFilter !== "all" && p.category !== categoryFilter) return false;
-    if (stateFilter !== "all" && stateOf(p) !== stateFilter) return false;
+    if (stateFilter !== "all" && stateOf(p) !== nameToAbbrev[stateFilter]) return false;
     if (cityFilter !== "all" && cityOf(p) !== cityFilter) return false;
     if (q && !(p.name.toLowerCase().includes(q) || p.category.toLowerCase().includes(q) || p.town.toLowerCase().includes(q))) return false;
     return true;
@@ -3194,7 +3219,13 @@ function AdultHomeContent({ favorites, toggleFavorite, setSelectedPlace, setScre
           {list.map((p) => (
             <AdultPlaceCard key={p.id} place={p} onSelect={setSelectedPlace} favorited={favorites.includes(p.id)} onToggleFavorite={toggleFavorite} theme={theme} />
           ))}
-          {list.length === 0 && <p className="text-[13px] text-center py-6" style={{ color: theme.muted }}>No matches yet for this filter — try widening it, or use "Search any area live" from Categories for real-time results anywhere.</p>}
+          {list.length === 0 && (
+            <p className="text-[13px] text-center py-6" style={{ color: theme.muted }}>
+              {manualStateSelected
+                ? `We don't have a curated list for ${stateFilter} yet — head to the Categories tab, which pulls real live results for any state.`
+                : 'No matches yet for this filter — try widening it, or use "Search any area live" from Categories for real-time results anywhere.'}
+            </p>
+          )}
         </div>
       </div>
     </div>
@@ -4175,6 +4206,17 @@ function MapView({ places, located, userCoords, onSelect }) {
   return <GoogleMapView places={places} located={located} userCoords={userCoords} onSelect={onSelect} />;
 }
 
+const US_STATES = [
+  "Alabama", "Alaska", "Arizona", "Arkansas", "California", "Colorado", "Connecticut", "Delaware",
+  "Florida", "Georgia", "Hawaii", "Idaho", "Illinois", "Indiana", "Iowa", "Kansas", "Kentucky",
+  "Louisiana", "Maine", "Maryland", "Massachusetts", "Michigan", "Minnesota", "Mississippi", "Missouri",
+  "Montana", "Nebraska", "Nevada", "New Hampshire", "New Jersey", "New Mexico", "New York",
+  "North Carolina", "North Dakota", "Ohio", "Oklahoma", "Oregon", "Pennsylvania", "Rhode Island",
+  "South Carolina", "South Dakota", "Tennessee", "Texas", "Utah", "Vermont", "Virginia", "Washington",
+  "Washington DC", "West Virginia", "Wisconsin", "Wyoming",
+];
+const CURATED_STATE_NAMES = { NY: "New York", CT: "Connecticut" };
+
 function stateOf(p) {
   const t = p.town || "";
   if (t.includes(", CT")) return "CT";
@@ -4212,19 +4254,28 @@ function MapScreen({ setSelectedPlace, favorites, toggleFavorite, location, onRe
   const [query, setQuery] = useState(initialQuery || "");
   const [stateFilter, setStateFilter] = useState("all");
   const [cityFilter, setCityFilter] = useState("all");
-  const stateOptions = useMemo(() => {
-    const states = Array.from(new Set(dataset.map(stateOf))).sort();
-    return [{ k: "all", l: "All states" }, ...states.map((s) => ({ k: s, l: s }))];
-  }, [dataset]);
+  const curatedAbbrevToName = CURATED_STATE_NAMES; // { NY: "New York", CT: "Connecticut" }
+  const nameToAbbrev = useMemo(() => Object.fromEntries(Object.entries(curatedAbbrevToName).map(([a, n]) => [n, a])), []);
+  const stateOptions = useMemo(() => [{ k: "all", l: "All states (nationwide)" }, ...US_STATES.map((s) => ({ k: s, l: s }))], []);
+  const isCuratedState = stateFilter !== "all" && !!nameToAbbrev[stateFilter];
   const cityOptions = useMemo(() => {
-    const pool = stateFilter === "all" ? dataset : dataset.filter((p) => stateOf(p) === stateFilter);
-    const cities = Array.from(new Set(pool.map(cityOf))).sort();
-    return [{ k: "all", l: "All cities" }, ...cities.map((c) => ({ k: c, l: c }))];
-  }, [stateFilter, dataset]);
+    if (stateFilter === "all") {
+      const cities = Array.from(new Set(dataset.map(cityOf))).sort();
+      return [{ k: "all", l: "All cities" }, ...cities.map((c) => ({ k: c, l: c }))];
+    }
+    if (isCuratedState) {
+      const pool = dataset.filter((p) => stateOf(p) === nameToAbbrev[stateFilter]);
+      const cities = Array.from(new Set(pool.map(cityOf))).sort();
+      return [{ k: "all", l: "All cities" }, ...cities.map((c) => ({ k: c, l: c }))];
+    }
+    return [{ k: "all", l: "Type a city in search above" }];
+  }, [stateFilter, dataset, isCuratedState, nameToAbbrev]);
   const handleSetState = (s) => { setStateFilter(s); setCityFilter("all"); };
   const filtered = useMemo(() => {
     let list = filter === "all" ? dataset : dataset.filter((p) => groupFn(p) === filter);
-    if (stateFilter !== "all") list = list.filter((p) => stateOf(p) === stateFilter);
+    if (stateFilter !== "all") {
+      list = isCuratedState ? list.filter((p) => stateOf(p) === nameToAbbrev[stateFilter]) : [];
+    }
     if (cityFilter !== "all") list = list.filter((p) => cityOf(p) === cityFilter);
     const q = query.trim().toLowerCase();
     if (q) {
@@ -4237,17 +4288,21 @@ function MapScreen({ setSelectedPlace, favorites, toggleFavorite, location, onRe
       );
     }
     return list;
-  }, [filter, query, stateFilter, cityFilter, dataset]);
+  }, [filter, query, stateFilter, cityFilter, dataset, isCuratedState, nameToAbbrev]);
   const nearestCuratedMi = useMemo(() => {
     if (!location?.coords) return null;
     const dists = dataset.map((p) => { const pc = placeCoords(p); return pc ? haversineMiles(location.coords, pc) : Infinity; });
     return Math.min(...dists);
   }, [location?.coords, dataset]);
   const farFromCoverage = nearestCuratedMi !== null && nearestCuratedMi > 60;
-  // When you're far from our curated area, don't make you type anything — just go
-  // ahead and pull real live results near your actual location automatically.
-  const effectiveQuery = query.trim() || (farFromCoverage ? (isAdult ? "restaurants bars things to do" : "family friendly things to do playgrounds") : "");
-  const { results: gResults, searching: gSearching } = useGoogleSearch(effectiveQuery, farFromCoverage ? 0 : filtered.length, location?.coords);
+  const manualStateSelected = stateFilter !== "all" && !isCuratedState;
+  // When you're far from our curated area (or you've picked a state we don't curate),
+  // don't make you type anything — just go pull real live results automatically,
+  // either near your real location or near the state you explicitly picked.
+  const effectiveQuery = manualStateSelected
+    ? (query.trim() ? `${query.trim()} ${stateFilter}` : `${isAdult ? "restaurants bars things to do" : "family friendly things to do playgrounds"} in ${stateFilter}`)
+    : (query.trim() || (farFromCoverage ? (isAdult ? "restaurants bars things to do" : "family friendly things to do playgrounds") : ""));
+  const { results: gResults, searching: gSearching, errorInfo: gError } = useGoogleSearch(effectiveQuery, (farFromCoverage || manualStateSelected) ? 0 : filtered.length, location?.coords, manualStateSelected);
   const located = location.status === "located";
 
   return (
@@ -4310,20 +4365,29 @@ function MapScreen({ setSelectedPlace, favorites, toggleFavorite, location, onRe
         </button>
       </div>
 
-      {farFromCoverage && (
+      {(farFromCoverage || manualStateSelected) && (
         <div className="mx-5 mb-3 rounded-2xl p-3.5" style={{ backgroundColor: isAdult ? theme.accentSoft : "#FFF3E6" }}>
           <p className="text-[12.5px] leading-snug" style={{ color: isAdult ? theme.text : "#8A6A3D" }}>
-            📍 You're about {Math.round(nearestCuratedMi)} miles from our curated area (Westchester, CT, NYC & Long Island) — the map and list below won't have much for you here.{" "}
-            {setScreen && (
-              <button onClick={() => setScreen("travelSearch")} className="font-bold underline">Search this area live instead →</button>
-            )}
+            {manualStateSelected
+              ? <>📍 Searching {stateFilter} live — we don't have a curated list there yet, so results below come straight from Google.</>
+              : <>📍 You're about {Math.round(nearestCuratedMi)} miles from our curated area (Westchester, CT, NYC & Long Island) — the map and list below won't have much for you here.{" "}
+                  {setScreen && (
+                    <button onClick={() => setScreen("travelSearch")} className="font-bold underline">Search this area live instead →</button>
+                  )}
+                </>
+            }
           </p>
+          {gError && (
+            <p className="text-[11.5px] mt-2 font-semibold" style={{ color: "#C05621" }}>
+              ⚠️ Live search issue: {gError}
+            </p>
+          )}
         </div>
       )}
 
       <div className="mx-5 rounded-2xl relative overflow-hidden" style={{ height: 240 }}>
         <MapView
-          places={(farFromCoverage && !query.trim()) ? [] : filtered}
+          places={(manualStateSelected || (farFromCoverage && !query.trim())) ? [] : filtered}
           located={located}
           userCoords={location.coords}
           onSelect={selectHandler}
@@ -4331,12 +4395,12 @@ function MapScreen({ setSelectedPlace, favorites, toggleFavorite, location, onRe
       </div>
 
       <div className="px-5 mt-4 flex flex-col gap-2.5">
-        {!(farFromCoverage && !query.trim()) && filtered.length === 0 && (
+        {!manualStateSelected && !(farFromCoverage && !query.trim()) && filtered.length === 0 && (
           <p className="text-[13px] text-[#8A8474] text-center py-4">
             No places match{query ? ` “${query}”` : " that filter"}. Try a different search or filter.
           </p>
         )}
-        {!(farFromCoverage && !query.trim()) && groups.map((g) => {
+        {!manualStateSelected && !(farFromCoverage && !query.trim()) && groups.map((g) => {
           const inGroup = filtered.filter((p) => groupFn(p) === g.k);
           if (!inGroup.length) return null;
           return (
@@ -4367,7 +4431,9 @@ function MapScreen({ setSelectedPlace, favorites, toggleFavorite, location, onRe
           <div>
             <div className="flex items-center gap-2 mb-2 mt-1">
               <span className="text-[17px]">🌐</span>
-              <p className="text-[14px] font-semibold text-[#1B2A4A]">{farFromCoverage && !query.trim() ? "Near you, live from Google" : "More nearby, from Google"}</p>
+              <p className="text-[14px] font-semibold text-[#1B2A4A]">
+                {manualStateSelected ? `Live results in ${stateFilter}` : (farFromCoverage && !query.trim() ? "Near you, live from Google" : "More nearby, from Google")}
+              </p>
             </div>
             <p className="text-[11.5px] mb-2" style={{ color: "#B8B0A0" }}>Real places, not yet verified by us — no extra notes for these.</p>
             {gSearching && <p className="text-[13px] text-[#8A8474]">Searching…</p>}
