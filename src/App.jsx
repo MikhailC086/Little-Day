@@ -1741,7 +1741,7 @@ function googleToPlace(g) {
 }
 
 // Debounced Google text search. Returns [] until Maps + Places are ready.
-function useGoogleSearch(query, curatedCount) {
+function useGoogleSearch(query, curatedCount, userCoords) {
   const [results, setResults] = useState([]);
   const [searching, setSearching] = useState(false);
   useEffect(() => {
@@ -1754,15 +1754,16 @@ function useGoogleSearch(query, curatedCount) {
         const g = window.google;
         if (!g?.maps?.places?.Place?.searchByText) { setResults([]); return; }
         setSearching(true);
-        // No hardcoded region — if the person types "Ridgefield CT" or "Manhattan pizza",
-        // Google's text search already understands the place name in the query itself.
-        // We only add a loose Westchester-area bias as a soft nudge for vague queries
-        // like "playground", not a hard restriction.
+        // Bias toward wherever the person actually is, if we know it (e.g. they tapped
+        // "Use my location") — otherwise fall back to a loose Westchester-area nudge.
+        // Either way this is a soft bias, not a hard restriction: typing a specific place
+        // name ("Ridgefield CT", "Syracuse NY playgrounds") still searches that area.
+        const biasCenter = userCoords || { lat: 41.2587, lng: -73.6854 };
         const { places } = await g.maps.places.Place.searchByText({
           textQuery: q,
           fields: ["id", "displayName", "formattedAddress", "location", "types"],
           maxResultCount: 8,
-          locationBias: { center: { lat: 41.2587, lng: -73.6854 }, radius: 60000 },
+          locationBias: { center: biasCenter, radius: 60000 },
         });
         if (!cancelled) setResults((places || []).map(googleToPlace));
       } catch (e) {
@@ -1772,7 +1773,7 @@ function useGoogleSearch(query, curatedCount) {
       }
     }, 600);
     return () => { cancelled = true; clearTimeout(timer); };
-  }, [query, curatedCount]);
+  }, [query, curatedCount, userCoords]);
   return { results, searching };
 }
 
@@ -3291,7 +3292,7 @@ function HomeScreen({ setScreen, favorites, toggleFavorite, setSelectedPlace, lo
         (p.tags || []).some((t) => t.toLowerCase().includes(hq))
       ).slice(0, 8)
     : [];
-  const { results: gResults, searching: gSearching } = useGoogleSearch(searchQuery, homeResults.length);
+  const { results: gResults, searching: gSearching } = useGoogleSearch(searchQuery, homeResults.length, location?.coords);
   const dateStr = new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
 
   const Kicker = ({ children }) => (
@@ -4157,7 +4158,7 @@ function MapScreen({ setSelectedPlace, favorites, toggleFavorite, location, onRe
     }
     return list;
   }, [filter, query, stateFilter, cityFilter, dataset]);
-  const { results: gResults, searching: gSearching } = useGoogleSearch(query, filtered.length);
+  const { results: gResults, searching: gSearching } = useGoogleSearch(query, filtered.length, location?.coords);
   const located = location.status === "located";
 
   return (
