@@ -1742,10 +1742,11 @@ function googleCategory(types = []) {
 
 // Turn a Google result into the shape our UI understands.
 function googleToPlace(g) {
-  const addr = g.formattedAddress || "";
+  const addr = g.formattedAddress || g.formatted_address || "";
   const parts = addr.split(",");
   const town = parts.length >= 2 ? parts[parts.length - 3]?.trim() || parts[0].trim() : addr;
   const cat = googleCategory(g.types || []);
+  const loc = g.location || g.geometry?.location || null;
   return {
     id: "g_" + (g.id || g.place_id || Math.random().toString(36).slice(2)),
     name: typeof g.displayName === "string" ? g.displayName : g.displayName?.text || g.name || "Place",
@@ -1755,42 +1756,46 @@ function googleToPlace(g) {
     tags: [],
     photo: CATEGORY_ICON[cat] || "📍",
     fromGoogle: true,
-    coords: g.location ? { lat: typeof g.location.lat === "function" ? g.location.lat() : g.location.lat,
-                           lng: typeof g.location.lng === "function" ? g.location.lng() : g.location.lng } : null,
+    rating: g.rating,
+    coords: loc ? { lat: typeof loc.lat === "function" ? loc.lat() : loc.lat,
+                    lng: typeof loc.lng === "function" ? loc.lng() : loc.lng } : null,
   };
 }
 
 // Debounced Google text search. Returns [] until Maps + Places are ready.
+// Uses the classic PlacesService.textSearch — the same proven-working method as
+// the "Search any area" screen, rather than the newer Place.searchByText API
+// (which needs a separately-enabled, less broadly available API on some accounts).
 function useGoogleSearch(query, curatedCount, userCoords) {
   const [results, setResults] = useState([]);
   const [searching, setSearching] = useState(false);
+  const serviceRef = useRef(null);
   useEffect(() => {
     const q = (query || "").trim();
     // Only reach for Google when our own list is thin — this keeps calls (and cost) low.
     if (q.length < 3 || curatedCount >= 3) { setResults([]); setSearching(false); return; }
     let cancelled = false;
-    const timer = setTimeout(async () => {
-      try {
-        const g = window.google;
-        if (!g?.maps?.places?.Place?.searchByText) { setResults([]); return; }
-        setSearching(true);
-        // Bias toward wherever the person actually is, if we know it (e.g. they tapped
-        // "Use my location") — otherwise fall back to a loose Westchester-area nudge.
-        // Either way this is a soft bias, not a hard restriction: typing a specific place
-        // name ("Ridgefield CT", "Syracuse NY playgrounds") still searches that area.
-        const biasCenter = userCoords || { lat: 41.2587, lng: -73.6854 };
-        const { places } = await g.maps.places.Place.searchByText({
-          textQuery: q,
-          fields: ["id", "displayName", "formattedAddress", "location", "types"],
-          maxResultCount: 8,
-          locationBias: { center: biasCenter, radius: 60000 },
-        });
-        if (!cancelled) setResults((places || []).map(googleToPlace));
-      } catch (e) {
-        if (!cancelled) setResults([]);
-      } finally {
-        if (!cancelled) setSearching(false);
+    const timer = setTimeout(() => {
+      const g = window.google;
+      if (!g?.maps?.places?.PlacesService) { setResults([]); return; }
+      setSearching(true);
+      if (!serviceRef.current) {
+        serviceRef.current = new g.maps.places.PlacesService(document.createElement("div"));
       }
+      // Bias toward wherever the person actually is, if we know it (e.g. they tapped
+      // "Use my location") — otherwise fall back to a loose Westchester-area nudge.
+      // Either way this is a soft bias, not a hard restriction: typing a specific place
+      // name ("Ridgefield CT", "Syracuse NY playgrounds") still searches that area.
+      const biasCenter = userCoords || { lat: 41.2587, lng: -73.6854 };
+      serviceRef.current.textSearch(
+        { query: q, location: new g.maps.LatLng(biasCenter.lat, biasCenter.lng), radius: 60000 },
+        (places, status) => {
+          if (cancelled) return;
+          if (status !== g.maps.places.PlacesServiceStatus.OK || !places) { setResults([]); setSearching(false); return; }
+          setResults(places.slice(0, 8).map(googleToPlace));
+          setSearching(false);
+        }
+      );
     }, 600);
     return () => { cancelled = true; clearTimeout(timer); };
   }, [query, curatedCount, userCoords]);
