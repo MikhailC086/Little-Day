@@ -111,6 +111,26 @@ function placeCoords(place) {
   const c = COORDS[place.id];
   return c ? { lat: c[0], lng: c[1] } : null;
 }
+function haversineMiles(a, b) {
+  const R = 3958.8; // Earth radius in miles
+  const dLat = (b.lat - a.lat) * Math.PI / 180;
+  const dLng = (b.lng - a.lng) * Math.PI / 180;
+  const la1 = a.lat * Math.PI / 180, la2 = b.lat * Math.PI / 180;
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(la1) * Math.cos(la2) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
+}
+// Real distance from wherever the user actually is, when we know it — falls back to the
+// curated static estimate (relative to Westchester) only when we don't have their location.
+function distanceLabel(place, userCoords) {
+  if (userCoords) {
+    const pc = placeCoords(place);
+    if (pc) {
+      const mi = haversineMiles(userCoords, pc);
+      return mi < 10 ? `${mi.toFixed(1)} mi` : `${Math.round(mi)} mi`;
+    }
+  }
+  return `${place.distanceMi} mi`;
+}
 
 // Google Maps key is injected at build time from VITE_GOOGLE_MAPS_API_KEY.
 // If it's missing, the app gracefully falls back to the styled placeholder map.
@@ -2749,7 +2769,7 @@ function OpenNowBadge({ place, nowHour, showClosed = true }) {
   );
 }
 
-function PlaceCard({ place, onSelect, favorited, onToggleFavorite, nowHour }) {
+function PlaceCard({ place, onSelect, favorited, onToggleFavorite, nowHour, userCoords }) {
   const nh = nowHour != null ? nowHour : currentHour();
   const { reviews } = useContext(ReviewsContext);
   const stats = reviewStats(reviews, place.id);
@@ -2783,7 +2803,7 @@ function PlaceCard({ place, onSelect, favorited, onToggleFavorite, nowHour }) {
           </button>
         </div>
         <p className="text-[13px] text-[#8A8474]">
-          {place.category} · {place.town} · {place.distanceMi} mi
+          {place.category} · {place.town} · {distanceLabel(place, userCoords)}
         </p>
         {stats.count > 0 && (
           <div className="flex items-center gap-1.5 mt-1">
@@ -2927,7 +2947,7 @@ function ModeSwitcher({ mode, onSetMode }) {
   );
 }
 
-function AdultPlaceCard({ place, onSelect, favorited, onToggleFavorite, theme }) {
+function AdultPlaceCard({ place, onSelect, favorited, onToggleFavorite, theme, userCoords }) {
   const t = theme || getAdultTheme("night");
   return (
     <div
@@ -2945,7 +2965,7 @@ function AdultPlaceCard({ place, onSelect, favorited, onToggleFavorite, theme })
             <Heart size={18} color={favorited ? t.accent : t.heartOff} fill={favorited ? t.accent : "none"} />
           </button>
         </div>
-        <p className="text-[13px]" style={{ color: t.muted }}>{place.category} · {place.town} · {place.distanceMi} mi</p>
+        <p className="text-[13px]" style={{ color: t.muted }}>{place.category} · {place.town} · {distanceLabel(place, userCoords)}</p>
         <p className="text-[12px] mt-0.5" style={{ color: t.accent }}>{place.vibe}{place.price ? ` · ${place.price}` : ""}</p>
       </div>
     </div>
@@ -3306,7 +3326,22 @@ function HomeScreen({ setScreen, favorites, toggleFavorite, setSelectedPlace, lo
       </div>
     );
   }
-  const nearby = PLACES.slice(0, 4);
+  const nearestCuratedMi = useMemo(() => {
+    if (!location?.coords) return null;
+    const dists = PLACES.map((p) => { const pc = placeCoords(p); return pc ? haversineMiles(location.coords, pc) : Infinity; });
+    return Math.min(...dists);
+  }, [location?.coords]);
+  const farFromCoverage = nearestCuratedMi !== null && nearestCuratedMi > 60;
+  const nearby = useMemo(() => {
+    if (location?.coords) {
+      return [...PLACES]
+        .map((p) => { const pc = placeCoords(p); return { p, d: pc ? haversineMiles(location.coords, pc) : Infinity }; })
+        .sort((a, b) => a.d - b.d)
+        .slice(0, 4)
+        .map((x) => x.p);
+    }
+    return PLACES.slice(0, 4);
+  }, [location?.coords]);
   const hq = (searchQuery || "").trim().toLowerCase();
   const homeResults = hq
     ? PLACES.filter((p) =>
@@ -3471,6 +3506,11 @@ function HomeScreen({ setScreen, favorites, toggleFavorite, setSelectedPlace, lo
       {/* ===== This Week ===== */}
       <div className="px-5">
         <Kicker>This Week</Kicker>
+        {farFromCoverage && (
+          <p className="text-[12px] mb-2" style={{ color: "#B8B0A0" }}>
+            These are Westchester-area events — about {Math.round(nearestCuratedMi)} mi from you. Check the Events tab or "Search any area live" for things closer to you.
+          </p>
+        )}
       </div>
       <div className="flex items-start gap-3 overflow-x-auto px-5 pb-1" style={{ scrollbarWidth: "none" }}>
         {[...EVENTS_SEED]
@@ -3507,7 +3547,7 @@ function HomeScreen({ setScreen, favorites, toggleFavorite, setSelectedPlace, lo
                   )}
                   {pl && (
                     <span className="text-[11px] font-medium px-2 py-0.5 rounded-full" style={{ backgroundColor: "#FFF3E6", color: "#B08A5A" }}>
-                      {pl.distanceMi} mi away
+                      {distanceLabel(pl, location?.coords)} away
                     </span>
                   )}
                 </div>
@@ -3522,9 +3562,15 @@ function HomeScreen({ setScreen, favorites, toggleFavorite, setSelectedPlace, lo
         })}
       </div>
 
-      {/* ===== Nearby Favorites ===== */}
+      {/* ===== Top Things Near You ===== */}
       <div className="px-5">
-        <Kicker>Nearby Favorites</Kicker>
+        <Kicker>Top Things Near You</Kicker>
+        {farFromCoverage && (
+          <p className="text-[12px] mb-2" style={{ color: "#B8B0A0" }}>
+            The closest curated spot we have is about {Math.round(nearestCuratedMi)} mi away — try{" "}
+            <button onClick={() => setScreen("travelSearch")} className="font-bold underline">Search any area live</button> for real results near you.
+          </p>
+        )}
       </div>
       <div className="px-5 flex flex-col gap-2.5">
         {nearby.map((p) => (
@@ -3534,6 +3580,7 @@ function HomeScreen({ setScreen, favorites, toggleFavorite, setSelectedPlace, lo
             onSelect={(pl) => setSelectedPlace(pl)}
             favorited={favorites.includes(p.id)}
             onToggleFavorite={toggleFavorite}
+            userCoords={location?.coords}
           />
         ))}
       </div>
@@ -4188,6 +4235,12 @@ function MapScreen({ setSelectedPlace, favorites, toggleFavorite, location, onRe
   }, [filter, query, stateFilter, cityFilter, dataset]);
   const { results: gResults, searching: gSearching } = useGoogleSearch(query, filtered.length, location?.coords);
   const located = location.status === "located";
+  const nearestCuratedMi = useMemo(() => {
+    if (!location?.coords) return null;
+    const dists = dataset.map((p) => { const pc = placeCoords(p); return pc ? haversineMiles(location.coords, pc) : Infinity; });
+    return Math.min(...dists);
+  }, [location?.coords, dataset]);
+  const farFromCoverage = nearestCuratedMi !== null && nearestCuratedMi > 60;
 
   return (
     <div className="pb-4" style={{ backgroundColor: isAdult ? theme.bg : "transparent", minHeight: "100%" }}>
@@ -4249,6 +4302,17 @@ function MapScreen({ setSelectedPlace, favorites, toggleFavorite, location, onRe
         </button>
       </div>
 
+      {farFromCoverage && (
+        <div className="mx-5 mb-3 rounded-2xl p-3.5" style={{ backgroundColor: isAdult ? theme.accentSoft : "#FFF3E6" }}>
+          <p className="text-[12.5px] leading-snug" style={{ color: isAdult ? theme.text : "#8A6A3D" }}>
+            📍 You're about {Math.round(nearestCuratedMi)} miles from our curated area (Westchester, CT, NYC & Long Island) — the map and list below won't have much for you here.{" "}
+            {setScreen && (
+              <button onClick={() => setScreen("travelSearch")} className="font-bold underline">Search this area live instead →</button>
+            )}
+          </p>
+        </div>
+      )}
+
       <div className="mx-5 rounded-2xl relative overflow-hidden" style={{ height: 240 }}>
         <MapView
           places={filtered}
@@ -4283,6 +4347,7 @@ function MapScreen({ setSelectedPlace, favorites, toggleFavorite, location, onRe
                     favorited={favList.includes(p.id)}
                     onToggleFavorite={toggleFav}
                     theme={theme}
+                    userCoords={location?.coords}
                   />
                 ))}
               </div>
