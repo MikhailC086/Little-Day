@@ -3353,6 +3353,81 @@ function HomeScreen({ setScreen, favorites, toggleFavorite, setSelectedPlace, lo
   companionKidIds, onToggleCompanionKid, schoolDistrictId, onSetSchoolDistrict, completedDays, onOpenBuilder,
   appMode, onSetMode, adultFavorites, onToggleAdultFavorite, onSelectAdultPlace, adultTimeOfDay, onSetAdultTimeOfDay,
 }) {
+  // Manual location override — defaults to nothing, which means "use my real GPS location"
+  // (requested automatically below). Setting this makes every location-aware part of Home
+  // (map, distances, live search) act as if the person is standing in the picked spot instead.
+  const [manualLocation, setManualLocation] = useState(null); // { label, coords } | null
+  const [showLocationInput, setShowLocationInput] = useState(false);
+  const [locationInputText, setLocationInputText] = useState("");
+  const [locationSearching, setLocationSearching] = useState(false);
+  const [locationError, setLocationError] = useState("");
+
+  const submitLocationChange = () => {
+    const text = locationInputText.trim();
+    if (!text) return;
+    const g = window.google;
+    if (!g?.maps?.Geocoder) { setLocationError("Still loading the map — try again in a second."); return; }
+    setLocationSearching(true);
+    setLocationError("");
+    new g.maps.Geocoder().geocode({ address: text }, (results, status) => {
+      setLocationSearching(false);
+      if (status !== "OK" || !results || !results[0]) {
+        setLocationError(`Couldn't find "${text}" — try a different spelling or a bigger town name.`);
+        return;
+      }
+      const loc = results[0].geometry.location;
+      const comps = results[0].address_components || [];
+      const city = comps.find((c) => c.types.includes("locality"))?.long_name
+        || comps.find((c) => c.types.includes("postal_town"))?.long_name
+        || comps.find((c) => c.types.includes("administrative_area_level_2"))?.long_name;
+      const state = comps.find((c) => c.types.includes("administrative_area_level_1"))?.short_name;
+      setManualLocation({
+        label: city ? (state ? `${city}, ${state}` : city) : text,
+        coords: { lat: loc.lat(), lng: loc.lng() },
+      });
+      setShowLocationInput(false);
+      setLocationInputText("");
+    });
+  };
+
+  const effectiveLocation = manualLocation
+    ? { status: "located", coords: manualLocation.coords, label: manualLocation.label, request: onRequestLocation }
+    : location;
+
+  const ChangeLocationControl = () => (
+    <div className="mt-2">
+      {!showLocationInput ? (
+        <div className="flex items-center gap-2 flex-wrap">
+          <button onClick={() => { setShowLocationInput(true); setLocationInputText(""); setLocationError(""); }} className="text-[12px] font-semibold underline" style={{ color: appMode === "adult" ? getAdultTheme(adultTimeOfDay).accent : "var(--accent)" }}>
+            📍 Change location
+          </button>
+          {manualLocation && (
+            <button onClick={() => setManualLocation(null)} className="text-[12px] font-medium" style={{ color: "#B8B0A0" }}>
+              · Use my current location instead
+            </button>
+          )}
+        </div>
+      ) : (
+        <div className="mt-1.5 flex items-center gap-2">
+          <input
+            value={locationInputText}
+            onChange={(e) => setLocationInputText(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && submitLocationChange()}
+            placeholder="Any city, town, or address…"
+            className="flex-1 rounded-xl px-3 py-2 text-[13px] border outline-none"
+            style={{ borderColor: "#E7E1D4" }}
+            autoFocus
+          />
+          <button onClick={submitLocationChange} disabled={locationSearching} className="px-3.5 py-2 rounded-xl text-white text-[12.5px] font-semibold" style={{ background: appMode === "adult" ? getAdultTheme(adultTimeOfDay).cta : "var(--cta)" }}>
+            {locationSearching ? "…" : "Go"}
+          </button>
+          <button onClick={() => setShowLocationInput(false)} className="text-[12px] font-medium" style={{ color: "#B8B0A0" }}>Cancel</button>
+        </div>
+      )}
+      {locationError && <p className="text-[11.5px] mt-1" style={{ color: "#C05621" }}>{locationError}</p>}
+    </div>
+  );
+
   if (appMode === "adult") {
     const theme = getAdultTheme(adultTimeOfDay);
     const isNight = adultTimeOfDay === "night";
@@ -3369,6 +3444,12 @@ function HomeScreen({ setScreen, favorites, toggleFavorite, setSelectedPlace, lo
           <h1 style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 25, color: theme.text, marginTop: 4, lineHeight: 1.15 }}>
             What's the plan {isNight ? "tonight" : "today"}?
           </h1>
+        </div>
+
+        <div className="px-5">
+          <p className="text-[10.5px] font-bold tracking-[0.16em] uppercase mb-2 mt-6" style={{ color: theme.accent }}>Today's Notes</p>
+          <LocationBar location={effectiveLocation} onRequest={onRequestLocation} />
+          <ChangeLocationControl />
         </div>
 
         <div className="px-5">
@@ -3394,7 +3475,7 @@ function HomeScreen({ setScreen, favorites, toggleFavorite, setSelectedPlace, lo
           setSelectedPlace={onSelectAdultPlace}
           favorites={favorites}
           toggleFavorite={toggleFavorite}
-          location={location}
+          location={effectiveLocation}
           onRequestLocation={onRequestLocation}
           setScreen={setScreen}
           appMode={appMode}
@@ -3410,21 +3491,21 @@ function HomeScreen({ setScreen, favorites, toggleFavorite, setSelectedPlace, lo
     );
   }
   const nearestCuratedMi = useMemo(() => {
-    if (!location?.coords) return null;
-    const dists = PLACES.map((p) => { const pc = placeCoords(p); return pc ? haversineMiles(location.coords, pc) : Infinity; });
+    if (!effectiveLocation?.coords) return null;
+    const dists = PLACES.map((p) => { const pc = placeCoords(p); return pc ? haversineMiles(effectiveLocation.coords, pc) : Infinity; });
     return Math.min(...dists);
-  }, [location?.coords]);
+  }, [effectiveLocation?.coords]);
   const farFromCoverage = nearestCuratedMi !== null && nearestCuratedMi > 60;
   const nearby = useMemo(() => {
-    if (location?.coords) {
+    if (effectiveLocation?.coords) {
       return [...PLACES]
-        .map((p) => { const pc = placeCoords(p); return { p, d: pc ? haversineMiles(location.coords, pc) : Infinity }; })
+        .map((p) => { const pc = placeCoords(p); return { p, d: pc ? haversineMiles(effectiveLocation.coords, pc) : Infinity }; })
         .sort((a, b) => a.d - b.d)
         .slice(0, 4)
         .map((x) => x.p);
     }
     return PLACES.slice(0, 4);
-  }, [location?.coords]);
+  }, [effectiveLocation?.coords]);
   const hq = (searchQuery || "").trim().toLowerCase();
   const homeResults = hq
     ? PLACES.filter((p) =>
@@ -3434,7 +3515,7 @@ function HomeScreen({ setScreen, favorites, toggleFavorite, setSelectedPlace, lo
         (p.tags || []).some((t) => t.toLowerCase().includes(hq))
       ).slice(0, 8)
     : [];
-  const { results: gResults, searching: gSearching } = useGoogleSearch(searchQuery, homeResults.length, location?.coords);
+  const { results: gResults, searching: gSearching } = useGoogleSearch(searchQuery, homeResults.length, effectiveLocation?.coords);
   const dateStr = new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
 
   const Kicker = ({ children }) => (
@@ -3468,7 +3549,8 @@ function HomeScreen({ setScreen, favorites, toggleFavorite, setSelectedPlace, lo
           <Sun size={18} color="#F5B71F" />
           <span className="text-[13px] font-medium" style={{ color: "#5C5648" }}>{WEATHER.tempF}° and sunny</span>
         </div>
-        <LocationBar location={location} onRequest={onRequestLocation} />
+        <LocationBar location={effectiveLocation} onRequest={onRequestLocation} />
+        <ChangeLocationControl />
         <HomeSmartBanners kids={kids} companionKidIds={companionKidIds} schoolDistrictId={schoolDistrictId} onSetSchoolDistrict={onSetSchoolDistrict} completedDays={completedDays} onOpenBuilder={onOpenBuilder} />
       </div>
 
@@ -3570,7 +3652,7 @@ function HomeScreen({ setScreen, favorites, toggleFavorite, setSelectedPlace, lo
                   )}
                   {pl && (
                     <span className="text-[11px] font-medium px-2 py-0.5 rounded-full" style={{ backgroundColor: "#FFF3E6", color: "#B08A5A" }}>
-                      {distanceLabel(pl, location?.coords)} away
+                      {distanceLabel(pl, effectiveLocation?.coords)} away
                     </span>
                   )}
                 </div>
@@ -3594,7 +3676,7 @@ function HomeScreen({ setScreen, favorites, toggleFavorite, setSelectedPlace, lo
         setSelectedPlace={setSelectedPlace}
         favorites={favorites}
         toggleFavorite={toggleFavorite}
-        location={location}
+        location={effectiveLocation}
         onRequestLocation={onRequestLocation}
         setScreen={setScreen}
         appMode={appMode}
@@ -6989,6 +7071,13 @@ export default function LittleDayApp() {
   const toggleAdultFavorite = (id) =>
     setAdultFavorites((cur) => (cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]));
   const location = useGeolocation();
+  useEffect(() => {
+    // Start with the user's real location automatically, rather than waiting for a manual tap.
+    // If they've already granted/denied permission before, the browser resolves this instantly
+    // (or silently), so this doesn't add an extra prompt beyond what the OS would show anyway.
+    if (location.status === "idle") location.request();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [friends, setFriends] = usePersistentState("friends", FRIENDS_SEED);
 
   // ---- Accounts & cloud sync (Stage 1) ----
