@@ -2650,7 +2650,6 @@ function Pill({ children, active, onClick, disabled }) {
 function BottomNav({ screen, setScreen, friendsBadge = 0 }) {
   const items = [
     { key: "home", label: "Home", icon: Home },
-    { key: "map", label: "Categories", icon: ListIcon },
     { key: "events", label: "Events", icon: CalendarDays },
     { key: "safety", label: "Safety", icon: Shield },
     { key: "profile", label: "My Profile", icon: User, badge: friendsBadge },
@@ -3355,10 +3354,58 @@ function HomeScreen({ setScreen, favorites, toggleFavorite, setSelectedPlace, lo
   appMode, onSetMode, adultFavorites, onToggleAdultFavorite, onSelectAdultPlace, adultTimeOfDay, onSetAdultTimeOfDay,
 }) {
   if (appMode === "adult") {
+    const theme = getAdultTheme(adultTimeOfDay);
+    const isNight = adultTimeOfDay === "night";
+    const dateStr2 = new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
     return (
-      <div className="pb-4">
+      <div className="pb-4" style={{ backgroundColor: theme.bg, minHeight: "100%" }}>
         <ModeSwitcher mode={appMode} onSetMode={onSetMode} />
-        <AdultHomeContent favorites={adultFavorites} toggleFavorite={onToggleAdultFavorite} setSelectedPlace={onSelectAdultPlace} setScreen={setScreen} appMode={appMode} onSetMode={onSetMode} adultTimeOfDay={adultTimeOfDay} onSetAdultTimeOfDay={onSetAdultTimeOfDay} />
+
+        <div className="px-5 pt-5 pb-4 text-center border-b" style={{ borderColor: theme.cardBorder }}>
+          <div className="text-[26px] mb-1">{isNight ? "🌙" : "☀️"}</div>
+          <p className="text-[10.5px] font-bold tracking-[0.16em] uppercase" style={{ color: theme.accent }}>
+            {dateStr2} · {isNight ? "Tonight's" : "Today's"} Issue
+          </p>
+          <h1 style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 25, color: theme.text, marginTop: 4, lineHeight: 1.15 }}>
+            What's the plan {isNight ? "tonight" : "today"}?
+          </h1>
+        </div>
+
+        <div className="px-5">
+          <p className="text-[10.5px] font-bold tracking-[0.16em] uppercase mb-2 mt-6" style={{ color: theme.accent }}>Ready?</p>
+          <div className="rounded-3xl p-5" style={{ background: theme.accentSoft, border: `2px solid ${theme.accent}` }}>
+            <TimeOfDayToggle value={adultTimeOfDay} onChange={onSetAdultTimeOfDay} />
+            <button
+              onClick={() => setScreen("adultPlanner")}
+              className="w-full rounded-2xl py-5 flex items-center justify-center gap-2 text-white font-bold text-[19px] shadow-md"
+              style={{ background: theme.cta }}
+            >
+              <Sparkles size={22} />
+              {isNight ? "Plan My Night" : "Plan My Day"}
+            </button>
+          </div>
+        </div>
+
+        <div className="px-5">
+          <p className="text-[10.5px] font-bold tracking-[0.16em] uppercase mb-2 mt-6" style={{ color: theme.accent }}>Explore Places</p>
+        </div>
+        <MapScreen
+          embedded
+          setSelectedPlace={onSelectAdultPlace}
+          favorites={favorites}
+          toggleFavorite={toggleFavorite}
+          location={location}
+          onRequestLocation={onRequestLocation}
+          setScreen={setScreen}
+          appMode={appMode}
+          onSetMode={onSetMode}
+          adultFavorites={adultFavorites}
+          onToggleAdultFavorite={onToggleAdultFavorite}
+          onSelectAdultPlace={onSelectAdultPlace}
+          adultTimeOfDay={adultTimeOfDay}
+          onSetAdultTimeOfDay={onSetAdultTimeOfDay}
+          onSelectGoogle={onSelectGoogle}
+        />
       </div>
     );
   }
@@ -3425,7 +3472,7 @@ function HomeScreen({ setScreen, favorites, toggleFavorite, setSelectedPlace, lo
         <HomeSmartBanners kids={kids} companionKidIds={companionKidIds} schoolDistrictId={schoolDistrictId} onSetSchoolDistrict={onSetSchoolDistrict} completedDays={completedDays} onOpenBuilder={onOpenBuilder} />
       </div>
 
-      {/* ===== Planning for ===== */}
+      {/* ===== Plan My Day — the main event ===== */}
       <div className="px-5">
         <Kicker>Planning For</Kicker>
         {kids && kids.length > 0 && (
@@ -3458,85 +3505,25 @@ function HomeScreen({ setScreen, favorites, toggleFavorite, setSelectedPlace, lo
           </div>
         )}
 
-        <div className="flex items-center gap-2 mt-3">
-          <div className="flex-1 flex items-center gap-2 rounded-2xl px-3.5 py-2.5 border bg-white" style={{ borderColor: "#E7E1D4" }}>
-            <Search size={17} color="#9C9484" />
-            <input
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search places, towns, or categories"
-              className="flex-1 text-[14px] outline-none bg-transparent text-[#1B2A4A]"
-            />
-            {searchQuery && (
-              <button onClick={() => setSearchQuery("")}><X size={16} color="#9C9484" /></button>
-            )}
-          </div>
-          {onFilterToCategory && <CategoryFilterButton activeKey="all" onSelect={onFilterToCategory} />}
+        <div className="mt-4 rounded-3xl p-5" style={{ background: "linear-gradient(160deg,#FFF3E6,#FFE8D4)", border: "2px solid #F5B71F" }}>
+          <DayNightToggle appMode={appMode} onSetMode={onSetMode} />
+          <button
+            onClick={() => setScreen("planner")}
+            className="w-full rounded-2xl py-5 flex items-center justify-center gap-2 text-white font-bold text-[19px] shadow-md"
+            style={{ background: "var(--cta)" }}
+          >
+            <Sparkles size={22} />
+            Plan My Day
+          </button>
+          <button
+            onClick={onSurprise}
+            className="w-full rounded-2xl py-3 mt-2.5 flex items-center justify-center gap-2 font-semibold text-[14.5px] border"
+            style={{ borderColor: "var(--accent)", color: "var(--accent)", backgroundColor: "#fff" }}
+          >
+            <Shuffle size={16} />
+            Surprise me
+          </button>
         </div>
-        <button onClick={() => onFilterToCategory && onFilterToCategory("all")} className="mt-1.5 text-[11.5px] font-medium" style={{ color: "#B8B0A0" }}>
-          Looking for State/City filters? They're on the Categories tab →
-        </button>
-        {hq && (
-          <div className="mt-2 rounded-2xl border bg-white overflow-hidden" style={{ borderColor: "#EFEAE0" }}>
-            {homeResults.length === 0 && gResults.length === 0 ? (
-              <p className="text-[13px] text-[#8A8474] p-4">
-                {gSearching ? "Searching nearby…" : "No matches for “" + searchQuery + "”. Try a place, town, or category like “playground.”"}
-              </p>
-            ) : (
-              <>
-                {homeResults.map((p) => (
-                  <button key={p.id} onClick={() => setSelectedPlace(p)} className="w-full flex items-center gap-3 p-3 text-left border-b last:border-b-0" style={{ borderColor: "#F3F0E8" }}>
-                    <span className="w-9 h-9 rounded-lg flex items-center justify-center text-[18px] shrink-0" style={{ backgroundColor: "#FFF3E6" }}>{p.photo}</span>
-                    <span className="flex-1 min-w-0">
-                      <span className="block text-[14px] font-medium text-[#1B2A4A] truncate">{p.name}</span>
-                      <span className="block text-[12px] text-[#8A8474] truncate">{p.category} · {p.town}</span>
-                    </span>
-                  </button>
-                ))}
-                {gResults.length > 0 && (
-                  <>
-                    <div className="px-3 py-2 flex items-center gap-1.5" style={{ backgroundColor: "#F7F5EF" }}>
-                      <p className="text-[11px] font-semibold" style={{ color: "#8A8474" }}>ALSO ON GOOGLE MAPS</p>
-                      <span className="text-[10px]" style={{ color: "#B8B0A0" }}>· not parent-verified yet</span>
-                    </div>
-                    {gResults.map((p) => (
-                      <button key={p.id} onClick={() => onSelectGoogle && onSelectGoogle(p)} className="w-full flex items-center gap-3 p-3 text-left border-b last:border-b-0" style={{ borderColor: "#F3F0E8" }}>
-                        <span className="w-9 h-9 rounded-lg flex items-center justify-center text-[18px] shrink-0" style={{ backgroundColor: "#F3F5F9" }}>{p.photo}</span>
-                        <span className="flex-1 min-w-0">
-                          <span className="block text-[14px] font-medium text-[#1B2A4A] truncate">{p.name}</span>
-                          <span className="block text-[12px] text-[#8A8474] truncate">{p.category} · {p.town}</span>
-                        </span>
-                      </button>
-                    ))}
-                  </>
-                )}
-                <button onClick={() => setScreen("map")} className="w-full text-center text-[13px] font-semibold py-2.5" style={{ color: "var(--accent)" }}>See all in Categories List →</button>
-              </>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* ===== Ready? ===== */}
-      <div className="px-5">
-        <Kicker>Ready?</Kicker>
-        <DayNightToggle appMode={appMode} onSetMode={onSetMode} />
-        <button
-          onClick={() => setScreen("planner")}
-          className="w-full rounded-2xl py-4 flex items-center justify-center gap-2 text-white font-semibold text-[16px] shadow-sm"
-          style={{ background: "var(--cta)" }}
-        >
-          <Sparkles size={19} />
-          Plan My Day
-        </button>
-        <button
-          onClick={onSurprise}
-          className="w-full rounded-2xl py-3 mt-2.5 flex items-center justify-center gap-2 font-semibold text-[15px] border"
-          style={{ borderColor: "var(--accent)", color: "var(--accent)", backgroundColor: "#fff" }}
-        >
-          <Shuffle size={17} />
-          Surprise me
-        </button>
       </div>
 
       {/* ===== This Week ===== */}
@@ -3598,28 +3585,22 @@ function HomeScreen({ setScreen, favorites, toggleFavorite, setSelectedPlace, lo
         })}
       </div>
 
-      {/* ===== Top Things Near You ===== */}
+      {/* ===== Explore — the one search + map + browse experience ===== */}
       <div className="px-5">
-        <Kicker>Top Things Near You</Kicker>
-        {farFromCoverage && (
-          <p className="text-[12px] mb-2" style={{ color: "#B8B0A0" }}>
-            The closest curated spot we have is about {Math.round(nearestCuratedMi)} mi away — try{" "}
-            <button onClick={() => setScreen("travelSearch")} className="font-bold underline">Search any area live</button> for real results near you.
-          </p>
-        )}
+        <Kicker>Explore Places</Kicker>
       </div>
-      <div className="px-5 flex flex-col gap-2.5">
-        {nearby.map((p) => (
-          <PlaceCard
-            key={p.id}
-            place={p}
-            onSelect={(pl) => setSelectedPlace(pl)}
-            favorited={favorites.includes(p.id)}
-            onToggleFavorite={toggleFavorite}
-            userCoords={location?.coords}
-          />
-        ))}
-      </div>
+      <MapScreen
+        embedded
+        setSelectedPlace={setSelectedPlace}
+        favorites={favorites}
+        toggleFavorite={toggleFavorite}
+        location={location}
+        onRequestLocation={onRequestLocation}
+        setScreen={setScreen}
+        appMode={appMode}
+        onSetMode={onSetMode}
+        onSelectGoogle={onSelectGoogle}
+      />
 
       {/* ===== More to Explore ===== */}
       <div className="px-5">
@@ -4238,7 +4219,7 @@ function regionOf(p) {
   return "Westchester";
 }
 
-function MapScreen({ setSelectedPlace, favorites, toggleFavorite, location, onRequestLocation, initialQuery, initialFilter, setScreen, appMode, onSetMode, adultFavorites, onToggleAdultFavorite, onSelectAdultPlace, onSelectGoogle, adultTimeOfDay, onSetAdultTimeOfDay }) {
+function MapScreen({ setSelectedPlace, favorites, toggleFavorite, location, onRequestLocation, initialQuery, initialFilter, setScreen, appMode, onSetMode, adultFavorites, onToggleAdultFavorite, onSelectAdultPlace, onSelectGoogle, adultTimeOfDay, onSetAdultTimeOfDay, embedded }) {
   const isAdult = appMode === "adult";
   const theme = isAdult ? getAdultTheme(adultTimeOfDay) : null;
   const dataset = isAdult ? ADULT_PLACES : PLACES;
@@ -4307,9 +4288,9 @@ function MapScreen({ setSelectedPlace, favorites, toggleFavorite, location, onRe
 
   return (
     <div className="pb-4" style={{ backgroundColor: isAdult ? theme.bg : "transparent", minHeight: "100%" }}>
-      <TopBar title="Categories List" hideHome={false} dark={isAdult && adultTimeOfDay === "night"} />
-      <ModeSwitcher mode={appMode} onSetMode={onSetMode} />
-      {isAdult && (
+      {!embedded && <TopBar title="Categories List" hideHome={false} dark={isAdult && adultTimeOfDay === "night"} />}
+      {!embedded && <ModeSwitcher mode={appMode} onSetMode={onSetMode} />}
+      {!embedded && isAdult && (
         <div className="px-5 mb-1">
           <TimeOfDayToggle value={adultTimeOfDay} onChange={onSetAdultTimeOfDay} />
         </div>
@@ -7707,7 +7688,7 @@ export default function LittleDayApp() {
       }}
     />;
   } else if (screen === "travelSearch") {
-    content = <TravelSearchScreen onBack={() => goTo("map")} onOpenGooglePlace={(p) => setGooglePlace(p)} appMode={appMode} onSetMode={setAppMode} />;
+    content = <TravelSearchScreen onBack={() => goTo("home")} onOpenGooglePlace={(p) => setGooglePlace(p)} appMode={appMode} onSetMode={setAppMode} />;
   } else if (screen === "safety") {
     content = <SafetyScreen appMode={appMode} onSetMode={setAppMode} />;
   } else if (screen === "community") {
