@@ -1888,34 +1888,35 @@ function formatEventDate(dateStr) {
 }
 
 function EventCard({ event, saved, onToggleSave, onSelectPlace }) {
-  const GRADIENTS = {
-    Concert: "linear-gradient(160deg, #FF8C61 0%, #5B3A5C 100%)",
-    Festival: "linear-gradient(160deg, #F5B71F 0%, #FF6F5E 100%)",
-  };
   return (
     <div
-      className="relative w-full shrink-0 flex flex-col justify-end text-white overflow-hidden"
-      style={{ height: "100%", background: GRADIENTS[event.category] || "linear-gradient(160deg, #1B2A4A, #5B3A5C)", scrollSnapAlign: "start" }}
+      className="rounded-2xl overflow-hidden"
+      style={{ background: "rgba(255,255,255,0.4)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", border: "1px solid rgba(255,255,255,0.6)", boxShadow: "0 4px 20px rgba(80,60,100,0.08)" }}
     >
-      <div className="absolute inset-0 flex items-center justify-center text-[120px] opacity-25">{event.emoji}</div>
-      <div className="relative z-10 p-6 pb-10" style={{ background: "linear-gradient(0deg, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.1) 60%, transparent 100%)" }}>
-        <span className="inline-block text-[11px] font-bold px-2.5 py-1 rounded-full mb-3" style={{ backgroundColor: "rgba(255,255,255,0.2)" }}>
-          {event.category.toUpperCase()} · {event.price}
-        </span>
-        <p className="text-[24px] font-bold leading-tight" style={{ fontFamily: "'Poppins', sans-serif" }}>{event.emoji} {event.name}</p>
-        <p className="text-[15px] font-semibold mt-2 opacity-95">{formatEventDate(event.date)} · {event.time}</p>
-        <p className="text-[13.5px] opacity-85 mt-0.5">{event.town}</p>
-        <p className="text-[13.5px] mt-3 leading-snug opacity-90">{event.blurb}</p>
-        {event.bring && <p className="text-[12.5px] mt-2 opacity-75">🎒 Bring: {event.bring}</p>}
-        <div className="flex gap-2 mt-5">
-          <button
-            onClick={() => onToggleSave(event.id)}
-            className="flex-1 rounded-2xl py-3.5 font-semibold text-[14.5px] flex items-center justify-center gap-2"
-            style={{ backgroundColor: saved ? "#fff" : "rgba(255,255,255,0.18)", color: saved ? "#1B2A4A" : "#fff", border: "1.5px solid rgba(255,255,255,0.5)" }}
-          >
-            {saved ? "✓ Added to My Events" : "+ Add to my day"}
-          </button>
+      <div className="flex gap-3 p-4">
+        <div className="w-14 h-14 rounded-xl flex items-center justify-center text-[26px] shrink-0" style={{ background: "rgba(255,255,255,0.5)" }}>
+          {event.emoji}
         </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap mb-1">
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ backgroundColor: "#FFF3E6", color: "#B08A5A" }}>{event.category.toUpperCase()}</span>
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ backgroundColor: "#E4F4E9", color: "#2E8B57" }}>{event.price}</span>
+          </div>
+          <p className="text-[15px] font-bold text-[#1B2A4A] leading-tight">{event.name}</p>
+          <p className="text-[12.5px] font-semibold mt-1" style={{ color: "#B08A5A" }}>{formatEventDate(event.date)} · {event.time}</p>
+          <p className="text-[12px] text-[#8A8474] mt-0.5">{event.town}</p>
+        </div>
+      </div>
+      <div className="px-4 pb-4">
+        <p className="text-[12.5px] text-[#5C5648] leading-snug">{event.blurb}</p>
+        {event.bring && <p className="text-[11.5px] text-[#8A8474] mt-1.5">🎒 Bring: {event.bring}</p>}
+        <button
+          onClick={() => onToggleSave(event.id)}
+          className="w-full rounded-xl py-2.5 mt-3 font-semibold text-[13px] flex items-center justify-center gap-2"
+          style={{ backgroundColor: saved ? "#1B2A4A" : "#fff", color: saved ? "#fff" : "#1B2A4A", border: "1.5px solid #1B2A4A" }}
+        >
+          {saved ? "✓ Added to My Events" : "+ Add to my day"}
+        </button>
       </div>
     </div>
   );
@@ -1929,20 +1930,34 @@ function EventsScreen({ appMode, onSetMode, savedEvents, onToggleSave }) {
     .filter((e) => e.mode === "both" || e.mode === appMode || (!isAdult && e.mode === "kids"))
     .sort((a, b) => a.date.localeCompare(b.date));
 
+  // Group into simple date buckets for scannable headers, rather than a full-screen card per event.
+  const groups = [];
+  for (const ev of upcoming) {
+    const label = formatEventDate(ev.date).split(" · ")[0]; // "Today", "Tomorrow", "This Wednesday", etc.
+    let g = groups.find((x) => x.label === label);
+    if (!g) { g = { label, events: [] }; groups.push(g); }
+    g.events.push(ev);
+  }
+
   return (
-    <div className="h-screen flex flex-col" style={{ backgroundColor: "#000" }}>
-      <div style={{ backgroundColor: "#FFFBF5" }}>
-        <TopBar title="Upcoming Events" />
-        <ModeSwitcher mode={appMode} onSetMode={onSetMode} />
-      </div>
+    <div className="pb-6">
+      <TopBar title="Upcoming Events" />
+      <ModeSwitcher mode={appMode} onSetMode={onSetMode} />
       {upcoming.length === 0 ? (
-        <div className="flex-1 flex items-center justify-center px-8" style={{ backgroundColor: "#FFFBF5" }}>
-          <p className="text-[14px] text-[#8A8474] text-center">No upcoming events found for this mode right now — check back soon.</p>
+        <div className="px-8 py-16 text-center">
+          <p className="text-[14px]" style={{ color: "#fff", textShadow: "0 1px 6px rgba(0,0,0,0.15)" }}>No upcoming events found for this mode right now — check back soon.</p>
         </div>
       ) : (
-        <div className="flex-1 overflow-y-scroll" style={{ scrollSnapType: "y mandatory" }}>
-          {upcoming.map((ev) => (
-            <EventCard key={ev.id} event={ev} saved={savedEvents.includes(ev.id)} onToggleSave={onToggleSave} />
+        <div className="px-5 flex flex-col gap-5">
+          {groups.map((g) => (
+            <div key={g.label}>
+              <p className="text-[11px] font-bold tracking-[0.1em] uppercase mb-2" style={{ color: "#fff", textShadow: "0 1px 6px rgba(0,0,0,0.18)" }}>{g.label}</p>
+              <div className="flex flex-col gap-3">
+                {g.events.map((ev) => (
+                  <EventCard key={ev.id} event={ev} saved={savedEvents.includes(ev.id)} onToggleSave={onToggleSave} />
+                ))}
+              </div>
+            </div>
           ))}
         </div>
       )}
