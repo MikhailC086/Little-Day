@@ -7887,7 +7887,7 @@ export default function LittleDayApp() {
       `}</style>
       <div
         className="w-full flex flex-col relative"
-        style={{ maxWidth: 420, height: "100dvh", backgroundColor: "var(--bg)" }}
+        style={{ maxWidth: 420, height: "100dvh", backgroundColor: "transparent" }}
       >
         <div className="flex-1 overflow-y-auto overscroll-contain">
           <div key={screen} style={{ animation: "fadeSlide 0.28s ease-out" }}>
