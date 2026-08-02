@@ -7139,7 +7139,7 @@ function CommunityScreen({ setSelectedPlace }) {
 --------------------------------------------------------- */
 export default function LittleDayApp() {
   const [seenWelcome, setSeenWelcome] = usePersistentState("seenWelcome", false);
-  const [screen, setScreen] = useState(seenWelcome ? "home" : "welcome");
+  const [screen, setScreen] = useState("home");
   const [prevScreen, setPrevScreen] = useState("home");
   const [selectedPlace, setSelectedPlace] = useState(null);
   const [itinerary, setItinerary] = useState([]);
@@ -7161,7 +7161,7 @@ export default function LittleDayApp() {
   const [searchQuery, setSearchQuery] = useState("");
   const [homeFilter, setHomeFilter] = useState("all");
   const [adultTimeOfDay, setAdultTimeOfDay] = usePersistentState("adultTimeOfDay", "day");
-  const [showHowTo, setShowHowTo] = useState(false);
+  const [showHowTo, setShowHowTo] = useState(!seenWelcome);
   const [, setWeatherV] = useState(0);
   useEffect(() => { fetchLiveWeather().then(() => setWeatherV((v) => v + 1)); }, []);
 
@@ -7935,7 +7935,7 @@ export default function LittleDayApp() {
 
   const showNav = ["home", "map", "events", "favorites", "safety", "profile"].includes(screen);
 
-  const [betaOk, setBetaOk] = usePersistentState("betaOk", false);
+  const [betaOk, setBetaOk] = usePersistentState("betaOk", true); // gate disabled for now — re-enable by flipping this back to false
   // Sunrise plays once per fresh open (not on tab switches within a session).
   const [showSplash, setShowSplash] = useState(() => {
     try {
@@ -8016,7 +8016,7 @@ export default function LittleDayApp() {
         <DayCardOverlay record={dayCard} onClose={() => setDayCard(null)} onShared={() => showToast("Shared — or screenshot to send!")} />
         <RewardOverlay data={reward} onClose={() => setReward(null)} />
         <MiniCelebration data={burst} onDone={() => setBurst(null)} />
-        <OnboardingFlow key={showHowTo ? "onboarding-open" : "onboarding-closed"} open={showHowTo} onDone={() => setShowHowTo(false)} />
+        <OnboardingFlow key={showHowTo ? "onboarding-open" : "onboarding-closed"} open={showHowTo} onDone={() => { setShowHowTo(false); setSeenWelcome(true); }} />
         {kidEditor && (
           <KidEditorSheet key={kidEditor.id || "new"} data={kidEditor} onSave={saveKid} onDelete={deleteKid} onClose={() => setKidEditor(null)} />
         )}
