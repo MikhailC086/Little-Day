@@ -6517,15 +6517,14 @@ function ActivitiesScreen({ setSelectedPlace }) {
 }
 
 const HOWTO_STEPS = [
-  { emoji: "🌅", title: "Welcome to Little Day Memories", body: "The first app that plans your whole day out with the kids — where to go, eat, play, and everything in between. Here's a quick tour." },
-  { emoji: "🧒", title: "1. Add your children", body: "In the Profile tab, add each child with their name and birthday. Switch between them anytime — the planner tailors ideas to whoever you've selected. Planning for more than one? Use 'Also bringing' on Home to plan around everyone." },
-  { emoji: "✨", title: "2. Plan My Day", body: "Tap Plan My Day, then set the age, budget, time you have, and nap or 'home by' time. Little Day Memories builds a full itinerary — with a lunch stop and a treat — in seconds." },
-  { emoji: "🔔", title: "3. Smart nudges on Home", body: "Little Day Memories watches the weather, your kids' birthdays, and no-school days (once you add your school district in a Home banner) to nudge you toward a plan before you even ask." },
-  { emoji: "🔍", title: "4. Search & explore", body: "Use the search bar on the home screen to find anything — a place, a town, or a category like 'playground' or 'ice cream.' Or open Categories to browse by type." },
-  { emoji: "🤸", title: "5. Classes & Activities", body: "Browse sports, dance, music, art, and afterschool programs. Look for the 'Free trial' tag, and note which need sign-up (no drop-ins)." },
-  { emoji: "🎟️", title: "6. Check in & earn rewards", body: "Check in when you arrive somewhere. Every 5 check-ins unlocks a reward, and finishing a day earns stamps and badges in your Adventure Passport — add a photo to remember it by." },
+  { emoji: "✨", title: "Welcome to Little Day Memories", body: "Real, parent-verified places — and a couple of taps to turn them into a full day out. Here's a quick tour." },
+  { emoji: "👶🍷", title: "1. Two modes, one app", body: "Switch between \"For my kids\" and \"For myself\" anytime, right at the top of Home — separate favorites, separate picks, one tap to flip between them." },
+  { emoji: "🧒", title: "2. Add your children", body: "In My Profile, add each child with their name and birthday. Switch between them anytime — the planner tailors ideas to whoever's selected. Planning for more than one? Use 'Also bringing' on Home." },
+  { emoji: "🗓️", title: "3. Plan My Day, in seconds", body: "Tell us who's coming and how much time you have — we build a full itinerary, with a treat stop and a 'home by' time built right in." },
+  { emoji: "🔍", title: "4. Search literally anywhere", body: "Our hand-picked spots cover Westchester, CT, NYC & Long Island — and live search covers everywhere else in the country automatically, right from the same search bar." },
+  { emoji: "🔔", title: "5. Smart nudges on Home", body: "Little Day Memories watches the weather, your kids' birthdays, and no-school days (once you add your school district) to nudge you toward a plan before you even ask." },
+  { emoji: "🎉", title: "6. Friends, check-ins & badges", body: "Add friends to plan days together, right from My Profile. Check in when you arrive somewhere — every check-in counts toward badges and rewards in your Adventure Passport." },
   { emoji: "🔀", title: "7. Reshuffle, save & share", body: "Not feeling a plan? Reshuffle for a fresh one. Save the days you love, and share a day card with friends and family." },
-  { emoji: "👨‍👩‍👧", title: "8. Friends, Family Circle & play dates", body: "Sign in from the Profile tab to set your name and username, invite a co-parent or caregiver into your Family Circle, and plan group play dates — with a built-in chat to coordinate details." },
 ];
 
 function HowToOverlay({ open, onClose }) {
