@@ -3453,22 +3453,22 @@ function HomeScreen({ setScreen, favorites, toggleFavorite, setSelectedPlace, lo
 
         <div className="px-5 pt-5 pb-4 text-center border-b" style={{ borderColor: "rgba(255,255,255,0.25)" }}>
           <div className="text-[26px] mb-1">{isNight ? "🌙" : "☀️"}</div>
-          <p className="text-[10.5px] font-bold tracking-[0.16em] uppercase" style={{ color: "#fff", textShadow: "0 1px 6px rgba(0,0,0,0.2)" }}>
+          <p className="text-[10.5px] font-bold tracking-[0.16em] uppercase" style={{ color: isNight ? "#fff" : "#2B2620", textShadow: isNight ? "0 1px 6px rgba(0,0,0,0.2)" : "none" }}>
             {dateStr2} · {isNight ? "Tonight's" : "Today's"} Issue
           </p>
-          <h1 style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 25, color: "#fff", marginTop: 4, lineHeight: 1.15, textShadow: "0 2px 12px rgba(0,0,0,0.22)" }}>
+          <h1 style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 25, color: isNight ? "#fff" : "#2B2620", marginTop: 4, lineHeight: 1.15, textShadow: isNight ? "0 2px 12px rgba(0,0,0,0.22)" : "none" }}>
             What's the plan {isNight ? "tonight" : "today"}?
           </h1>
         </div>
 
         <div className="px-5">
-          <p className="text-[10.5px] font-bold tracking-[0.16em] uppercase mb-2 mt-6" style={{ color: "#fff", textShadow: "0 1px 6px rgba(0,0,0,0.2)" }}>Today's Notes</p>
+          <p className="text-[10.5px] font-bold tracking-[0.16em] uppercase mb-2 mt-6" style={{ color: isNight ? "#fff" : "#2B2620", textShadow: isNight ? "0 1px 6px rgba(0,0,0,0.2)" : "none" }}>Today's Notes</p>
           <LocationBar location={effectiveLocation} onRequest={onRequestLocation} />
           <ChangeLocationControl />
         </div>
 
         <div className="px-5">
-          <p className="text-[10.5px] font-bold tracking-[0.16em] uppercase mb-2 mt-6" style={{ color: "#fff", textShadow: "0 1px 6px rgba(0,0,0,0.2)" }}>Explore Places</p>
+          <p className="text-[10.5px] font-bold tracking-[0.16em] uppercase mb-2 mt-6" style={{ color: isNight ? "#fff" : "#2B2620", textShadow: isNight ? "0 1px 6px rgba(0,0,0,0.2)" : "none" }}>Explore Places</p>
         </div>
         <MapScreen
           embedded
@@ -3489,7 +3489,7 @@ function HomeScreen({ setScreen, favorites, toggleFavorite, setSelectedPlace, lo
         />
 
         <div className="px-5">
-          <p className="text-[10.5px] font-bold tracking-[0.16em] uppercase mb-2 mt-6" style={{ color: "#fff", textShadow: "0 1px 6px rgba(0,0,0,0.2)" }}>Ready?</p>
+          <p className="text-[10.5px] font-bold tracking-[0.16em] uppercase mb-2 mt-6" style={{ color: isNight ? "#fff" : "#2B2620", textShadow: isNight ? "0 1px 6px rgba(0,0,0,0.2)" : "none" }}>Ready?</p>
           <div className="rounded-3xl p-5" style={{ background: theme.glassCard, backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", border: `1px solid ${theme.glassBorder}`, boxShadow: "0 8px 32px rgba(20,10,40,0.18)" }}>
             <TimeOfDayToggle value={adultTimeOfDay} onChange={onSetAdultTimeOfDay} />
             <button
@@ -4485,8 +4485,8 @@ function MapScreen({ setSelectedPlace, favorites, toggleFavorite, location, onRe
             <div key={g.k}>
               <div className="flex items-center gap-2 mb-2 mt-1">
                 <span className="text-[17px]">{CATEGORY_ICON[g.cats[0]] || "📍"}</span>
-                <p className="text-[14px] font-semibold text-[#1B2A4A]">{g.l}</p>
-                <span className="text-[11.5px]" style={{ color: "#B8B0A0" }}>{inGroup.length}</span>
+                <p className="text-[14px] font-semibold" style={{ color: isAdult && adultTimeOfDay === "night" ? "#F5F3FF" : "#1B2A4A" }}>{g.l}</p>
+                <span className="text-[11.5px]" style={{ color: isAdult && adultTimeOfDay === "night" ? "#8A81A3" : "#B8B0A0" }}>{inGroup.length}</span>
               </div>
               <div className="flex flex-col gap-2.5">
                 {inGroup.map((p) => (
@@ -4509,7 +4509,7 @@ function MapScreen({ setSelectedPlace, favorites, toggleFavorite, location, onRe
           <div>
             <div className="flex items-center gap-2 mb-2 mt-1">
               <span className="text-[17px]">🌐</span>
-              <p className="text-[14px] font-semibold text-[#1B2A4A]">
+              <p className="text-[14px] font-semibold" style={{ color: isAdult && adultTimeOfDay === "night" ? "#F5F3FF" : "#1B2A4A" }}>
                 {manualStateSelected ? `Live results in ${stateFilter}` : (farFromCoverage && !query.trim() ? "Near you, live from Google" : "More nearby, from Google")}
               </p>
             </div>
