@@ -3514,18 +3514,8 @@ function HomeScreen({ setScreen, favorites, toggleFavorite, setSelectedPlace, lo
       <div className="pb-4" style={{ backgroundColor: "transparent" }}>
         <ModeSwitcher mode={appMode} onSetMode={onSetMode} />
 
-        <div className="px-5 pt-5 pb-4 text-center border-b" style={{ borderColor: "rgba(255,255,255,0.25)" }}>
-          <div className="text-[26px] mb-1">{isNight ? "🌙" : "☀️"}</div>
-          <p className="text-[10.5px] font-bold tracking-[0.16em] uppercase" style={{ color: isNight ? "#fff" : "#2B2620", textShadow: isNight ? "0 1px 6px rgba(0,0,0,0.2)" : "none" }}>
-            {dateStr2} · {isNight ? "Tonight's" : "Today's"} Issue
-          </p>
-          <h1 style={{ fontFamily: "'Poppins', sans-serif", fontWeight: 700, fontSize: 25, color: isNight ? "#fff" : "#2B2620", marginTop: 4, lineHeight: 1.15, textShadow: isNight ? "0 2px 12px rgba(0,0,0,0.22)" : "none" }}>
-            What's the plan {isNight ? "tonight" : "today"}?
-          </h1>
-        </div>
-
-        <div className="px-5">
-          <p className="text-[10.5px] font-bold tracking-[0.16em] uppercase mb-2 mt-6" style={{ color: isNight ? "#fff" : "#2B2620", textShadow: isNight ? "0 1px 6px rgba(0,0,0,0.2)" : "none" }}>Ready?</p>
+        <div className="px-5 pt-5">
+          <p className="text-[10.5px] font-bold tracking-[0.16em] uppercase mb-2" style={{ color: isNight ? "#fff" : "#2B2620", textShadow: isNight ? "0 1px 6px rgba(0,0,0,0.2)" : "none" }}>Ready?</p>
           <div className="rounded-3xl p-5" style={{ background: theme.glassCard, backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", border: `1px solid ${theme.glassBorder}`, boxShadow: "0 8px 32px rgba(20,10,40,0.18)" }}>
             <TimeOfDayToggle value={adultTimeOfDay} onChange={onSetAdultTimeOfDay} />
             <button
@@ -3541,6 +3531,11 @@ function HomeScreen({ setScreen, favorites, toggleFavorite, setSelectedPlace, lo
 
         <div className="px-5">
           <p className="text-[10.5px] font-bold tracking-[0.16em] uppercase mb-2 mt-6" style={{ color: isNight ? "#fff" : "#2B2620", textShadow: isNight ? "0 1px 6px rgba(0,0,0,0.2)" : "none" }}>Today's Notes</p>
+          <p className="text-[13px] font-semibold mb-1.5" style={{ color: isNight ? "#fff" : "#2B2620", textShadow: isNight ? "0 1px 6px rgba(0,0,0,0.15)" : "none" }}>{dateStr2}</p>
+          <div className="flex items-center gap-1.5 mb-1.5">
+            <span style={{ fontSize: 15 }}>{isNight ? "🌙" : "☀️"}</span>
+            <span className="text-[13px] font-medium" style={{ color: isNight ? "#D8CCEF" : "#5C4A2E" }}>{WEATHER.tempF}° {isNight ? "and clear" : "and sunny"}</span>
+          </div>
           <LocationBar location={effectiveLocation} onRequest={onRequestLocation} />
           <ChangeLocationControl />
         </div>
@@ -3604,21 +3599,8 @@ function HomeScreen({ setScreen, favorites, toggleFavorite, setSelectedPlace, lo
     <div className="pb-4" style={{ backgroundColor: "transparent" }}>
       <ModeSwitcher mode={appMode} onSetMode={onSetMode} />
 
-      {/* ===== Masthead ===== */}
-      <div className="px-5 pt-5 pb-4 text-center border-b-2" style={{ borderColor: "rgba(255,255,255,0.5)" }}>
-        <p className="text-[10.5px] font-bold tracking-[0.15em] uppercase" style={{ color: "#fff", textShadow: "0 1px 6px rgba(0,0,0,0.15)" }}>
-          {dateStr} · Today's Issue
-        </p>
-        <h1 style={{ fontFamily: "'Poppins', sans-serif", fontWeight: 700, fontSize: 26, color: "#fff", marginTop: 4, lineHeight: 1.15, textShadow: "0 2px 12px rgba(0,0,0,0.18)" }}>
-          What should we do today?
-        </h1>
-        <button onClick={onHowTo} className="mt-2.5 inline-flex items-center gap-1 text-[11.5px] font-semibold px-3 py-1.5 rounded-full" style={{ background: "rgba(255,255,255,0.35)", backdropFilter: "blur(10px)", color: "#fff" }}>
-          <HelpCircle size={13} /> How it works
-        </button>
-      </div>
-
       {/* ===== Plan My Day — the main event, right up top ===== */}
-      <div className="px-5 pt-4">
+      <div className="px-5 pt-5">
         {kids && kids.length > 0 && (
           <div className="flex items-center gap-2 overflow-x-auto">
             {kids.map((k) => {
@@ -3668,12 +3650,16 @@ function HomeScreen({ setScreen, favorites, toggleFavorite, setSelectedPlace, lo
             Surprise me
           </button>
         </div>
+        <button onClick={onHowTo} className="mt-3 mx-auto flex items-center gap-1 text-[11.5px] font-semibold px-3 py-1.5 rounded-full" style={{ background: "rgba(255,255,255,0.35)", backdropFilter: "blur(10px)", color: "#fff" }}>
+          <HelpCircle size={13} /> How it works
+        </button>
       </div>
 
-      {/* ===== Today's Notes ===== */}
+      {/* ===== Date, weather, location ===== */}
       <div className="px-5">
         <Kicker>Today's Notes</Kicker>
-        <div className="flex items-center gap-1.5 mb-1.5">
+        <p className="text-[13px] font-semibold" style={{ color: "#fff", textShadow: "0 1px 6px rgba(0,0,0,0.15)" }}>{dateStr}</p>
+        <div className="flex items-center gap-1.5 mt-1.5 mb-1.5">
           <Sun size={18} color="#F5B71F" />
           <span className="text-[13px] font-medium" style={{ color: "#5C5648" }}>{WEATHER.tempF}° and sunny</span>
         </div>
