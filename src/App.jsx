@@ -3543,6 +3543,9 @@ function HomeScreen({ setScreen, favorites, toggleFavorite, setSelectedPlace, lo
 
       {/* ===== Masthead ===== */}
       <div className="px-5 pt-5 pb-4 text-center border-b-2" style={{ borderColor: "rgba(255,255,255,0.5)" }}>
+        <div style={{ background: "#FF0000", color: "#fff", fontWeight: 900, fontSize: 13, padding: "6px", borderRadius: 8, marginBottom: 10 }}>
+          BUILD CHECK: v-GLASS-03
+        </div>
         <div className="flex items-center justify-center gap-2 mb-1">
           <LittleDaySun size={30} />
         </div>
