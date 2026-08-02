@@ -1,11 +1,36 @@
 import React, { useState, useMemo, useEffect, useContext, useRef } from "react";
+
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { error: null, errorInfo: null };
+  }
+  static getDerivedStateFromError(error) {
+    return { error };
+  }
+  componentDidCatch(error, errorInfo) {
+    this.setState({ errorInfo });
+  }
+  render() {
+    if (this.state.error) {
+      return (
+        <div style={{ padding: 20, fontFamily: "monospace", background: "#FFF5F5", color: "#900", minHeight: "100vh", boxSizing: "border-box" }}>
+          <h2 style={{ fontSize: 16, marginBottom: 10, fontFamily: "sans-serif" }}>⚠️ App crashed — screenshot this whole screen</h2>
+          <p style={{ marginBottom: 10, fontWeight: "bold", fontSize: 13, whiteSpace: "pre-wrap" }}>{String(this.state.error?.message || this.state.error)}</p>
+          <pre style={{ whiteSpace: "pre-wrap", fontSize: 10, color: "#555", lineHeight: 1.5 }}>{this.state.errorInfo?.componentStack || "(no component stack)"}</pre>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 import { supabase, backendReady } from "./supabaseClient.js";
 import { GoogleMap, Marker, useJsApiLoader } from "@react-google-maps/api";
 import {
   Sun, MapPin, Clock, DollarSign, Heart, ChevronLeft, ChevronRight,
-  Home, Map as MapIcon, User, Sparkles, Droplets, Trees, Baby,
+  Home, Map as MapIcon, List as ListIcon, User, Sparkles, Droplets, Trees, Baby,
   ParkingCircle, ToggleLeft as Accessible, Utensils, Star, Navigation,
-  Users, CheckCircle2, Cloud, CloudRain, UserPlus, Share2, Check, X, CalendarDays, Send, Shuffle, Bookmark, Moon, MessageCircle, Search, Flame, Plus, Trash2, HelpCircle, Phone, Shield
+  Users, CheckCircle2, Cloud, CloudRain, UserPlus, Share2, Check, X, CalendarDays, Send, Shuffle, Bookmark, Moon, MessageCircle, Search, Flame, Plus, Trash2, HelpCircle, Phone, Shield, SlidersHorizontal
 } from "lucide-react";
 
 /* Persist state to this device's browser storage (survives refresh/close).
@@ -37,6 +62,9 @@ const UNRATED = null;
 // Approximate coordinates [lat, lng] for map markers. Refine with exact
 // values (or a geocoding pass) when you have time.
 const COORDS = {
+  "captain-lawrence": [41.0637, -73.8140], "muse-paintbar-wp": [41.0295, -73.7764],
+  "westchester-wine-warehouse": [41.0505, -73.7963], "ridgefield-playhouse-adult": [41.2822, -73.4993],
+  "brooklyn-bowl": [40.7220, -73.9575], "ron-blacks-beer-hall": [41.0296, -73.7768],
   "muscoot-farm": [41.2340, -73.7160], "katonah-library": [41.2585, -73.6857],
   "john-jay": [41.2466, -73.6636], "caramoor": [41.2430, -73.6670],
   "katonah-museum": [41.2450, -73.6760], "bedford-hills-library": [41.2340, -73.6940],
@@ -49,6 +77,13 @@ const COORDS = {
   "greenburgh-nature": [41.0200, -73.8000], "westchester-childrens-museum": [40.9680, -73.6730],
   "playland": [40.9670, -73.6710], "maritime-aquarium": [41.0960, -73.4180],
   "stepping-stones": [41.1170, -73.4210], "hudson-river-museum": [40.9470, -73.8950],
+  "bruce-museum": [41.0198, -73.6227], "stamford-nature-center": [41.1290, -73.5590],
+  "greenwich-point": [41.0080, -73.5570],
+  "central-park-zoo": [40.7678, -73.9718], "childrens-museum-manhattan": [40.7859, -73.9776],
+  "prospect-park-zoo": [40.6608, -73.9626], "brooklyn-childrens-museum": [40.6735, -73.9418],
+  "ny-hall-of-science": [40.7469, -73.8493], "li-childrens-museum": [40.7280, -73.6004],
+  "levitt-pavilion": [41.1400, -73.3590], "ridgefield-playhouse-kids": [41.2820, -73.4990],
+  "brooklyn-crab": [40.6740, -74.0110], "ellens-stardust-diner": [40.7650, -73.9830],
   "legoland": [40.9600, -73.8600], "bronx-zoo": [40.8500, -73.8770],
   "blue-dolphin": [41.2590, -73.6850], "mtkisco-diner": [41.2040, -73.7230],
   "belizzie": [41.2045, -73.7250], "little-kebab": [41.2050, -73.7280],
@@ -91,10 +126,35 @@ const COORDS = {
   "katonah-playcare": [41.2570, -73.6870], "katonah-village-kids": [41.2600, -73.6860],
   "little-feet-katonah": [41.2620, -73.6880], "mkccc": [41.2050, -73.7290],
   "kids-world-preschool": [41.1980, -73.7440], "landmark-preschool": [41.2040, -73.6440],
+  "reading-room-katonah": [41.2585, -73.6860], "scattered-books": [41.1580, -73.7700],
+  "hip-kid": [41.1570, -73.7690], "briarcliff-toyshop": [41.1480, -73.8250],
+  "star-spangled-carousel": [41.1270, -73.7140], "lego-store-wp": [41.0340, -73.7620],
+  "build-a-bear-wp": [41.0340, -73.7620], "millers-toy-store": [40.9490, -73.7350],
+  "bronx-river-books": [40.9890, -73.8060], "womrath-bookshop": [40.9380, -73.8330],
 };
 function placeCoords(place) {
   const c = COORDS[place.id];
   return c ? { lat: c[0], lng: c[1] } : null;
+}
+function haversineMiles(a, b) {
+  const R = 3958.8; // Earth radius in miles
+  const dLat = (b.lat - a.lat) * Math.PI / 180;
+  const dLng = (b.lng - a.lng) * Math.PI / 180;
+  const la1 = a.lat * Math.PI / 180, la2 = b.lat * Math.PI / 180;
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(la1) * Math.cos(la2) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
+}
+// Real distance from wherever the user actually is, when we know it — falls back to the
+// curated static estimate (relative to Westchester) only when we don't have their location.
+function distanceLabel(place, userCoords) {
+  if (userCoords) {
+    const pc = placeCoords(place);
+    if (pc) {
+      const mi = haversineMiles(userCoords, pc);
+      return mi < 10 ? `${mi.toFixed(1)} mi` : `${Math.round(mi)} mi`;
+    }
+  }
+  return `${place.distanceMi} mi`;
 }
 
 // Google Maps key is injected at build time from VITE_GOOGLE_MAPS_API_KEY.
@@ -313,6 +373,125 @@ const PLACES = [
     photo: "🧩",
     blurb: "A top-rated children's museum with science, art, reading and pretend-play exhibits. Quieter hours tend to be weekday afternoons; a family bathroom is up front.",
     changingTable: true, stroller: true, food: UNRATED, crowd: UNRATED, shade: "N/A (indoor)", bathrooms: UNRATED, parking: "Lot",
+  },
+  // ---- Connecticut day trips (Fairfield County, just over the border) ----
+  {
+    id: "bruce-museum", name: "Bruce Museum", category: "Museum",
+    tags: ["indoor", "rain-friendly", "learning", "paid"], ring: "adventure",
+    town: "Greenwich, CT", address: "1 Museum Drive, Greenwich, CT 06830",
+    website: "brucemuseum.org", ageRange: "3–12", price: "$$", distanceMi: 29,
+    photo: "🔬",
+    blurb: "An art, science and natural-history museum overlooking Greenwich Harbor, with more than a dozen changing exhibitions a year. Open Tue–Sun 10–5 (closed Mondays); Tuesdays are free for everyone, kids under 5 always free.",
+    changingTable: UNRATED, stroller: true, food: true, crowd: UNRATED, shade: "N/A (indoor)", bathrooms: UNRATED, parking: "Free lot on-site",
+  },
+  {
+    id: "stamford-nature-center", name: "Stamford Museum & Nature Center", category: "Nature Center",
+    tags: ["outdoor", "animals", "learning", "paid"], ring: "adventure",
+    town: "Stamford, CT", address: "39 Scofieldtown Road, Stamford, CT 06903",
+    website: "stamfordmuseum.org", ageRange: "1–10", price: "$$", distanceMi: 26,
+    photo: "🐐",
+    blurb: "A 118-acre property with a real working farm (Heckscher Farm — goats, llamas, a Highland cow), an otter pond, a big kid-scaled playground and 80 acres of easy trails. Plenty of room to run before or after the animals.",
+    changingTable: UNRATED, stroller: true, food: UNRATED, crowd: UNRATED, shade: true, bathrooms: UNRATED, parking: "Free lot on-site",
+  },
+  {
+    id: "greenwich-point", name: "Greenwich Point Park (Tod's Point)", category: "Beach",
+    tags: ["outdoor", "beach", "seasonal", "free"], ring: "big",
+    town: "Old Greenwich, CT", address: "1 Greenwich Point Rd, Old Greenwich, CT 06870",
+    website: "greenwichct.gov", ageRange: "1–12", price: "$", distanceMi: 31,
+    photo: "🏖️",
+    blurb: "147 acres of beach, parkland and walking paths on Long Island Sound. Heads up: unlike the free Westchester parks in this app, non-Greenwich residents need to buy a day pass at the gate — worth calling ahead to confirm current visitor rules.",
+    changingTable: UNRATED, stroller: UNRATED, food: UNRATED, crowd: UNRATED, shade: UNRATED, bathrooms: UNRATED, parking: "Pay lot at the gate (residents/pass holders)",
+  },
+  // ---- NYC boroughs & Long Island (families cross into Westchester's neighbors often) ----
+  {
+    id: "central-park-zoo", name: "Central Park Zoo (Tisch Children's Zoo)", category: "Zoo",
+    tags: ["outdoor", "animals", "paid"], ring: "big",
+    town: "Manhattan, NY", address: "East 64th St & 5th Ave, New York, NY 10021",
+    website: "centralparkzoo.com", ageRange: "1–10", price: "$$", distanceMi: 38,
+    photo: "🦭",
+    blurb: "A compact, stroller-friendly zoo right inside Central Park — sea lions, snow leopards, red pandas, and the Tisch Children's Zoo where kids can feed goats and sheep. All tickets are timed and must be reserved online in advance.",
+    changingTable: UNRATED, stroller: true, food: true, crowd: UNRATED, shade: UNRATED, bathrooms: UNRATED, parking: "Street/garage nearby — most families take the subway or train in",
+  },
+  {
+    id: "childrens-museum-manhattan", name: "Children's Museum of Manhattan", category: "Children's Museum",
+    tags: ["indoor", "rain-friendly", "learning", "paid"], ring: "adventure",
+    town: "Manhattan, NY", address: "212 W 83rd St, New York, NY 10024",
+    website: "cmom.org", ageRange: "6mo–8", price: "$$", distanceMi: 37,
+    photo: "🎨",
+    blurb: "Five floors of hands-on exhibits on the Upper West Side, with a lot geared toward kids 6 and under. Closed Mondays. A good rainy-day pick if you're already headed into the city.",
+    changingTable: true, stroller: true, food: UNRATED, crowd: UNRATED, shade: "N/A (indoor)", bathrooms: UNRATED, parking: "Street/garage nearby — most families take the subway or train in",
+  },
+  {
+    id: "prospect-park-zoo", name: "Prospect Park Zoo", category: "Zoo",
+    tags: ["outdoor", "animals", "paid"], ring: "big",
+    town: "Brooklyn, NY", address: "450 Flatbush Ave, Brooklyn, NY 11225",
+    website: "prospectparkzoo.com", ageRange: "1–10", price: "$", distanceMi: 34,
+    photo: "🦁",
+    blurb: "A small, manageable 12-acre zoo inside Prospect Park — often recommended over the bigger Bronx Zoo for families with younger kids who'd get overwhelmed. Sea lion feedings a couple times a day. Tickets are timed, online only.",
+    changingTable: UNRATED, stroller: true, food: UNRATED, crowd: UNRATED, shade: UNRATED, bathrooms: UNRATED, parking: "Free street parking on Flatbush Ave",
+  },
+  {
+    id: "brooklyn-childrens-museum", name: "Brooklyn Children's Museum", category: "Children's Museum",
+    tags: ["indoor", "rain-friendly", "learning", "paid"], ring: "adventure",
+    town: "Brooklyn, NY", address: "145 Brooklyn Ave, Brooklyn, NY 11213",
+    website: "brooklynkids.org", ageRange: "0–10", price: "$$", distanceMi: 33,
+    photo: "🏛️",
+    blurb: "The world's first children's museum (opened in 1899), in Crown Heights. A toddler-specific area called Totally Tots plus a whole floor of hands-on nature and world-culture exhibits. Closed Mondays.",
+    changingTable: true, stroller: true, food: true, crowd: UNRATED, shade: "N/A (indoor)", bathrooms: UNRATED, parking: "Street parking nearby",
+  },
+  {
+    id: "ny-hall-of-science", name: "New York Hall of Science", category: "Museum",
+    tags: ["indoor", "outdoor", "rain-friendly", "learning", "paid"], ring: "adventure",
+    town: "Corona, Queens, NY", address: "47-01 111th St, Corona, NY 11368",
+    website: "nysci.org", ageRange: "2–12", price: "$$", distanceMi: 41,
+    photo: "🚀",
+    blurb: "NYC's only hands-on science center — 450+ exhibits plus an outdoor Science Playground and Rocket Park mini-golf (weather permitting). Has an on-site parking lot, which is rare for a NYC attraction. Free Friday 2–5pm and Sunday 10–11am.",
+    changingTable: UNRATED, stroller: true, food: true, crowd: UNRATED, shade: UNRATED, bathrooms: UNRATED, parking: "On-site lot, $10-15",
+  },
+  {
+    id: "li-childrens-museum", name: "Long Island Children's Museum", category: "Children's Museum",
+    tags: ["indoor", "rain-friendly", "learning", "paid"], ring: "adventure",
+    town: "Garden City, NY (Long Island)", address: "11 Davis Ave, Garden City, NY 11530",
+    website: "licm.org", ageRange: "6mo–10", price: "$$", distanceMi: 35,
+    photo: "🧸",
+    blurb: "A former airplane hangar turned two-story museum with 12 galleries, plus a seasonal outdoor play area with a vegetable garden kids can harvest from. Best for ages 3–10 by the museum's own recommendation.",
+    changingTable: true, stroller: true, food: UNRATED, crowd: UNRATED, shade: "N/A (indoor)", bathrooms: UNRATED, parking: "Free lot on-site",
+  },
+  {
+    id: "levitt-pavilion", name: "Levitt Pavilion for the Performing Arts", category: "Concert Venue",
+    tags: ["outdoor", "free", "seasonal"], ring: "big",
+    town: "Westport, CT", address: "40 Jesup Rd, Westport, CT 06880",
+    website: "levittpavilion.com", ageRange: "All ages", price: "Free", distanceMi: 33,
+    photo: "🎶",
+    blurb: "A free outdoor children's concert series on select Tuesdays/Wednesdays through the summer — real touring kids'-music acts, not just a local cover band. What to bring: a blanket or lawn chair for the grass; lawn opens at 6pm for picnicking, the show starts at 7pm.",
+    changingTable: UNRATED, stroller: true, food: UNRATED, crowd: UNRATED, shade: "Mixed", bathrooms: UNRATED, parking: "Street/nearby lots",
+  },
+  {
+    id: "ridgefield-playhouse-kids", name: "The Ridgefield Playhouse — Children's Series", category: "Theater",
+    tags: ["indoor", "rain-friendly", "paid"], ring: "adventure",
+    town: "Ridgefield, CT", address: "80 East Ridge Rd, Ridgefield, CT 06877",
+    website: "ridgefieldplayhouse.org", ageRange: "3–10", price: "$$", distanceMi: 27,
+    photo: "🎭",
+    blurb: "An intimate 500-seat theater with a real Children's Series — Cinderella, Beauty and the Beast, Jack and the Beanstalk and more, sometimes with a meet-and-greet after. What to bring: tickets are timed and sell out, so book ahead online.",
+    changingTable: UNRATED, stroller: UNRATED, food: UNRATED, crowd: UNRATED, shade: "N/A (indoor)", bathrooms: UNRATED, parking: "Street/nearby lots",
+  },
+  {
+    id: "brooklyn-crab", name: "Brooklyn Crab", category: "Restaurant",
+    tags: ["outdoor", "seasonal"], ring: "adventure",
+    town: "Brooklyn, NY", address: "24 Reed St, Brooklyn, NY 11231",
+    website: "brooklyncrab.com", ageRange: "All ages", price: "$$", distanceMi: 33,
+    photo: "🦀",
+    blurb: "A big waterfront seafood spot in Red Hook with an outdoor backyard built for kids to burn energy — mini golf, bean bag toss, a sandbox — while you actually get to eat. Seasonal, so check that the backyard is open before you go in colder months.",
+    changingTable: UNRATED, stroller: UNRATED, food: true, crowd: UNRATED, shade: "Mixed", bathrooms: UNRATED, parking: "Street parking nearby",
+  },
+  {
+    id: "ellens-stardust-diner", name: "Ellen's Stardust Diner", category: "Restaurant",
+    tags: ["indoor", "rain-friendly"], ring: "adventure",
+    town: "Manhattan, NY", address: "1650 Broadway, New York, NY 10019",
+    website: "ellensstardustdiner.com", ageRange: "All ages", price: "$$", distanceMi: 38,
+    photo: "🎤",
+    blurb: "A retro 1950s diner in the Theater District where the waitstaff are Broadway performers who sing while they serve you. A genuinely fun, no-extra-ticket-needed bit of NYC theater built right into dinner. Expect a wait — it's popular, and doesn't take reservations for small groups.",
+    changingTable: UNRATED, stroller: UNRATED, food: true, crowd: true, shade: "N/A (indoor)", bathrooms: UNRATED, parking: "Street/garage nearby",
   },
   {
     id: "hudson-river-museum", name: "Hudson River Museum & Planetarium", category: "Museum",
@@ -1050,6 +1229,192 @@ const PLACES = [
     blurb: "A village preschool on Bedford's historic green, long a first-school choice for local families. Phone: 914-393-2293.",
     changingTable: true, stroller: true, food: false, crowd: UNRATED, shade: "N/A (indoor)", bathrooms: true, parking: "Village green",
   },
+  // ---------- MORE SHOPPING ----------
+  {
+    id: "reading-room-katonah", name: "The Reading Room", category: "Bookstore",
+    tags: ["indoor", "shopping", "rain-friendly", "learning"], ring: "core",
+    town: "Katonah", address: "Katonah, NY 10536",
+    website: "", ageRange: "All ages", price: "$$", distanceMi: 1,
+    photo: "📖",
+    blurb: "A cozy bookstore and coffee shop steps from the Katonah Metro-North station, with book clubs and events. Grab a picture book and a hot chocolate — the easiest rainy-morning outing in the village.",
+    changingTable: UNRATED, stroller: true, food: true, crowd: UNRATED, shade: "N/A (indoor)", bathrooms: UNRATED, parking: "Village lot",
+  },
+  {
+    id: "scattered-books", name: "Scattered Books", category: "Bookstore",
+    tags: ["indoor", "shopping", "rain-friendly", "learning"], ring: "core",
+    town: "Chappaqua", address: "Chappaqua, NY 10514",
+    website: "scatteredbooks.com", ageRange: "All ages", price: "$$", distanceMi: 8,
+    photo: "📚",
+    blurb: "A family-owned bookshop set inside an antique house — books for children and grown-ups, gifts, and author signings. Charming enough that browsing feels like an activity.",
+    changingTable: UNRATED, stroller: true, food: false, crowd: UNRATED, shade: "N/A (indoor)", bathrooms: UNRATED, parking: "Street",
+  },
+  {
+    id: "hip-kid", name: "hip kid", category: "Store",
+    tags: ["indoor", "shopping", "rain-friendly"], ring: "core",
+    town: "Chappaqua", address: "77 S Greeley Ave, Chappaqua, NY 10514",
+    website: "", ageRange: "0–10", price: "$$$", distanceMi: 8,
+    photo: "👕",
+    blurb: "One of the area's coolest children's clothing shops — infants through teens, plus the toys, accessories and gifts kids actually want.",
+    changingTable: UNRATED, stroller: true, food: false, crowd: UNRATED, shade: "N/A (indoor)", bathrooms: UNRATED, parking: "Street + lot",
+  },
+  {
+    id: "briarcliff-toyshop", name: "Briarcliff Toyshop", category: "Toy Store",
+    tags: ["indoor", "shopping", "rain-friendly"], ring: "core",
+    town: "Briarcliff Manor", address: "Briarcliff Manor, NY 10510",
+    website: "", ageRange: "0–10", price: "$$", distanceMi: 13,
+    photo: "🧸",
+    blurb: "A carefully curated independent toy shop mixing new releases with classic toys — the kind of place staff can pick the right gift for any age.",
+    changingTable: UNRATED, stroller: true, food: false, crowd: UNRATED, shade: "N/A (indoor)", bathrooms: UNRATED, parking: "Street",
+  },
+  {
+    id: "star-spangled-carousel", name: "Star Spangled Carousel", category: "Store",
+    tags: ["indoor", "shopping", "rain-friendly"], ring: "core",
+    town: "Armonk", address: "Armonk, NY 10504",
+    website: "", ageRange: "0–10", price: "$$$", distanceMi: 9,
+    photo: "🎠",
+    blurb: "Three floors of a historic home filled with high-quality children's clothing, including exclusive European lines. A special-occasion and gift destination for decades.",
+    changingTable: UNRATED, stroller: false, food: false, crowd: UNRATED, shade: "N/A (indoor)", bathrooms: UNRATED, parking: "Street",
+  },
+  {
+    id: "lego-store-wp", name: "The LEGO Store Westchester", category: "Toy Store",
+    tags: ["indoor", "shopping", "rain-friendly"], ring: "core",
+    town: "White Plains", address: "125 Westchester Ave, White Plains, NY 10601",
+    website: "lego.com", ageRange: "3–10", price: "$$", distanceMi: 16,
+    photo: "🧱",
+    blurb: "The official LEGO store at The Westchester — sets, the pick-a-brick wall, and minifigure building. An easy rainy-day win, especially paired with the mall's other kid stops.",
+    changingTable: true, stroller: true, food: false, crowd: UNRATED, shade: "N/A (indoor)", bathrooms: true, parking: "Mall garage",
+  },
+  {
+    id: "build-a-bear-wp", name: "Build-A-Bear Workshop", category: "Toy Store",
+    tags: ["indoor", "shopping", "rain-friendly", "active"], ring: "core",
+    town: "White Plains", address: "125 Westchester Ave, White Plains, NY 10601",
+    website: "buildabear.com", ageRange: "3–10", price: "$$", distanceMi: 16,
+    photo: "🐻",
+    blurb: "Less a store than an activity — kids stuff, dress and name their own bear start to finish. A reliable birthday treat, and it takes a good hour.",
+    changingTable: true, stroller: true, food: false, crowd: UNRATED, shade: "N/A (indoor)", bathrooms: true, parking: "Mall garage",
+  },
+  {
+    id: "millers-toy-store", name: "Miller's Toy Store", category: "Toy Store",
+    tags: ["indoor", "shopping", "rain-friendly"], ring: "core",
+    town: "Mamaroneck", address: "335 Mamaroneck Ave, Mamaroneck, NY 10543",
+    website: "", ageRange: "0–10", price: "$$", distanceMi: 22,
+    photo: "🚲",
+    blurb: "A local institution: toys, books and bikes plus kids' clothes and shoes from infant to tween. Known for genuinely helpful service and a loyalty program.",
+    changingTable: UNRATED, stroller: true, food: false, crowd: UNRATED, shade: "N/A (indoor)", bathrooms: UNRATED, parking: "Street",
+  },
+  {
+    id: "bronx-river-books", name: "Bronx River Books", category: "Bookstore",
+    tags: ["indoor", "shopping", "rain-friendly", "learning"], ring: "core",
+    town: "Scarsdale", address: "Scarsdale, NY 10583",
+    website: "bronxriverbooks.com", ageRange: "All ages", price: "$$", distanceMi: 18,
+    photo: "📗",
+    blurb: "Over 14,000 titles including a deep children's section, plus puzzles, board games, coloring and activity books. A great gift stop.",
+    changingTable: UNRATED, stroller: true, food: false, crowd: UNRATED, shade: "N/A (indoor)", bathrooms: UNRATED, parking: "Village lot",
+  },
+  {
+    id: "womrath-bookshop", name: "Womrath Bookshop", category: "Bookstore",
+    tags: ["indoor", "shopping", "rain-friendly", "learning"], ring: "core",
+    town: "Bronxville", address: "76 Pondfield Rd, Bronxville, NY 10708",
+    website: "", ageRange: "All ages", price: "$$", distanceMi: 21,
+    photo: "📕",
+    blurb: "A Bronxville mainstay since 1938 — a mom-and-pop shop with carefully curated children's books, toys and gifts, and a loyal local following.",
+    changingTable: UNRATED, stroller: true, food: false, crowd: UNRATED, shade: "N/A (indoor)", bathrooms: UNRATED, parking: "Street",
+  },
+];
+
+// ---- "For myself" mode — a small, real, verified starter set for adult/date-night outings.
+// Separate dataset on purpose: different fields matter here (vibe, reservations, 21+) than for kids (nap time, stroller).
+const ADULT_PLACES = [
+  {
+    id: "captain-lawrence", name: "Captain Lawrence Brewing Co.", category: "Brewery", timeOfDay: "both",
+    town: "Elmsford, NY", address: "444 Saw Mill River Rd, Elmsford, NY 10523",
+    website: "captainlawrencebrewing.com", price: "$$", distanceMi: 9,
+    photo: "🍺", vibe: "Lively", reservations: "Walk-in (reservations for groups)",
+    blurb: "Westchester's largest craft brewery — a big taproom, outdoor beer garden, and pub food. Wednesday trivia nights. Closed Mon–Tue.",
+  },
+  {
+    id: "muse-paintbar-wp", name: "Muse Paintbar", category: "Paint & Sip", timeOfDay: "both",
+    town: "White Plains, NY", address: "84 Mamaroneck Ave, White Plains, NY 10601",
+    website: "musepaintbar.com", price: "$$", distanceMi: 12,
+    photo: "🎨", vibe: "Romantic / Fun", reservations: "Book a session online",
+    blurb: "Guided step-by-step painting with a full bar and food menu alongside — a relaxed, no-experience-needed date night. Reserve a seat for a specific painting/time.",
+  },
+  {
+    id: "westchester-wine-warehouse", name: "Westchester Wine Warehouse", category: "Wine Tasting", timeOfDay: "day",
+    town: "White Plains, NY", address: "53 Tarrytown Rd, White Plains, NY 10607",
+    website: "", price: "$$", distanceMi: 13,
+    photo: "🍷", vibe: "Romantic", reservations: "Check for scheduled tasting events",
+    blurb: "A well-regarded local wine shop that hosts sommelier-led tasting events with food pairings. Best for planning around a specific scheduled tasting rather than a walk-in visit.",
+  },
+  {
+    id: "ridgefield-playhouse-adult", name: "The Ridgefield Playhouse", category: "Concerts", timeOfDay: "night",
+    town: "Ridgefield, CT", address: "80 East Ridge Rd, Ridgefield, CT 06877",
+    website: "ridgefieldplayhouse.org", price: "$$$", distanceMi: 27,
+    photo: "🎸", vibe: "Lively", reservations: "Book tickets online — shows sell out",
+    blurb: "A 500-seat nonprofit theater bringing in national touring acts, comedians, and tribute bands — genuinely no bad seat in the house. A bar serves wine and beer. Bring: your ticket and a valid ID if you're buying from the bar.",
+  },
+  {
+    id: "brooklyn-bowl", name: "Brooklyn Bowl", category: "Concerts", timeOfDay: "night",
+    town: "Brooklyn, NY", address: "61 Wythe Ave, Brooklyn, NY 11249",
+    website: "brooklynbowl.com", price: "$$", distanceMi: 33,
+    photo: "🎳", vibe: "Lively", reservations: "Check show calendar — some events are 21+",
+    blurb: "Live music, bowling, and a full bar/kitchen under one roof in Williamsburg. Some evening shows are 21+ only, so double check the specific event before you go. Bring: valid ID — checked at the door for evening shows.",
+  },
+  {
+    id: "ron-blacks-beer-hall", name: "Ron Black's Beer Hall", category: "Bar", timeOfDay: "night",
+    town: "White Plains, NY", address: "181 Mamaroneck Ave, White Plains, NY 10601",
+    website: "", price: "$$", distanceMi: 13,
+    photo: "🍻", vibe: "Lively", reservations: "Walk-in — arrive early on trivia nights",
+    blurb: "A lively beer hall with a real weekly Trivia Night every Tuesday at 8pm — $100 cash prize to the winning team, plus bonus prizes all night. Bring: a team (up to a handful of people) and your general-knowledge confidence. Valid ID required at the bar.",
+  },
+];
+
+// Real, dated events happening in the next few weeks — pulled from each venue's published
+// recurring schedule. Recurring-series dates are our best estimate of the next occurrence;
+// always worth a quick check on the venue's site before heading out.
+const EVENTS = [
+  {
+    id: "ev-levitt-kids", name: "Levitt Pavilion Children's Series", category: "Concert",
+    date: "2026-07-29", time: "7:00 PM", town: "Westport, CT", address: "40 Jesup Rd, Westport, CT 06880",
+    price: "Free", mode: "kids", emoji: "🎤",
+    blurb: "Free touring kids'-music act on the Epstein Stage — part of Westport's long-running summer concert series.",
+    bring: "A blanket or lawn chair — lawn opens at 6pm for picnicking.",
+  },
+  {
+    id: "ev-chirp-ridgefield", name: "CHIRP Concert Series", category: "Concert",
+    date: "2026-07-28", time: "7:00 PM", town: "Ridgefield, CT", address: "Ballard Park, Main St, Ridgefield, CT",
+    price: "Free", mode: "both", emoji: "🎶",
+    blurb: "Free live music in Ballard Park — jazz, folk, and bluegrass acts rotate through the summer, right by the playground.",
+    bring: "A picnic blanket; food & drink vendors are on-site too.",
+  },
+  {
+    id: "ev-ridgehill-yonkers", name: "Ridge Hill Summer Concerts", category: "Concert",
+    date: "2026-07-31", time: "6:30 PM", town: "Yonkers, NY", address: "Ridge Hill, Yonkers, NY 10710",
+    price: "Free", mode: "adult", emoji: "🎷",
+    blurb: "Live jazz, Latin jazz, salsa and Afrobeats outdoors, with on-site restaurant takeout — a relaxed Friday-night date option.",
+    bring: "Nothing required — seating and food are available on-site.",
+  },
+  {
+    id: "ev-kensico-indian-fest", name: "Indian Culture Festival", category: "Festival",
+    date: "2026-08-02", time: "12:00 PM", town: "Valhalla, NY", address: "Kensico Dam Plaza, 1 Bronx River Pkwy, Valhalla, NY",
+    price: "Free", mode: "both", emoji: "🎉",
+    blurb: "40+ performers celebrating Indian dance and music, plus food and craft vendors — a full afternoon festival for the whole family.",
+    bring: "Sun protection — it's an open plaza with limited shade.",
+  },
+  {
+    id: "ev-rock-the-block", name: "Rock the Block", category: "Festival",
+    date: "2026-08-19", time: "5:30 PM", town: "White Plains, NY", address: "Mamaroneck Ave, White Plains, NY 10601",
+    price: "Free", mode: "both", emoji: "🎸",
+    blurb: "White Plains' favorite summer tradition — Mamaroneck Ave closes to traffic for live music, restaurants spilling into the street, and family games.",
+    bring: "Nothing required — it's a walkable street festival.",
+  },
+  {
+    id: "ev-kensico-corn-fest", name: "Corn Festival", category: "Festival",
+    date: "2026-08-16", time: "12:00 PM", town: "Valhalla, NY", address: "Kensico Dam Plaza, 1 Bronx River Pkwy, Valhalla, NY",
+    price: "Free", mode: "kids", emoji: "🌽",
+    blurb: "Fresh Hudson Valley corn, two music stages, a dedicated kids' stage, and free sails on the Beacon Sloop Club's boat, weather permitting.",
+    bring: "Cash for food vendors; check ahead for the boat-sail signup.",
+  },
 ];
 
 
@@ -1063,14 +1428,14 @@ const INTERESTS = [
 ];
 
 // mock weather signal. rainRiskAfter = hour (24h) when rain may start; null = clear all day.
-const WEATHER = { condition: "sunny", tempF: 78, rainRiskAfter: null, live: false };
+const WEATHER = { condition: "sunny", tempF: 78, rainRiskAfter: null, live: false, tomorrow: null };
 
 async function fetchLiveWeather() {
   try {
     const url =
       "https://api.open-meteo.com/v1/forecast?latitude=41.2587&longitude=-73.6854" +
-      "&hourly=precipitation_probability,weather_code&daily=temperature_2m_max" +
-      "&temperature_unit=fahrenheit&forecast_days=1&timezone=auto";
+      "&hourly=precipitation_probability,weather_code&daily=temperature_2m_max,weather_code,precipitation_probability_max" +
+      "&temperature_unit=fahrenheit&forecast_days=2&timezone=auto";
     const r = await fetch(url);
     const d = await r.json();
     const probs = (d.hourly && d.hourly.precipitation_probability) || [];
@@ -1087,10 +1452,56 @@ async function fetchLiveWeather() {
     WEATHER.rainRiskAfter = rainAfter;
     WEATHER.condition = maxCode >= 51 ? "rainy" : maxCode >= 45 ? "foggy" : maxCode >= 1 ? "cloudy" : "sunny";
     WEATHER.live = true;
+    if (d.daily && d.daily.temperature_2m_max && d.daily.temperature_2m_max.length > 1) {
+      const tomCode = d.daily.weather_code ? d.daily.weather_code[1] : 0;
+      const tomRainChance = d.daily.precipitation_probability_max ? d.daily.precipitation_probability_max[1] : 0;
+      WEATHER.tomorrow = {
+        tempF: Math.round(d.daily.temperature_2m_max[1]),
+        rainy: tomCode >= 51 || tomRainChance >= 50,
+        greatDay: tomCode < 2 && d.daily.temperature_2m_max[1] >= 65 && d.daily.temperature_2m_max[1] <= 85,
+      };
+    }
     return true;
   } catch (e) { return false; }
 }
 
+// ---- School calendar (manually curated starter set — update yearly) ----
+// Source: each district's published 2025–2026 calendar, checked July 2026.
+// Add more districts here as needed; dates are YYYY-MM-DD, inclusive ranges.
+const SCHOOL_DISTRICTS = [
+  {
+    id: "bedford", name: "Bedford Central School District",
+    noSchool: [
+      ["2025-12-24", "2026-01-02"], // Winter break
+      ["2026-03-30", "2026-04-03"], // Spring break
+      ["2026-06-27", "2099-12-31"], // Summer (last day June 26, 2026)
+    ],
+  },
+  {
+    id: "chappaqua", name: "Chappaqua Central School District",
+    noSchool: [
+      ["2025-12-22", "2026-01-02"], // Winter break
+      ["2026-02-16", "2026-02-20"], // February break
+      ["2026-03-30", "2026-04-03"], // Spring break
+      ["2026-06-27", "2099-12-31"], // Summer (last day June 26, 2026)
+    ],
+  },
+  {
+    id: "katonah-lewisboro", name: "Katonah-Lewisboro School District",
+    noSchool: [
+      ["2025-11-27", "2025-11-28"], // Thanksgiving recess
+      ["2025-12-22", "2026-01-02"], // Holiday recess
+      ["2026-02-16", "2026-02-20"], // Winter recess
+      ["2026-03-30", "2026-04-03"], // Spring recess
+      ["2026-06-27", "2099-12-31"], // Summer (last day June 26, 2026)
+    ],
+  },
+];
+function isNoSchoolDay(districtId, dateStr) {
+  const d = SCHOOL_DISTRICTS.find((x) => x.id === districtId);
+  if (!d) return false;
+  return d.noSchool.some(([start, end]) => dateStr >= start && dateStr <= end);
+}
 // Estimated opening hours per place (24h decimal). NOTE: these are approximate
 // placeholders until real hours come from a live source. Format: [open, close].
 const HOURS = {
@@ -1102,6 +1513,11 @@ const HOURS = {
   "teatown": [9, 17], "kensico-dam": [7, 19], "saxon-woods": [8, 18],
   "greenburgh-nature": [9.5, 16.5], "westchester-childrens-museum": [10, 17],
   "playland": [11, 21], "maritime-aquarium": [10, 17], "stepping-stones": [10, 17],
+  "bruce-museum": [10, 17], "stamford-nature-center": [9, 17], "greenwich-point": [7, 19],
+  "central-park-zoo": [10, 17], "childrens-museum-manhattan": [10, 17],
+  "prospect-park-zoo": [10, 17], "brooklyn-childrens-museum": [10, 17],
+  "ny-hall-of-science": [9.5, 17.5], "li-childrens-museum": [10, 17],
+  "levitt-pavilion": [18, 21], "ridgefield-playhouse-kids": [10, 21], "brooklyn-crab": [12, 22], "ellens-stardust-diner": [11, 23],
   "hudson-river-museum": [12, 17], "legoland": [10, 19], "bronx-zoo": [10, 16.5],
   "blue-dolphin": [7, 22], "mtkisco-diner": [6, 22], "belizzie": [11, 21],
   "little-kebab": [11, 21.5], "taco-street": [11.5, 21], "table-nine": [11, 21], "bedford-hills-diner": [7, 21],
@@ -1131,6 +1547,10 @@ const HOURS = {
   "pleasantville-market": [8, 13], "chappaqua-market": [8, 13], "mtkisco-market": [10, 15], "tash-market": [8, 14], "roselle-park": [8, 20],
   "katonah-playcare": [7, 18], "katonah-village-kids": [8, 15], "little-feet-katonah": [7, 18],
   "mkccc": [7, 18], "kids-world-preschool": [7, 18], "landmark-preschool": [8, 15],
+  "reading-room-katonah": [8, 18], "scattered-books": [10, 18], "hip-kid": [10, 18],
+  "briarcliff-toyshop": [10, 18], "star-spangled-carousel": [10, 17], "lego-store-wp": [10, 20],
+  "build-a-bear-wp": [10, 20], "millers-toy-store": [10, 18], "bronx-river-books": [10, 18],
+  "womrath-bookshop": [10, 18],
 };
 
 function placeHours(place) {
@@ -1147,6 +1567,10 @@ const KID_PERKS = {
   "table-nine": ["High chairs", "Kids' menu", "Picky-eater & GF friendly"],
   "barnes-noble": ["Kids' storytimes", "Big kids' book & toy section", "Cafe"],
   "bedford-hills-diner": ["High chairs", "Kids' menu", "Tuesday character night"],
+  "reading-room-katonah": ["Picture book nook", "Cafe with hot chocolate", "Story events"],
+  "build-a-bear-wp": ["Build your own bear", "Birthday parties", "Takes about an hour"],
+  "lego-store-wp": ["Pick-a-brick wall", "Build a minifigure", "Play tables"],
+  "millers-toy-store": ["Toys, books & bikes", "Kids' shoes", "Loyalty program"],
 };
 function placePerks(place) {
   return KID_PERKS[place.id] || [];
@@ -1188,16 +1612,16 @@ function classInfo(place) { return CLASS_INFO[place.id] || null; }
 // Cuisine and dietary notes for food places. gf/veg/vegan: true = confirmed options,
 // null = ask (we don't guess). Always call ahead for serious allergies.
 const FOOD_INFO = {
-  "blue-dolphin": { cuisine: "Italian", dishes: "Pasta, pizza, seafood", gf: true, veg: true, vegan: null, note: "Gluten-free pasta available" },
-  "mtkisco-diner": { cuisine: "American diner", dishes: "Pancakes, burgers, milkshakes", gf: null, veg: true, vegan: null, note: "Huge menu — easy for picky eaters" },
-  "belizzie": { cuisine: "Pizza & Italian", dishes: "Pizza, gelato, arcade", gf: true, veg: true, vegan: null, note: "Gluten-free crust available" },
-  "little-kebab": { cuisine: "Turkish & Mediterranean", dishes: "Kebabs, rice bowls, hummus", gf: true, veg: true, vegan: true, note: "Naturally lots of GF & vegan options" },
-  "taco-street": { cuisine: "Mexican", dishes: "Tacos, quesadillas, rice bowls", gf: true, veg: true, vegan: true, note: "Corn tortillas are gluten-free" },
-  "table-nine": { cuisine: "American bistro", dishes: "Seasonal plates, burgers", gf: null, veg: true, vegan: null, note: "Ask about the day's options" },
-  "bedford-hills-diner": { cuisine: "American diner", dishes: "Breakfast all day, sandwiches", gf: null, veg: true, vegan: null, note: "Kids' menu; call for the Tuesday event" },
-  "king-kone": { cuisine: "Ice cream", dishes: "Soft serve, cones, sundaes", gf: null, veg: true, vegan: null, note: "Ask about dairy-free flavors" },
-  "lighthouse-ice-cream": { cuisine: "Ice cream", dishes: "Hard & soft serve", gf: null, veg: true, vegan: null, note: "Ask about dairy-free flavors" },
-  "blue-pig": { cuisine: "Ice cream", dishes: "Small-batch, local dairy", gf: null, veg: true, vegan: null, note: "Rotating flavors — ask what's dairy-free" },
+  "blue-dolphin": { cuisine: "Italian", dishes: "Pasta, pizza, chicken parm, seafood, garlic bread", gf: true, veg: true, vegan: null, note: "Gluten-free pasta available" },
+  "mtkisco-diner": { cuisine: "American diner", dishes: "Burgers, hot dogs, grilled cheese, chicken fingers, pancakes, milkshakes", gf: null, veg: true, vegan: null, note: "Huge menu — easy for picky eaters" },
+  "belizzie": { cuisine: "Pizza & Italian", dishes: "Pizza by the slice, garlic knots, pasta, gelato", gf: true, veg: true, vegan: null, note: "Gluten-free crust available" },
+  "little-kebab": { cuisine: "Turkish & Mediterranean", dishes: "Chicken & lamb kebabs, rice bowls, hummus, pita, salads, fries", gf: true, veg: true, vegan: true, note: "Naturally lots of GF & vegan options" },
+  "taco-street": { cuisine: "Mexican", dishes: "Tacos, quesadillas, burritos, rice bowls, chips & guac", gf: true, veg: true, vegan: true, note: "Corn tortillas are gluten-free" },
+  "table-nine": { cuisine: "American bistro", dishes: "Burgers, sandwiches, salads, pasta, seasonal plates", gf: null, veg: true, vegan: null, note: "Ask about the day's options" },
+  "bedford-hills-diner": { cuisine: "American diner", dishes: "Burgers, hot dogs, grilled cheese, chicken fingers, eggs & pancakes all day", gf: null, veg: true, vegan: null, note: "Kids' menu; call for the Tuesday event" },
+  "king-kone": { cuisine: "Ice cream", dishes: "Soft serve, cones, sundaes, milkshakes, hot dogs, fries", gf: null, veg: true, vegan: null, note: "Ask about dairy-free flavors" },
+  "lighthouse-ice-cream": { cuisine: "Ice cream", dishes: "Hard & soft serve, cones, sundaes, shakes", gf: null, veg: true, vegan: null, note: "Ask about dairy-free flavors" },
+  "blue-pig": { cuisine: "Ice cream", dishes: "Small-batch scoops, cones, rotating local flavors", gf: null, veg: true, vegan: null, note: "Rotating flavors — ask what's dairy-free" },
 };
 function foodInfo(place) { return FOOD_INFO[place.id] || null; }
 
@@ -1210,8 +1634,481 @@ const CATEGORY_ICON = {
   "Dance Classes": "🩰", "Music Classes": "🎵", "Art Studio": "🎨",
   "Sports Program": "⚽", "Afterschool": "🎒", "Kids' Studio": "🧩",
   "Daycare & Preschool": "🏫", "Indoor Play": "🎪", "Theater": "🎭", "Aquarium": "🐠",
+  "Indoor Playground": "🎪", "Amusement Park": "🎡", "Zoo": "🦁", "Gardens": "🌷",
+  "Gardens & Arts": "🌷", "Children's Museum": "🏛️", "Cinema": "🎬", "Bookstore": "📖", "Concert Venue": "🎶",
+  "Bar": "🍻", "Concerts": "🎸", "Movies": "🎬", "Museums": "🏛️", "Brewery": "🍺", "Wine Tasting": "🍷", "Paint & Sip": "🎨",
 };
 function categoryIcon(place) { return CATEGORY_ICON[place.category] || place.photo || "📍"; }
+
+// Every place belongs to exactly ONE group — no place appears twice in the list.
+const PRIMARY_GROUPS = [
+  { k: "play", l: "Play & Outdoors", cats: ["Playground", "Park", "Pool", "Trail", "Beach", "Farm", "Nature Center", "Indoor Play", "Indoor Playground", "Amusement Park", "Zoo", "Gardens", "Gardens & Arts"] },
+  { k: "eat", l: "Eat & Treats", cats: ["Restaurant", "Ice Cream", "Farmers Market"] },
+  { k: "learn", l: "Learn & Explore", cats: ["Library", "Museum", "Historic Site", "Theater", "Aquarium", "Children's Museum", "Cinema", "Concert Venue"] },
+  { k: "classes", l: "Classes & Care", cats: ["Gym & Classes", "Martial Arts", "Dance Classes", "Music Classes", "Art Studio", "Sports Program", "Afterschool", "Kids' Studio", "Daycare & Preschool"] },
+  { k: "shop", l: "Shopping", cats: ["Toy Store", "Store", "Bookstore"] },
+];
+const ADULT_PRIMARY_GROUPS = [
+  { k: "eat", l: "Eat & Drink", cats: ["Restaurant", "Bar", "Brewery", "Wine Tasting"] },
+  { k: "see", l: "See & Do", cats: ["Concerts", "Movies", "Museums", "Paint & Sip"] },
+];
+function adultPrimaryGroup(place) {
+  const g = ADULT_PRIMARY_GROUPS.find((gr) => gr.cats.includes(place.category));
+  return g ? g.k : "see";
+}
+function SimpleFilterDropdown({ label, icon: Icon, activeKey, options, onSelect }) {
+  const [open, setOpen] = useState(false);
+  const activeLabel = options.find((o) => o.k === activeKey)?.l || label;
+  const isActive = activeKey && activeKey !== "all";
+  return (
+    <div className="relative shrink-0">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className="h-9 px-3 rounded-full flex items-center gap-1.5 border shrink-0"
+        style={{ borderColor: isActive ? "var(--accent)" : "#E7E1D4", backgroundColor: isActive ? "#FFF6F0" : "#fff" }}
+      >
+        {Icon && <Icon size={14} color={isActive ? "var(--accent)" : "#9C9484"} />}
+        <span className="text-[12.5px] font-semibold whitespace-nowrap" style={{ color: isActive ? "var(--accent)" : "#5C5648" }}>{activeLabel}</span>
+      </button>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-20" onClick={() => setOpen(false)} />
+          <div className="absolute left-0 top-11 z-30 rounded-2xl bg-white border shadow-lg py-1.5 w-[190px] max-h-[280px] overflow-y-auto" style={{ borderColor: "#EFEAE0" }}>
+            {options.map((o) => (
+              <button
+                key={o.k}
+                onClick={() => { onSelect(o.k); setOpen(false); }}
+                className="w-full text-left px-4 py-2.5 text-[13.5px] flex items-center justify-between"
+                style={{ color: activeKey === o.k ? "var(--accent)" : "#1B2A4A", fontWeight: activeKey === o.k ? 700 : 500 }}
+              >
+                {o.l}
+                {activeKey === o.k && <Check size={15} />}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function CategoryFilterButton({ activeKey, onSelect, groups = PRIMARY_GROUPS }) {
+  const [open, setOpen] = useState(false);
+  const options = [{ k: "all", l: "All categories" }, ...groups.map((g) => ({ k: g.k, l: g.l }))];
+  const activeLabel = options.find((o) => o.k === activeKey)?.l || "Filter";
+  return (
+    <div className="relative shrink-0">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className="w-9 h-9 rounded-full flex items-center justify-center border shrink-0"
+        style={{ borderColor: activeKey && activeKey !== "all" ? "var(--accent)" : "#E7E1D4", backgroundColor: activeKey && activeKey !== "all" ? "#FFF6F0" : "#fff" }}
+        title={activeLabel}
+      >
+        <SlidersHorizontal size={16} color={activeKey && activeKey !== "all" ? "var(--accent)" : "#9C9484"} />
+      </button>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-20" onClick={() => setOpen(false)} />
+          <div className="absolute right-0 top-11 z-30 rounded-2xl bg-white border shadow-lg py-1.5 w-[190px]" style={{ borderColor: "#EFEAE0" }}>
+            {options.map((o) => (
+              <button
+                key={o.k}
+                onClick={() => { onSelect(o.k); setOpen(false); }}
+                className="w-full text-left px-4 py-2.5 text-[13.5px] flex items-center justify-between"
+                style={{ color: activeKey === o.k ? "var(--accent)" : "#1B2A4A", fontWeight: activeKey === o.k ? 700 : 500 }}
+              >
+                {o.l}
+                {activeKey === o.k && <Check size={15} />}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function primaryGroup(place) {
+  for (const g of PRIMARY_GROUPS) if (g.cats.includes(place.category)) return g.k;
+  return "play"; // sensible default so nothing ever disappears
+}
+
+/* ---------------------------------------------------------
+   GOOGLE PLACES SEARCH (fills gaps in our curated list)
+   Cost note: we only ask for Pro-tier fields (name, address,
+   location, types) and only when our own results are thin.
+--------------------------------------------------------- */
+const GMAPS_LIBRARIES = ["places"];
+
+// Map Google's place types onto our categories so icons/labels stay consistent.
+const GOOGLE_TYPE_MAP = [
+  [["amusement_park", "water_park"], "Indoor Play"],
+  [["aquarium"], "Aquarium"],
+  [["museum", "art_gallery"], "Museum"],
+  [["library"], "Library"],
+  [["park", "national_park"], "Park"],
+  [["playground"], "Playground"],
+  [["zoo"], "Farm"],
+  [["swimming_pool"], "Pool"],
+  [["restaurant", "cafe", "bakery", "meal_takeaway", "diner", "pizza_restaurant"], "Restaurant"],
+  [["ice_cream_shop", "dessert_shop"], "Ice Cream"],
+  [["book_store", "toy_store", "clothing_store", "store", "shopping_mall"], "Store"],
+  [["gym", "fitness_center", "sports_complex", "sports_club"], "Gym & Classes"],
+  [["preschool", "school", "primary_school"], "Daycare & Preschool"],
+  [["movie_theater", "performing_arts_theater"], "Theater"],
+  [["tourist_attraction", "historical_landmark"], "Historic Site"],
+];
+function googleCategory(types = []) {
+  for (const [keys, cat] of GOOGLE_TYPE_MAP) {
+    if (types.some((t) => keys.includes(t))) return cat;
+  }
+  return "Place";
+}
+
+// Turn a Google result into the shape our UI understands.
+function googleToPlace(g) {
+  const addr = g.formattedAddress || g.formatted_address || "";
+  const parts = addr.split(",");
+  const town = parts.length >= 2 ? parts[parts.length - 3]?.trim() || parts[0].trim() : addr;
+  const cat = googleCategory(g.types || []);
+  const loc = g.location || g.geometry?.location || null;
+  return {
+    id: "g_" + (g.id || g.place_id || Math.random().toString(36).slice(2)),
+    name: typeof g.displayName === "string" ? g.displayName : g.displayName?.text || g.name || "Place",
+    category: cat,
+    town: town || "Nearby",
+    address: addr,
+    tags: [],
+    photo: CATEGORY_ICON[cat] || "📍",
+    fromGoogle: true,
+    rating: g.rating,
+    coords: loc
+      ? {
+          lat: typeof loc.lat === "function" ? loc.lat() : (loc.lat ?? loc.latitude),
+          lng: typeof loc.lng === "function" ? loc.lng() : (loc.lng ?? loc.longitude),
+        }
+      : null,
+  };
+}
+
+// Debounced Google text search. Calls the Places API (New) REST endpoint directly with
+// fetch() — no dependency on the Maps JS script being loaded on this particular screen,
+// which was the likely cause of earlier silent failures. Uses the confirmed-enabled
+// "Places API (New)" product directly, with the real HTTP error surfaced on failure.
+function useGoogleSearch(query, curatedCount, userCoords, skipBias) {
+  const [results, setResults] = useState([]);
+  const [searching, setSearching] = useState(false);
+  const [errorInfo, setErrorInfo] = useState(null);
+  useEffect(() => {
+    const q = (query || "").trim();
+    // Only reach for Google when our own list is thin — this keeps calls (and cost) low.
+    if (q.length < 3 || curatedCount >= 3) { setResults([]); setSearching(false); setErrorInfo(null); return; }
+    if (!GMAPS_KEY) { setResults([]); setSearching(false); setErrorInfo("No Google Maps API key configured."); return; }
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      setSearching(true);
+      setErrorInfo(null);
+      const body = { textQuery: q };
+      if (!skipBias) {
+        const biasCenter = userCoords || { lat: 41.2587, lng: -73.6854 };
+        body.locationBias = { circle: { center: { latitude: biasCenter.lat, longitude: biasCenter.lng }, radius: 60000 } };
+      }
+      try {
+        const res = await fetch("https://places.googleapis.com/v1/places:searchText", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Goog-Api-Key": GMAPS_KEY,
+            "X-Goog-FieldMask": "places.id,places.displayName,places.formattedAddress,places.location,places.types,places.rating",
+          },
+          body: JSON.stringify(body),
+        });
+        const data = await res.json();
+        console.log("[LDM DEBUG] Places API (New) — status:", res.status, "data:", data);
+        if (cancelled) return;
+        if (!res.ok) {
+          setResults([]); setSearching(false);
+          setErrorInfo(data?.error?.message || `HTTP ${res.status}`);
+          return;
+        }
+        setResults((data.places || []).slice(0, 8).map(googleToPlace));
+        setSearching(false);
+      } catch (e) {
+        console.log("[LDM DEBUG] Places API (New) — fetch failed:", e);
+        if (!cancelled) {
+          setResults([]); setSearching(false);
+          setErrorInfo(e.message || "Network request failed.");
+        }
+      }
+    }, 600);
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, [query, curatedCount, userCoords, skipBias]);
+  return { results, searching, errorInfo };
+}
+
+function travelCategoryEmoji(types) {
+  const t = types || [];
+  if (t.includes("zoo")) return "🦁";
+  if (t.includes("aquarium")) return "🐠";
+  if (t.includes("amusement_park")) return "🎡";
+  if (t.includes("museum")) return "🏛️";
+  if (t.includes("park")) return "🌳";
+  if (t.includes("beach")) return "🏖️";
+  if (t.includes("bowling_alley")) return "🎳";
+  if (t.includes("movie_theater")) return "🎬";
+  if (t.includes("restaurant") || t.includes("cafe")) return "🍽️";
+  if (t.includes("tourist_attraction")) return "📍";
+  return "📍";
+}
+function travelCategoryLabel(types) {
+  const t = types || [];
+  if (t.includes("zoo")) return "Zoo";
+  if (t.includes("aquarium")) return "Aquarium";
+  if (t.includes("amusement_park")) return "Amusement Park";
+  if (t.includes("museum")) return "Museum";
+  if (t.includes("park")) return "Park";
+  if (t.includes("bowling_alley")) return "Bowling";
+  if (t.includes("movie_theater")) return "Movie Theater";
+  if (t.includes("restaurant")) return "Restaurant";
+  if (t.includes("cafe")) return "Café";
+  if (t.includes("tourist_attraction")) return "Attraction";
+  return "Family Spot";
+}
+
+function formatEventDate(dateStr) {
+  const d = new Date(dateStr + "T00:00:00");
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const diffDays = Math.round((d - today) / 86400000);
+  const weekday = d.toLocaleDateString("en-US", { weekday: "long" });
+  const md = d.toLocaleDateString("en-US", { month: "long", day: "numeric" });
+  if (diffDays === 0) return `Today · ${md}`;
+  if (diffDays === 1) return `Tomorrow · ${md}`;
+  if (diffDays > 1 && diffDays < 7) return `This ${weekday} · ${md}`;
+  return `${weekday}, ${md}`;
+}
+
+function EventCard({ event, saved, onToggleSave, onSelectPlace }) {
+  return (
+    <div
+      className="rounded-2xl overflow-hidden"
+      style={{ background: "rgba(255,255,255,0.4)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", border: "1px solid rgba(255,255,255,0.6)", boxShadow: "0 4px 20px rgba(80,60,100,0.08)" }}
+    >
+      <div className="flex gap-3 p-4">
+        <div className="w-14 h-14 rounded-xl flex items-center justify-center text-[26px] shrink-0" style={{ background: "rgba(255,255,255,0.5)" }}>
+          {event.emoji}
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap mb-1">
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ backgroundColor: "#FFF3E6", color: "#B08A5A" }}>{event.category.toUpperCase()}</span>
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ backgroundColor: "#E4F4E9", color: "#2E8B57" }}>{event.price}</span>
+          </div>
+          <p className="text-[15px] font-bold text-[#1B2A4A] leading-tight">{event.name}</p>
+          <p className="text-[12.5px] font-semibold mt-1" style={{ color: "#B08A5A" }}>{formatEventDate(event.date)} · {event.time}</p>
+          <p className="text-[12px] text-[#8A8474] mt-0.5">{event.town}</p>
+        </div>
+      </div>
+      <div className="px-4 pb-4">
+        <p className="text-[12.5px] text-[#5C5648] leading-snug">{event.blurb}</p>
+        {event.bring && <p className="text-[11.5px] text-[#8A8474] mt-1.5">🎒 Bring: {event.bring}</p>}
+        <button
+          onClick={() => onToggleSave(event.id)}
+          className="w-full rounded-xl py-2.5 mt-3 font-semibold text-[13px] flex items-center justify-center gap-2"
+          style={{ backgroundColor: saved ? "#1B2A4A" : "#fff", color: saved ? "#fff" : "#1B2A4A", border: "1.5px solid #1B2A4A" }}
+        >
+          {saved ? "✓ Added to My Events" : "+ Add to my day"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function EventsScreen({ appMode, onSetMode, savedEvents, onToggleSave }) {
+  const isAdult = appMode === "adult";
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const upcoming = EVENTS
+    .filter((e) => new Date(e.date + "T00:00:00") >= today)
+    .filter((e) => e.mode === "both" || e.mode === appMode || (!isAdult && e.mode === "kids"))
+    .sort((a, b) => a.date.localeCompare(b.date));
+
+  // Group into simple date buckets for scannable headers, rather than a full-screen card per event.
+  const groups = [];
+  for (const ev of upcoming) {
+    const label = formatEventDate(ev.date).split(" · ")[0]; // "Today", "Tomorrow", "This Wednesday", etc.
+    let g = groups.find((x) => x.label === label);
+    if (!g) { g = { label, events: [] }; groups.push(g); }
+    g.events.push(ev);
+  }
+
+  return (
+    <div className="pb-6">
+      <TopBar title="Upcoming Events" />
+      <ModeSwitcher mode={appMode} onSetMode={onSetMode} />
+      {upcoming.length === 0 ? (
+        <div className="px-8 py-16 text-center">
+          <p className="text-[14px]" style={{ color: "#fff", textShadow: "0 1px 6px rgba(0,0,0,0.15)" }}>No upcoming events found for this mode right now — check back soon.</p>
+        </div>
+      ) : (
+        <div className="px-5 flex flex-col gap-5">
+          {groups.map((g) => (
+            <div key={g.label}>
+              <p className="text-[11px] font-bold tracking-[0.1em] uppercase mb-2" style={{ color: "#fff", textShadow: "0 1px 6px rgba(0,0,0,0.18)" }}>{g.label}</p>
+              <div className="flex flex-col gap-3">
+                {g.events.map((ev) => (
+                  <EventCard key={ev.id} event={ev} saved={savedEvents.includes(ev.id)} onToggleSave={onToggleSave} />
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function TravelSearchScreen({ onBack, onOpenGooglePlace, appMode, onSetMode }) {
+  const isAdult = appMode === "adult";
+  const { isLoaded, loadError } = useJsApiLoader({ id: "little-day-gmaps", googleMapsApiKey: GMAPS_KEY, libraries: GMAPS_LIBRARIES });
+  const [query, setQuery] = useState("");
+  const [status, setStatus] = useState("idle"); // idle | searching | done | error
+  const [results, setResults] = useState([]);
+  const [searchedFor, setSearchedFor] = useState("");
+  const serviceRef = useRef(null);
+
+  const runSearch = () => {
+    if (!query.trim() || !isLoaded || !window.google) return;
+    setStatus("searching");
+    setResults([]);
+    const geocoder = new window.google.maps.Geocoder();
+    geocoder.geocode({ address: query.trim() }, (geoResults, geoStatus) => {
+      if (geoStatus !== "OK" || !geoResults || !geoResults[0]) {
+        setStatus("error");
+        return;
+      }
+      const loc = geoResults[0].geometry.location;
+      if (!serviceRef.current) {
+        serviceRef.current = new window.google.maps.places.PlacesService(document.createElement("div"));
+      }
+      const searchText = isAdult
+        ? "restaurants bars concerts movies museums date night things to do"
+        : "family friendly things to do with kids";
+      serviceRef.current.textSearch(
+        { query: searchText, location: loc, radius: 16000 },
+        (places, placesStatus) => {
+          if (placesStatus !== window.google.maps.places.PlacesServiceStatus.OK || !places) {
+            setStatus("error");
+            return;
+          }
+          setResults(places.slice(0, 20));
+          setSearchedFor(geoResults[0].formatted_address);
+          setStatus("done");
+        }
+      );
+    });
+  };
+
+  return (
+    <div className="min-h-screen pb-8" style={{ backgroundColor: "#FFFBF5" }}>
+      <TopBar title="Search Any Area" onBack={onBack} />
+      <ModeSwitcher mode={appMode} onSetMode={onSetMode} />
+      <div className="px-5 pt-2">
+        <div className="rounded-2xl p-3.5 mb-4" style={{ backgroundColor: isAdult ? "#F3ECF7" : "#FFF3E6" }}>
+          <p className="text-[12.5px] leading-snug" style={{ color: isAdult ? "#6B4E8C" : "#8A6A3D" }}>
+            {isAdult
+              ? "✈️ Heading somewhere new? Search live results from Google here — restaurants, bars, concerts, museums, movies, anywhere in the US. Real places, not yet verified by us."
+              : "✈️ Traveling or headed out of our curated area? Search live results from Google here — real places, but not yet parent-verified (no nap-time or stroller notes)."}
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2 rounded-2xl px-3.5 py-2.5 border bg-white mb-4" style={{ borderColor: "#E7E1D4" }}>
+          <Search size={17} color="#9C9484" />
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && runSearch()}
+            placeholder="Any US city or town — Ridgefield CT, Boston, Miami…"
+            className="flex-1 text-[14px] outline-none bg-transparent text-[#1B2A4A]"
+          />
+        </div>
+        <button
+          onClick={runSearch}
+          disabled={!query.trim() || status === "searching" || !isLoaded}
+          className="w-full rounded-2xl py-3.5 text-white font-semibold text-[14.5px] disabled:opacity-50"
+          style={{ background: isAdult ? "#8B5CF6" : "var(--cta)" }}
+        >
+          {status === "searching" ? "Searching…" : "Search"}
+        </button>
+
+        {loadError && <p className="text-[13px] text-center mt-4" style={{ color: "#C05621" }}>Map couldn't load — check the Google Maps API key.</p>}
+        {status === "error" && <p className="text-[13px] text-center mt-4" style={{ color: "#C05621" }}>Couldn't find that place, or no results nearby — try a different spelling or a bigger town name.</p>}
+
+        {status === "done" && (
+          <>
+            <p className="text-[12px] text-[#8A8474] mt-5 mb-2">Results near {searchedFor}</p>
+            <div className="flex flex-col gap-2">
+              {results.map((r) => (
+                <button
+                  key={r.place_id}
+                  onClick={() => onOpenGooglePlace({
+                    name: r.name,
+                    address: r.formatted_address,
+                    photo: travelCategoryEmoji(r.types),
+                    category: travelCategoryLabel(r.types),
+                    town: searchedFor,
+                    rating: r.rating,
+                  })}
+                  className="flex items-center gap-3 p-3 rounded-2xl bg-white border text-left"
+                  style={{ borderColor: "#EFEAE0" }}
+                >
+                  <div className="w-12 h-12 rounded-xl flex items-center justify-center text-[22px] shrink-0" style={{ backgroundColor: "#FFF3E6" }}>{travelCategoryEmoji(r.types)}</div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[14px] font-semibold text-[#1B2A4A] truncate">{r.name}</p>
+                    <p className="text-[12px] text-[#8A8474] truncate">
+                      {travelCategoryLabel(r.types)}{r.rating ? ` · ⭐ ${r.rating}` : ""}
+                    </p>
+                    <p className="text-[11.5px] text-[#B8B0A0] truncate">{r.formatted_address}</p>
+                  </div>
+                  <ChevronRight size={16} color="#B08A5A" className="shrink-0" />
+                </button>
+              ))}
+              {results.length === 0 && <p className="text-[13px] text-[#8A8474] text-center mt-4">No family spots found nearby — try a bigger town or city name.</p>}
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function GooglePlaceSheet({ place, onClose }) {
+  if (!place) return null;
+  const mapsUrl = "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(place.name + " " + place.address);
+  return (
+    <div className="absolute inset-0 z-40 flex items-end" onClick={onClose}>
+      <div className="absolute inset-0 bg-black/30" />
+      <div className="relative w-full rounded-t-3xl bg-white p-6 pb-8" onClick={(e) => e.stopPropagation()} style={{ animation: "sheetUp 0.22s ease-out" }}>
+        <div className="w-10 h-1 rounded-full bg-[#E7E1D4] mx-auto mb-4" />
+        <div className="flex items-start gap-3">
+          <div className="w-12 h-12 rounded-xl flex items-center justify-center text-[24px] shrink-0" style={{ backgroundColor: "#FFF3E6" }}>{place.photo}</div>
+          <div className="flex-1 min-w-0">
+            <p className="text-[17px] font-bold text-[#1B2A4A]" style={{ fontFamily: "'Poppins', sans-serif" }}>{place.name}</p>
+            <p className="text-[13px] text-[#8A8474]">{place.category} · {place.town}{place.rating ? ` · ⭐ ${place.rating}` : ""}</p>
+          </div>
+        </div>
+        {place.address && <p className="text-[13px] text-[#5C5648] mt-3">{place.address}</p>}
+        <div className="rounded-2xl p-3.5 mt-4" style={{ backgroundColor: "#F3F5F9" }}>
+          <p className="text-[12.5px] leading-snug" style={{ color: "#5B6B8C" }}>
+            Found on Google Maps — not yet parent-verified, so we don't have bathroom, stroller or kid-perk notes for it.
+          </p>
+        </div>
+        <a href={mapsUrl} target="_blank" rel="noopener noreferrer"
+          className="w-full rounded-2xl py-3.5 mt-4 flex items-center justify-center gap-2 text-white font-semibold text-[14px]" style={{ background: "var(--cta)" }}>
+          Open in Google Maps
+        </a>
+        <p className="text-[11px] text-[#B8B0A0] text-center mt-3">Love this spot? Tell us and we'll add it properly, with the details parents actually need.</p>
+      </div>
+    </div>
+  );
+}
 
 
 // Which farmers markets have prepared-food vendors (not just produce).
@@ -1355,6 +2252,7 @@ const REVIEWS_SEED = {
 };
 
 const ReviewsContext = React.createContext({ reviews: {}, addReview: () => {} });
+const NavContext = React.createContext({ goHome: () => {} });
 
 function reviewStats(reviews, placeId) {
   const list = reviews[placeId] || [];
@@ -1407,9 +2305,9 @@ const EVENTS_SEED = [
 ];
 
 const FRIENDS_SEED = [
-  { id: "sofia", name: "Sofia R.", emoji: "👩🏻", kids: "Mia (3), Leo (5)", town: "Chappaqua" },
-  { id: "dana", name: "Dana K.", emoji: "👨🏽", kids: "Noah (2)", town: "Pleasantville" },
-  { id: "priya", name: "Priya M.", emoji: "👩🏾", kids: "Ava (4)", town: "Mount Kisco" },
+  { id: "sofia", name: "Sofia R.", emoji: "👩🏻", kids: "Mia (3), Leo (5)", town: "Chappaqua", demo: true },
+  { id: "dana", name: "Dana K.", emoji: "👨🏽", kids: "Noah (2)", town: "Pleasantville", demo: true },
+  { id: "priya", name: "Priya M.", emoji: "👩🏾", kids: "Ava (4)", town: "Mount Kisco", demo: true },
 ];
 
 const SHARED_DAYS_SEED = [
@@ -1443,6 +2341,14 @@ const PLAYDATES_SEED = [
 --------------------------------------------------------- */
 function buildItinerary(prefs) {
   let pool = [...PLACES];
+
+  // Multi-kid compromise: places don't have per-age data yet, so this is a
+  // light-touch first pass — skip categories that clearly skew to one age
+  // band when the group spans more than one distinct age.
+  const allAges = new Set([prefs.age, ...(prefs.companionAges || [])].filter(Boolean));
+  if (allAges.size > 1) {
+    pool = pool.filter((p) => p.category !== "Daycare & Preschool");
+  }
 
   // weather intelligence
   if (WEATHER.condition === "rain") {
@@ -1482,7 +2388,32 @@ function buildItinerary(prefs) {
     for (let i = top.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [top[i], top[j]] = [top[j], top[i]]; }
     activityPool = top.concat(activityPool.slice(k));
   }
-  let activity = activityPool.slice(0, Math.min(prefs.stops, maxActivities));
+
+  // Keep the day varied: skip a place if we've already picked its category or
+  // primary group twice (so no itinerary is two parks or two farms back to back).
+  // Only relax the rule if there truly isn't enough variety to fill the day.
+  const wanted = Math.min(prefs.stops, maxActivities);
+  let activity = [];
+  const catCount = {};
+  const groupCount = {};
+  for (const p of activityPool) {
+    if (activity.length >= wanted) break;
+    const cat = p.category;
+    const grp = typeof primaryGroup === "function" ? primaryGroup(p) : cat;
+    const catSeen = catCount[cat] || 0;
+    const groupSeen = groupCount[grp] || 0;
+    if (catSeen >= 1 || groupSeen >= 2) continue; // at most one of the same category, two of the same group
+    activity.push(p);
+    catCount[cat] = catSeen + 1;
+    groupCount[grp] = groupSeen + 1;
+  }
+  // Fill any remaining slots (only happens if the filtered area is genuinely thin on variety).
+  if (activity.length < wanted) {
+    for (const p of activityPool) {
+      if (activity.length >= wanted) break;
+      if (!activity.includes(p)) activity.push(p);
+    }
+  }
 
   let stops = [...activity];
 
@@ -1585,7 +2516,79 @@ function SunriseArc({ items, onSelect }) {
 /* ---------------------------------------------------------
    SHARED UI BITS
 --------------------------------------------------------- */
-function LittleDaySun({ size = 40 }) {
+function SunriseSplash({ onDone }) {
+  const [leaving, setLeaving] = useState(false);
+  const finish = () => {
+    if (leaving) return;
+    setLeaving(true);
+    setTimeout(onDone, 420);
+  };
+  useEffect(() => {
+    const t = setTimeout(finish, 2100);
+    return () => clearTimeout(t);
+  }, []);
+  const bursts = [
+    { color: "#FF8C61", size: 26, angle: -55, dist: 130, delay: 0.15 },
+    { color: "#F5B71F", size: 20, angle: -15, dist: 150, delay: 0.22 },
+    { color: "#8B5CF6", size: 22, angle: 25, dist: 125, delay: 0.18 },
+    { color: "#4CAF6D", size: 18, angle: 65, dist: 140, delay: 0.28 },
+    { color: "#FF6F5E", size: 24, angle: 105, dist: 130, delay: 0.12 },
+    { color: "#5B9BD5", size: 20, angle: 150, dist: 145, delay: 0.25 },
+    { color: "#F5B71F", size: 16, angle: -105, dist: 120, delay: 0.32 },
+    { color: "#FF8C61", size: 18, angle: -145, dist: 135, delay: 0.2 },
+  ];
+  return (
+    <div
+      onClick={finish}
+      style={{
+        position: "fixed", inset: 0, zIndex: 9999,
+        display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+        overflow: "hidden",
+        background: "linear-gradient(160deg,#A8C8EC 0%,#E8B4D8 55%,#F5D6A8 100%)",
+        animation: leaving ? "splashOut 0.42s ease-in forwards" : "none",
+        fontFamily: "'Poppins', system-ui, sans-serif",
+      }}
+    >
+      <div style={{ position: "relative", width: 300, height: 300, display: "flex", alignItems: "center", justifyContent: "center" }}>
+        {bursts.map((b, i) => {
+          const rad = (b.angle * Math.PI) / 180;
+          const tx = Math.cos(rad) * b.dist;
+          const ty = Math.sin(rad) * b.dist;
+          return (
+            <div
+              key={i}
+              style={{
+                position: "absolute", width: b.size, height: b.size, borderRadius: "50%",
+                background: b.color, opacity: 0,
+                animation: `burstOut 0.65s cubic-bezier(0.22,1,0.36,1) ${b.delay}s forwards`,
+                "--tx": `${tx}px`, "--ty": `${ty}px`,
+              }}
+            />
+          );
+        })}
+        <div style={{ position: "relative", zIndex: 2, animation: "centerPop 0.55s cubic-bezier(0.34,1.56,0.64,1) 0.05s both" }}>
+          <div style={{ width: 88, height: 88, borderRadius: 28, background: "linear-gradient(135deg,#FF8C61,#FFC857)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 40, boxShadow: "0 12px 32px rgba(255,140,97,0.4)" }}>
+            ✨
+          </div>
+        </div>
+      </div>
+      <div style={{ marginTop: 8, textAlign: "center", animation: "fadeUp 0.7s ease-out 0.55s both" }}>
+        <p style={{ fontSize: 26, fontWeight: 800, color: "#1B2A4A", margin: 0 }}>little day memories</p>
+        <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.18em", color: "#B8863B", marginTop: 4 }}>
+          BIG ADVENTURES. LITTLE DAYS.
+        </p>
+      </div>
+      <style>{`
+        @keyframes burstOut { 0% { transform: translate(0,0) scale(0); opacity: 0; } 40% { opacity: 1; } 100% { transform: translate(var(--tx), var(--ty)) scale(1); opacity: 0; } }
+        @keyframes centerPop { 0% { transform: scale(0) rotate(-20deg); opacity: 0; } 60% { transform: scale(1.15) rotate(5deg); opacity: 1; } 100% { transform: scale(1) rotate(0deg); opacity: 1; } }
+        @keyframes fadeUp { from { transform: translateY(14px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        @keyframes splashOut { to { opacity: 0; transform: translateY(-24px); } }
+      `}</style>
+    </div>
+  );
+}
+
+function LittleDaySun({ size = 40, animateRays = false }) {
   const cx = 50, cy = 56, rInner = 40, rOuter = 50;
   const angles = [18, 42, 66, 90, 114, 138, 162];
   return (
@@ -1602,6 +2605,7 @@ function LittleDaySun({ size = 40 }) {
             stroke="#F5B71F"
             strokeWidth="4.5"
             strokeLinecap="round"
+            style={animateRays ? { transformOrigin: `${cx}px ${cy}px`, animation: `rayPop 0.5s ease-out ${0.55 + i * 0.07}s both` } : undefined}
           />
         );
       })}
@@ -1617,7 +2621,7 @@ function LittleDayWordmark({ size = 22 }) {
   return (
     <span
       style={{
-        fontFamily: "'Fredoka', sans-serif",
+        fontFamily: "'Poppins', sans-serif",
         fontWeight: 600,
         fontSize: size,
         color: "#16284A",
@@ -1625,7 +2629,7 @@ function LittleDayWordmark({ size = 22 }) {
         letterSpacing: "-0.01em",
       }}
     >
-      little day
+      little day memories
     </span>
   );
 }
@@ -1641,7 +2645,7 @@ function LittleDayLockup({ sunSize = 44, wordSize = 24, tagline = false }) {
         <p
           className="mt-1.5"
           style={{
-            fontFamily: "'Fredoka', sans-serif",
+            fontFamily: "'Poppins', sans-serif",
             fontWeight: 500,
             fontSize: 11,
             letterSpacing: "0.08em",
@@ -1656,21 +2660,33 @@ function LittleDayLockup({ sunSize = 44, wordSize = 24, tagline = false }) {
   );
 }
 
-function TopBar({ title, onBack, right }) {
+function TopBar({ title, onBack, right, hideHome, dark }) {
+  const { goHome } = useContext(NavContext);
   return (
     <div className="flex items-center gap-3 px-5 pt-6 pb-3">
       {onBack && (
-        <button onClick={onBack} className="p-1 -ml-1 text-[#1B2A4A]">
+        <button onClick={onBack} className="p-1 -ml-1" style={{ color: dark ? "#F5F3FF" : "#1B2A4A" }}>
           <ChevronLeft size={24} />
         </button>
       )}
       <h1
-        className="text-[19px] font-semibold text-[#1B2A4A] flex-1"
-        style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+        className="text-[19px] font-semibold flex-1"
+        style={{ fontFamily: "'Poppins', sans-serif", color: dark ? "#F5F3FF" : "#1B2A4A" }}
       >
         {title}
       </h1>
       {right}
+      {!hideHome && (
+        <button
+          onClick={goHome}
+          title="Back to home"
+          className="flex items-center gap-1 shrink-0 px-2.5 py-1.5 rounded-full"
+          style={{ backgroundColor: dark ? "rgba(176,138,226,0.15)" : "#FFF3E6" }}
+        >
+          <LittleDaySun size={16} />
+          <span className="text-[12px] font-semibold" style={{ color: dark ? "#B08AE2" : "#B08A5A" }}>Home</span>
+        </button>
+      )}
     </div>
   );
 }
@@ -1693,35 +2709,53 @@ function Pill({ children, active, onClick, disabled }) {
   );
 }
 
-function BottomNav({ screen, setScreen }) {
+function SidebarNav({ screen, setScreen, friendsBadge = 0 }) {
   const items = [
     { key: "home", label: "Home", icon: Home },
-    { key: "map", label: "Categories", icon: MapIcon },
-    { key: "friends", label: "Friends", icon: Users },
-    { key: "favorites", label: "Saved", icon: Heart },
+    { key: "events", label: "Events", icon: CalendarDays },
     { key: "safety", label: "Safety", icon: Shield },
-    { key: "profile", label: "Family", icon: User },
+    { key: "profile", label: "My Profile", icon: User, badge: friendsBadge },
   ];
   return (
     <div
-      className="flex justify-around items-center border-t bg-white/95 backdrop-blur"
-      style={{ borderColor: "#EFEAE0", paddingBottom: "env(safe-area-inset-bottom, 10px)" }}
+      className="flex flex-col items-center shrink-0"
+      style={{
+        width: 64,
+        background: "#1B2A4A",
+        paddingTop: "calc(env(safe-area-inset-top, 20px) + 20px)",
+        paddingBottom: "env(safe-area-inset-bottom, 16px)",
+        gap: 26,
+      }}
     >
-      {items.map(({ key, label, icon: Icon }) => {
+      {items.map(({ key, label, icon: Icon, badge }) => {
         const active = screen === key;
         return (
           <button
             key={key}
             onClick={() => setScreen(key)}
-            className="flex flex-col items-center gap-1 py-2.5 px-3"
+            title={label}
+            className="relative flex items-center justify-center"
+            style={{
+              width: 38, height: 38, borderRadius: 12,
+              background: active ? "var(--cta)" : "transparent",
+              transition: "background 0.15s ease",
+            }}
           >
-            <Icon size={22} color={active ? "var(--accent)" : "#9C9484"} strokeWidth={active ? 2.4 : 2} />
-            <span
-              className="text-[11px] font-medium"
-              style={{ color: active ? "#1B2A4A" : "#9C9484" }}
-            >
-              {label}
-            </span>
+            <Icon size={19} color={active ? "#fff" : "rgba(255,255,255,0.5)"} strokeWidth={active ? 2.4 : 2} />
+            {!!badge && (
+              <>
+                <span
+                  className="absolute -top-1 -right-1 min-w-[14px] h-3.5 rounded-full"
+                  style={{ background: "#FF6F5E", animation: "alertPulse 1.6s ease-out infinite" }}
+                />
+                <span
+                  className="absolute -top-1 -right-1 min-w-[14px] h-3.5 px-1 rounded-full flex items-center justify-center text-[9px] font-bold text-white"
+                  style={{ background: "#FF6F5E" }}
+                >
+                  {badge > 9 ? "9+" : badge}
+                </span>
+              </>
+            )}
           </button>
         );
       })}
@@ -1789,6 +2823,25 @@ function PriceBadge({ price, detail = false }) {
   );
 }
 
+function hoursLabel(place) {
+  const h = HOURS[place.id];
+  if (!h) return null;
+  return `${formatHour(h[0])} \u2013 ${formatHour(h[1])}`;
+}
+
+function HoursChip({ place, size = "sm" }) {
+  const label = hoursLabel(place);
+  if (!label) return null;
+  return (
+    <span
+      className={`inline-flex items-center gap-1 rounded-full ${size === "lg" ? "px-2.5 py-1 text-[12px]" : "px-2 py-0.5 text-[11px]"} font-medium`}
+      style={{ backgroundColor: "#F0EEE6", color: "#5C5648" }}
+    >
+      <Clock size={size === "lg" ? 12 : 10} /> {label}
+    </span>
+  );
+}
+
 function OpenNowBadge({ place, nowHour, showClosed = true }) {
   const open = isOpenNow(place, nowHour);
   if (open === null) return null;
@@ -1804,19 +2857,25 @@ function OpenNowBadge({ place, nowHour, showClosed = true }) {
   );
 }
 
-function PlaceCard({ place, onSelect, favorited, onToggleFavorite, nowHour }) {
+function PlaceCard({ place, onSelect, favorited, onToggleFavorite, nowHour, userCoords }) {
   const nh = nowHour != null ? nowHour : currentHour();
   const { reviews } = useContext(ReviewsContext);
   const stats = reviewStats(reviews, place.id);
   return (
     <div
       onClick={() => onSelect(place)}
-      className="flex gap-3 p-3 rounded-2xl bg-white border cursor-pointer active:scale-[0.99] transition-transform"
-      style={{ borderColor: "#EFEAE0" }}
+      className="flex gap-3 p-3 rounded-2xl cursor-pointer active:scale-[0.99] transition-transform"
+      style={{
+        background: "rgba(255,255,255,0.4)",
+        backdropFilter: "blur(16px)",
+        WebkitBackdropFilter: "blur(16px)",
+        border: "1px solid rgba(255,255,255,0.6)",
+        boxShadow: "0 4px 20px rgba(80,60,100,0.08)",
+      }}
     >
       <div
         className="w-16 h-16 rounded-xl flex items-center justify-center text-3xl shrink-0"
-        style={{ backgroundColor: "#FFF3E6" }}
+        style={{ background: "rgba(255,255,255,0.5)", backdropFilter: "blur(8px)" }}
       >
         {place.photo}
       </div>
@@ -1838,7 +2897,7 @@ function PlaceCard({ place, onSelect, favorited, onToggleFavorite, nowHour }) {
           </button>
         </div>
         <p className="text-[13px] text-[#8A8474]">
-          {place.category} · {place.town} · {place.distanceMi} mi
+          {place.category} · {place.town} · {distanceLabel(place, userCoords)}
         </p>
         {stats.count > 0 && (
           <div className="flex items-center gap-1.5 mt-1">
@@ -1854,6 +2913,7 @@ function PlaceCard({ place, onSelect, favorited, onToggleFavorite, nowHour }) {
           </span>
           <PriceBadge price={place.price} />
           <OpenNowBadge place={place} nowHour={nh} showClosed={false} />
+          <HoursChip place={place} />
           {foodInfo(place) && (
             <span className="text-[11px] px-2 py-0.5 rounded-full" style={{ backgroundColor: "#FFF3E6", color: "#B08A5A" }}>{foodInfo(place).cuisine}</span>
           )}
@@ -1880,8 +2940,645 @@ function PlaceCard({ place, onSelect, favorited, onToggleFavorite, nowHour }) {
 /* ---------------------------------------------------------
    SCREENS
 --------------------------------------------------------- */
-function HomeScreen({ setScreen, favorites, toggleFavorite, setSelectedPlace, location, onRequestLocation, onSurprise, kids, activeKidId, onSetActive, searchQuery, setSearchQuery, onHowTo }) {
-  const nearby = PLACES.slice(0, 4);
+function daysUntilNextBirthday(bday) {
+  if (!bday) return null;
+  const b = new Date(bday);
+  if (isNaN(b)) return null;
+  const now = new Date();
+  let next = new Date(now.getFullYear(), b.getMonth(), b.getDate());
+  if (next < new Date(now.getFullYear(), now.getMonth(), now.getDate())) next.setFullYear(now.getFullYear() + 1);
+  return Math.round((next - new Date(now.getFullYear(), now.getMonth(), now.getDate())) / (1000 * 3600 * 24));
+}
+
+function HomeSmartBanners({ kids, companionKidIds, schoolDistrictId, onSetSchoolDistrict, completedDays, onOpenBuilder }) {
+  const [dismissedId, setDismissedId] = useState(null);
+  const [pickingDistrict, setPickingDistrict] = useState(false);
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const dow = new Date().getDay(); // 0 = Sun, 1 = Mon
+
+  const banners = [];
+
+  if (schoolDistrictId && isNoSchoolDay(schoolDistrictId, todayStr)) {
+    banners.push({ id: `noschool-${todayStr}`, emoji: "🎒", text: "No school today — a perfect day for an adventure.", cta: "Plan today", action: onOpenBuilder });
+  } else if (!schoolDistrictId) {
+    banners.push({ id: "pick-district", emoji: "🏫", text: "Add your school district to get no-school-day heads-ups.", cta: "Choose district", action: () => setPickingDistrict(true) });
+  }
+
+  if (WEATHER.tomorrow) {
+    if (WEATHER.tomorrow.rainy) {
+      banners.push({ id: `rain-${todayStr}`, emoji: "🌧️", text: `Rain expected tomorrow (${WEATHER.tomorrow.tempF}°) — good day to pick something indoors.`, cta: "See indoor picks", action: onOpenBuilder });
+    } else if (WEATHER.tomorrow.greatDay) {
+      banners.push({ id: `nice-${todayStr}`, emoji: "☀️", text: `Tomorrow looks great — ${WEATHER.tomorrow.tempF}° and clear. Good day to be outside.`, cta: "Plan tomorrow", action: onOpenBuilder });
+    }
+  }
+
+  (kids || []).forEach((k) => {
+    const d = daysUntilNextBirthday(k.birthday);
+    if (d != null && d <= 30) {
+      const soon = d === 0 ? "today" : d === 1 ? "tomorrow" : `in ${d} days`;
+      banners.push({ id: `bday-${k.id}`, emoji: "🎂", text: `${k.name || "Your child"}'s birthday is ${soon} — new places open up as they get older.`, cta: null, action: null });
+    }
+  });
+
+  if ((dow === 0 || dow === 1) && completedDays && completedDays.length >= 0) {
+    banners.push({ id: `sunday-${todayStr}`, emoji: "🗓️", text: "Planning the week ahead? Pick a day and build something fun.", cta: "Plan a day this week", action: onOpenBuilder });
+  }
+
+  const visible = banners.find((b) => b.id !== dismissedId);
+  if (!visible && !pickingDistrict) return null;
+
+  return (
+    <>
+      {visible && (
+        <div className="flex items-start gap-2.5 mt-3 p-3 rounded-2xl" style={{ backgroundColor: "#FFF6F0" }}>
+          <span className="text-[18px] shrink-0">{visible.emoji}</span>
+          <div className="flex-1 min-w-0">
+            <p className="text-[12.5px] text-[#1B2A4A] leading-snug">{visible.text}</p>
+            {visible.cta && (
+              <button onClick={visible.action} className="text-[12px] font-semibold mt-1" style={{ color: "var(--accent)" }}>{visible.cta} →</button>
+            )}
+          </div>
+          <button onClick={() => setDismissedId(visible.id)} className="shrink-0 text-[#B8B0A0]"><X size={15} /></button>
+        </div>
+      )}
+      {pickingDistrict && (
+        <div className="mt-3 p-3 rounded-2xl border" style={{ borderColor: "#EFEAE0", backgroundColor: "#fff" }}>
+          <p className="text-[12.5px] font-semibold text-[#1B2A4A] mb-2">Which school district?</p>
+          <div className="flex flex-col gap-1.5">
+            {SCHOOL_DISTRICTS.map((d) => (
+              <button key={d.id} onClick={() => { onSetSchoolDistrict(d.id); setPickingDistrict(false); }} className="text-left p-2 rounded-xl border text-[13px]" style={{ borderColor: "#EFEAE0" }}>
+                {d.name}
+              </button>
+            ))}
+            <button onClick={() => setPickingDistrict(false)} className="text-[12px] text-[#B8B0A0] text-center mt-1">Not listed / skip for now</button>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+function ModeSwitcher({ mode, onSetMode }) {
+  return (
+    <div className="px-5 pt-3 pb-1">
+      <div className="flex rounded-full p-1" style={{ backgroundColor: "#F0EEE6" }}>
+        <button
+          onClick={() => onSetMode("kids")}
+          className="flex-1 rounded-full py-2 text-[13px] font-semibold transition-colors"
+          style={{ backgroundColor: mode === "kids" ? "#fff" : "transparent", color: mode === "kids" ? "#1B2A4A" : "#8A8474", boxShadow: mode === "kids" ? "0 1px 3px rgba(0,0,0,0.08)" : "none" }}
+        >
+          👶 For my kids
+        </button>
+        <button
+          onClick={() => onSetMode("adult")}
+          className="flex-1 rounded-full py-2 text-[13px] font-semibold transition-colors"
+          style={{ backgroundColor: mode === "adult" ? "#fff" : "transparent", color: mode === "adult" ? "#1B2A4A" : "#8A8474", boxShadow: mode === "adult" ? "0 1px 3px rgba(0,0,0,0.08)" : "none" }}
+        >
+          🍷 For myself
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function AdultPlaceCard({ place, onSelect, favorited, onToggleFavorite, theme, userCoords }) {
+  const t = theme || getAdultTheme("night");
+  return (
+    <div
+      onClick={() => onSelect(place)}
+      className="flex gap-3 p-3 rounded-2xl cursor-pointer active:scale-[0.99] transition-transform"
+      style={{
+        background: t.glassCard || t.card,
+        backdropFilter: "blur(16px)",
+        WebkitBackdropFilter: "blur(16px)",
+        border: `1px solid ${t.glassBorder || t.cardBorder}`,
+        boxShadow: "0 4px 20px rgba(20,10,40,0.12)",
+      }}
+    >
+      <div className="w-16 h-16 rounded-xl flex items-center justify-center text-3xl shrink-0" style={{ background: t.glassIconBg || t.accentSoft, backdropFilter: "blur(8px)" }}>
+        {place.photo}
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-start justify-between gap-2">
+          <p className="font-semibold text-[15px] truncate" style={{ color: t.text }}>{place.name}</p>
+          <button onClick={(e) => { e.stopPropagation(); onToggleFavorite(place.id); }} className="shrink-0">
+            <Heart size={18} color={favorited ? t.accent : t.heartOff} fill={favorited ? t.accent : "none"} />
+          </button>
+        </div>
+        <p className="text-[13px]" style={{ color: t.muted }}>{place.category} · {place.town} · {distanceLabel(place, userCoords)}</p>
+        <p className="text-[12px] mt-0.5" style={{ color: t.accent }}>{place.vibe}{place.price ? ` · ${place.price}` : ""}</p>
+      </div>
+    </div>
+  );
+}
+
+const ADULT_CATEGORIES = ["Restaurant", "Bar", "Movies", "Concerts", "Museums", "Brewery", "Wine Tasting", "Paint & Sip"];
+
+function DayNightToggle({ appMode, onSetMode }) {
+  const isNight = appMode === "adult";
+  return (
+    <button
+      onClick={() => onSetMode(isNight ? "kids" : "adult")}
+      className="flex items-center gap-2 mx-auto mb-3 rounded-full px-1 py-1 border"
+      style={{ borderColor: isNight ? "#8B5CF6" : "var(--accent)", backgroundColor: isNight ? "#1B1530" : "#FFF6F0" }}
+    >
+      <span
+        className="w-7 h-7 rounded-full flex items-center justify-center text-[14px] transition-transform"
+        style={{ backgroundColor: isNight ? "#8B5CF6" : "var(--cta)", transform: isNight ? "translateX(0)" : "translateX(0)" }}
+      >
+        {isNight ? "🌙" : "☀️"}
+      </span>
+      <span className="text-[12.5px] font-semibold pr-2" style={{ color: isNight ? "#fff" : "#1B2A4A" }}>
+        {isNight ? "Plan My Night" : "Plan My Day"}
+      </span>
+    </button>
+  );
+}
+
+function getAdultTheme(t) {
+  if (t === "night") {
+    return {
+      bg: "#1E1A2E", card: "#292440", cardBorder: "rgba(255,255,255,0.1)",
+      text: "#F5F3FF", muted: "#D8CCEF", accent: "#B08AE2", accentSoft: "rgba(176,138,226,0.15)",
+      cta: "linear-gradient(135deg,#5B3A8C,#B08AE2)", inputBg: "#292440", inputBorder: "rgba(255,255,255,0.15)",
+      heartOff: "#5C5470", toggleTrack: "rgba(255,255,255,0.08)",
+      glassCard: "rgba(255,255,255,0.10)", glassBorder: "rgba(255,255,255,0.20)", glassIconBg: "rgba(255,255,255,0.14)",
+    };
+  }
+  return {
+    bg: "#F3E8D3", card: "#FFFFFF", cardBorder: "#E8D9B8",
+    text: "#2B2620", muted: "#5C4A2E", accent: "#B8863B", accentSoft: "rgba(184,134,59,0.12)",
+    cta: "linear-gradient(135deg,#9A6E22,#E8C674)", inputBg: "#FFFFFF", inputBorder: "#E8D9B8",
+    heartOff: "#D8C6A0", toggleTrack: "rgba(184,134,59,0.1)",
+    glassCard: "rgba(255,255,255,0.45)", glassBorder: "rgba(255,255,255,0.65)", glassIconBg: "rgba(255,255,255,0.55)",
+  };
+}
+
+function TimeOfDayToggle({ value, onChange }) {
+  const isNight = value === "night";
+  return (
+    <div className="flex rounded-full p-1 mb-3" style={{ backgroundColor: "#fff", border: "1px solid rgba(0,0,0,0.08)", boxShadow: "0 2px 8px rgba(0,0,0,0.08)" }}>
+      <button
+        onClick={() => onChange("day")}
+        className="flex-1 rounded-full py-2.5 text-[13.5px] font-bold flex items-center justify-center gap-1.5"
+        style={{ backgroundColor: !isNight ? "#B8863B" : "transparent", color: !isNight ? "#fff" : "#8A7A5C" }}
+      >
+        ☀️ Daytime
+      </button>
+      <button
+        onClick={() => onChange("night")}
+        className="flex-1 rounded-full py-2.5 text-[13.5px] font-bold flex items-center justify-center gap-1.5"
+        style={{ backgroundColor: isNight ? "#5B3A8C" : "transparent", color: isNight ? "#fff" : "#8A7A5C" }}
+      >
+        🌙 Nighttime
+      </button>
+    </div>
+  );
+}
+
+function buildNightPlan(prefs) {
+  let pool = [...ADULT_PLACES];
+  const timeFiltered = pool.filter((p) => !p.timeOfDay || p.timeOfDay === "both" || p.timeOfDay === prefs.timeOfDay);
+  if (timeFiltered.length >= prefs.stops) pool = timeFiltered; // prefer places that fit the chosen time of day
+  if (prefs.vibe && prefs.vibe !== "any") {
+    const vibeFiltered = pool.filter((p) => p.vibe === prefs.vibe);
+    if (vibeFiltered.length >= prefs.stops) pool = vibeFiltered;
+  }
+  if (pool.length < prefs.stops) pool = [...ADULT_PLACES]; // fall back rather than come up short
+  // Shuffle lightly for variety, but keep categories from repeating back to back.
+  const shuffled = [...pool].sort(() => Math.random() - 0.5);
+  const picked = [];
+  const usedCats = new Set();
+  for (const p of shuffled) {
+    if (picked.length >= prefs.stops) break;
+    if (usedCats.has(p.category) && usedCats.size < pool.length) continue;
+    picked.push(p);
+    usedCats.add(p.category);
+  }
+  for (const p of shuffled) {
+    if (picked.length >= prefs.stops) break;
+    if (!picked.includes(p)) picked.push(p);
+  }
+  return picked.slice(0, prefs.stops).map((p, i) => ({ place: p, time: prefs.startHour + i * 2 }));
+}
+
+function AdultHomeContent({ favorites, toggleFavorite, setSelectedPlace, setScreen, appMode, onSetMode, adultTimeOfDay, onSetAdultTimeOfDay }) {
+  const [query, setQuery] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("all");
+  const [stateFilter, setStateFilter] = useState("all");
+  const [cityFilter, setCityFilter] = useState("all");
+  const categoryOptions = [{ k: "all", l: "All categories" }, ...ADULT_CATEGORIES.map((c) => ({ k: c, l: c }))];
+  const nameToAbbrev = useMemo(() => Object.fromEntries(Object.entries(CURATED_STATE_NAMES).map(([a, n]) => [n, a])), []);
+  const stateOptions = useMemo(() => [{ k: "all", l: "All states (nationwide)" }, ...US_STATES.map((s) => ({ k: s, l: s }))], []);
+  const isCuratedState = stateFilter !== "all" && !!nameToAbbrev[stateFilter];
+  const cityOptions = useMemo(() => {
+    if (stateFilter === "all") {
+      const cities = Array.from(new Set(ADULT_PLACES.map(cityOf))).sort();
+      return [{ k: "all", l: "All cities" }, ...cities.map((c) => ({ k: c, l: c }))];
+    }
+    if (isCuratedState) {
+      const pool = ADULT_PLACES.filter((p) => stateOf(p) === nameToAbbrev[stateFilter]);
+      const cities = Array.from(new Set(pool.map(cityOf))).sort();
+      return [{ k: "all", l: "All cities" }, ...cities.map((c) => ({ k: c, l: c }))];
+    }
+    return [{ k: "all", l: "Try Categories tab for live results" }];
+  }, [stateFilter, isCuratedState, nameToAbbrev]);
+  const handleSetState = (s) => { setStateFilter(s); setCityFilter("all"); };
+  const q = query.trim().toLowerCase();
+  const manualStateSelected = stateFilter !== "all" && !isCuratedState;
+  const list = manualStateSelected ? [] : ADULT_PLACES.filter((p) => {
+    if (p.timeOfDay && p.timeOfDay !== "both" && p.timeOfDay !== adultTimeOfDay) return false;
+    if (categoryFilter !== "all" && p.category !== categoryFilter) return false;
+    if (stateFilter !== "all" && stateOf(p) !== nameToAbbrev[stateFilter]) return false;
+    if (cityFilter !== "all" && cityOf(p) !== cityFilter) return false;
+    if (q && !(p.name.toLowerCase().includes(q) || p.category.toLowerCase().includes(q) || p.town.toLowerCase().includes(q))) return false;
+    return true;
+  });
+  const dateStr = new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
+  const upcomingAdultEvents = EVENTS
+    .filter((e) => e.mode === "both" || e.mode === "adult")
+    .filter((e) => new Date(e.date + "T00:00:00") >= new Date(new Date().setHours(0, 0, 0, 0)))
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .slice(0, 4);
+  const theme = getAdultTheme(adultTimeOfDay);
+  const isNight = adultTimeOfDay === "night";
+
+  const Kicker = ({ children }) => (
+    <p className="text-[10.5px] font-bold tracking-[0.16em] uppercase mb-2 mt-6" style={{ color: theme.accent }}>{children}</p>
+  );
+
+  return (
+    <div className="pb-4" style={{ backgroundColor: theme.bg, minHeight: "auto" }}>
+      {/* ===== Masthead ===== */}
+      <div className="px-5 pt-5 pb-4 text-center border-b" style={{ borderColor: theme.cardBorder }}>
+        <div className="text-[26px] mb-1">{isNight ? "🌙" : "☀️"}</div>
+        <p className="text-[10.5px] font-bold tracking-[0.16em] uppercase" style={{ color: theme.accent }}>
+          {dateStr} · {isNight ? "Tonight's" : "Today's"} Issue
+        </p>
+        <h1 style={{ fontFamily: "'Poppins', sans-serif", fontWeight: 700, fontSize: 25, color: theme.text, marginTop: 4, lineHeight: 1.15 }}>
+          What's the plan {isNight ? "tonight" : "today"}?
+        </h1>
+      </div>
+
+      {/* ===== Notes ===== */}
+      <div className="px-5">
+        <Kicker>{isNight ? "Tonight's" : "Today's"} Notes</Kicker>
+
+        <div className="rounded-2xl p-3.5" style={{ backgroundColor: theme.accentSoft, border: `1px solid ${theme.accentSoft}` }}>
+          <p className="text-[12.5px] leading-snug" style={{ color: isNight ? "#D8CCEF" : "#6B4E1E" }}>
+            A small, separate list of date-night & adult spots — kept apart from your kids' favorites and saved days on purpose.
+          </p>
+        </div>
+      </div>
+
+      {/* ===== Ready? ===== */}
+      {setScreen && (
+        <div className="px-5">
+          <Kicker>Ready?</Kicker>
+          <TimeOfDayToggle value={adultTimeOfDay} onChange={onSetAdultTimeOfDay} />
+          <button
+            onClick={() => setScreen("adultPlanner")}
+            className="w-full rounded-2xl py-4 flex items-center justify-center gap-2 text-white font-semibold text-[16px] shadow-sm"
+            style={{ background: theme.cta }}
+          >
+            <Sparkles size={19} />
+            {isNight ? "Plan My Night" : "Plan My Day"}
+          </button>
+        </div>
+      )}
+
+      {/* ===== Browse ===== */}
+      <div className="px-5">
+        <Kicker>Browse</Kicker>
+        <div className="flex items-center gap-2">
+          <div className="flex-1 flex items-center gap-2 rounded-2xl px-3.5 py-2.5 border" style={{ borderColor: theme.inputBorder, backgroundColor: theme.inputBg }}>
+            <Search size={17} color={theme.muted} />
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search restaurants, bars, concerts…"
+              className="flex-1 text-[14px] outline-none bg-transparent"
+              style={{ color: theme.text }}
+            />
+            {query && <button onClick={() => setQuery("")}><X size={16} color={theme.muted} /></button>}
+          </div>
+          <SimpleFilterDropdown label="Category" activeKey={categoryFilter} options={categoryOptions} onSelect={setCategoryFilter} />
+        </div>
+        <div className="flex items-center gap-2 mt-2">
+          <SimpleFilterDropdown label="State" icon={MapPin} activeKey={stateFilter} options={stateOptions} onSelect={handleSetState} />
+          <SimpleFilterDropdown label="City" icon={MapPin} activeKey={cityFilter} options={cityOptions} onSelect={setCityFilter} />
+        </div>
+      </div>
+
+      {/* ===== Upcoming Events ===== */}
+      {upcomingAdultEvents.length > 0 && (
+        <>
+          <div className="px-5">
+            <Kicker>Upcoming Events</Kicker>
+          </div>
+          <div className="flex items-start gap-3 overflow-x-auto px-5 pb-1" style={{ scrollbarWidth: "none" }}>
+            {upcomingAdultEvents.map((ev) => (
+              <div key={ev.id} className="shrink-0 rounded-2xl p-3.5" style={{ width: 200, backgroundColor: theme.card, border: `1px solid ${theme.cardBorder}` }}>
+                <div className="text-[24px]">{ev.emoji}</div>
+                <p className="font-semibold text-[13.5px] mt-1" style={{ color: theme.text }}>{ev.name}</p>
+                <p className="text-[11px] mt-1" style={{ color: theme.accent }}>{formatEventDate(ev.date)}</p>
+                <p className="text-[11px]" style={{ color: theme.muted }}>{ev.town}</p>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+
+      {/* ===== Picks ===== */}
+      <div className="px-5">
+        <Kicker>{isNight ? "Tonight's" : "Today's"} Picks</Kicker>
+        <div className="flex flex-col gap-2.5">
+          {list.map((p) => (
+            <AdultPlaceCard key={p.id} place={p} onSelect={setSelectedPlace} favorited={favorites.includes(p.id)} onToggleFavorite={toggleFavorite} theme={theme} />
+          ))}
+          {list.length === 0 && (
+            <p className="text-[13px] text-center py-6" style={{ color: theme.muted }}>
+              {manualStateSelected
+                ? `We don't have a curated list for ${stateFilter} yet — head to the Categories tab, which pulls real live results for any state.`
+                : 'No matches yet for this filter — try widening it, or use "Search any area live" from Categories for real-time results anywhere.'}
+            </p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AdultPlannerScreen({ onBack, onSelectAdultPlace, appMode, onSetMode, adultTimeOfDay, onSetAdultTimeOfDay }) {
+  const isNight = adultTimeOfDay === "night";
+  const theme = getAdultTheme(adultTimeOfDay);
+  const [stops, setStops] = useState(2);
+  const [startHour, setStartHour] = useState(isNight ? 19 : 12);
+  const [vibe, setVibe] = useState("any");
+  const [plan, setPlan] = useState(null);
+  const hourOptions = isNight ? [17, 18, 19, 20, 21] : [10, 11, 12, 13, 14, 15, 16];
+
+  const handleSetTimeOfDay = (v) => {
+    onSetAdultTimeOfDay(v);
+    setStartHour(v === "night" ? 19 : 12);
+    setPlan(null);
+  };
+
+  const generate = () => setPlan(buildNightPlan({ stops, startHour, vibe, timeOfDay: adultTimeOfDay }));
+
+  return (
+    <div className="min-h-screen pb-8" style={{ backgroundColor: theme.bg }}>
+      <TopBar title={isNight ? "Plan My Night" : "Plan My Day"} onBack={onBack} dark={isNight} />
+      <ModeSwitcher mode={appMode} onSetMode={onSetMode} />
+      <div className="px-5 pt-2">
+        <TimeOfDayToggle value={adultTimeOfDay} onChange={handleSetTimeOfDay} />
+        {!plan ? (
+          <>
+            <p className="text-[13px] font-semibold mb-2" style={{ color: theme.text }}>How many stops?</p>
+            <div className="flex gap-2 mb-5">
+              {[1, 2, 3].map((n) => (
+                <button key={n} onClick={() => setStops(n)} className="flex-1 rounded-2xl py-3 border font-semibold text-[14px]"
+                  style={{ borderColor: stops === n ? theme.accent : theme.inputBorder, backgroundColor: stops === n ? theme.accentSoft : theme.inputBg, color: stops === n ? theme.accent : theme.muted }}>
+                  {n}
+                </button>
+              ))}
+            </div>
+
+            <p className="text-[13px] font-semibold mb-2" style={{ color: theme.text }}>Start time</p>
+            <div className="flex gap-2 mb-5 overflow-x-auto">
+              {hourOptions.map((h) => (
+                <button key={h} onClick={() => setStartHour(h)} className="shrink-0 rounded-full px-4 py-2 border font-semibold text-[13px]"
+                  style={{ borderColor: startHour === h ? theme.accent : theme.inputBorder, backgroundColor: startHour === h ? theme.accentSoft : theme.inputBg, color: startHour === h ? theme.accent : theme.muted }}>
+                  {formatHour(h)}
+                </button>
+              ))}
+            </div>
+
+            <p className="text-[13px] font-semibold mb-2" style={{ color: theme.text }}>Vibe</p>
+            <div className="flex gap-2 mb-6 flex-wrap">
+              {["any", "Romantic", "Lively"].map((v) => (
+                <button key={v} onClick={() => setVibe(v)} className="rounded-full px-4 py-2 border font-semibold text-[13px]"
+                  style={{ borderColor: vibe === v ? theme.accent : theme.inputBorder, backgroundColor: vibe === v ? theme.accentSoft : theme.inputBg, color: vibe === v ? theme.accent : theme.muted }}>
+                  {v === "any" ? "Any" : v}
+                </button>
+              ))}
+            </div>
+
+            <button onClick={generate} className="w-full rounded-2xl py-4 flex items-center justify-center gap-2 text-white font-semibold text-[16px] shadow-sm" style={{ background: theme.cta }}>
+              <Sparkles size={19} />
+              {isNight ? "Build my night" : "Build my day"}
+            </button>
+          </>
+        ) : (
+          <>
+            <p className="text-[13px] mb-4" style={{ color: theme.muted }}>Starting around {formatHour(startHour)} — tap a stop for details.</p>
+            <div className="flex flex-col gap-3">
+              {plan.map((stop, i) => (
+                <div key={stop.place.id}>
+                  <p className="text-[12px] font-semibold mb-1.5" style={{ color: theme.accent }}>{formatHour(stop.time)}</p>
+                  <AdultPlaceCard place={stop.place} onSelect={onSelectAdultPlace} favorited={false} onToggleFavorite={() => {}} theme={theme} />
+                </div>
+              ))}
+            </div>
+            <button onClick={() => setPlan(null)} className="w-full rounded-2xl py-3.5 mt-6 font-semibold text-[14px] border" style={{ borderColor: theme.accent, color: theme.accent }}>
+              Start over
+            </button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function AdultPlaceSheet({ place, onClose, favorited, onToggleFavorite, adultTimeOfDay }) {
+  if (!place) return null;
+  const theme = getAdultTheme(adultTimeOfDay);
+  const mapsUrl = "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(place.name + " " + place.address);
+  return (
+    <div className="absolute inset-0 z-40 flex items-end" onClick={onClose}>
+      <div className="absolute inset-0 bg-black/30" />
+      <div className="relative w-full rounded-t-3xl p-6 pb-8" onClick={(e) => e.stopPropagation()} style={{ animation: "sheetUp 0.22s ease-out", backgroundColor: theme.card }}>
+        <div className="w-10 h-1 rounded-full mx-auto mb-4" style={{ backgroundColor: theme.cardBorder }} />
+        <div className="flex items-start gap-3">
+          <div className="w-12 h-12 rounded-xl flex items-center justify-center text-[24px] shrink-0" style={{ backgroundColor: theme.accentSoft }}>{place.photo}</div>
+          <div className="flex-1 min-w-0">
+            <p className="text-[17px] font-bold" style={{ fontFamily: "'Poppins', sans-serif", color: theme.text }}>{place.name}</p>
+            <p className="text-[13px]" style={{ color: theme.muted }}>{place.category} · {place.town}</p>
+          </div>
+          <button onClick={() => onToggleFavorite(place.id)} className="shrink-0">
+            <Heart size={20} color={favorited ? theme.accent : theme.heartOff} fill={favorited ? theme.accent : "none"} />
+          </button>
+        </div>
+        <p className="text-[13.5px] mt-3 leading-relaxed" style={{ color: theme.muted }}>{place.blurb}</p>
+        <div className="flex gap-2 mt-3">
+          <span className="text-[12px] font-semibold px-2.5 py-1 rounded-full" style={{ backgroundColor: theme.accentSoft, color: theme.accent }}>{place.vibe}</span>
+          {place.price && <span className="text-[12px] font-semibold px-2.5 py-1 rounded-full" style={{ backgroundColor: theme.accentSoft, color: theme.accent }}>{place.price}</span>}
+        </div>
+        <div className="rounded-2xl p-3.5 mt-4" style={{ backgroundColor: theme.accentSoft }}>
+          <p className="text-[12.5px]" style={{ color: theme.muted }}>{place.address}</p>
+          {place.reservations && <p className="text-[12.5px] mt-1" style={{ color: theme.muted }}>📅 {place.reservations}</p>}
+        </div>
+        <a href={mapsUrl} target="_blank" rel="noopener noreferrer"
+          className="w-full rounded-2xl py-3.5 mt-4 flex items-center justify-center gap-2 text-white font-semibold text-[14px]" style={{ background: theme.cta }}>
+          Open in Google Maps
+        </a>
+      </div>
+    </div>
+  );
+}
+
+function HomeScreen({ setScreen, favorites, toggleFavorite, setSelectedPlace, location, onRequestLocation, onSurprise, kids, activeKidId, onSetActive, searchQuery, setSearchQuery, onFilterToCategory, onHowTo, onSelectGoogle,
+  companionKidIds, onToggleCompanionKid, schoolDistrictId, onSetSchoolDistrict, completedDays, onOpenBuilder,
+  appMode, onSetMode, adultFavorites, onToggleAdultFavorite, onSelectAdultPlace, adultTimeOfDay, onSetAdultTimeOfDay,
+}) {
+  // Manual location override — defaults to nothing, which means "use my real GPS location"
+  // (requested automatically below). Setting this makes every location-aware part of Home
+  // (map, distances, live search) act as if the person is standing in the picked spot instead.
+  const [manualLocation, setManualLocation] = useState(null); // { label, coords } | null
+  const [showLocationInput, setShowLocationInput] = useState(false);
+  const [locationInputText, setLocationInputText] = useState("");
+  const [locationSearching, setLocationSearching] = useState(false);
+  const [locationError, setLocationError] = useState("");
+
+  const submitLocationChange = () => {
+    const text = locationInputText.trim();
+    if (!text) return;
+    const g = window.google;
+    if (!g?.maps?.Geocoder) { setLocationError("Still loading the map — try again in a second."); return; }
+    setLocationSearching(true);
+    setLocationError("");
+    new g.maps.Geocoder().geocode({ address: text }, (results, status) => {
+      setLocationSearching(false);
+      if (status !== "OK" || !results || !results[0]) {
+        setLocationError(`Couldn't find "${text}" — try a different spelling or a bigger town name.`);
+        return;
+      }
+      const loc = results[0].geometry.location;
+      const comps = results[0].address_components || [];
+      const city = comps.find((c) => c.types.includes("locality"))?.long_name
+        || comps.find((c) => c.types.includes("postal_town"))?.long_name
+        || comps.find((c) => c.types.includes("administrative_area_level_2"))?.long_name;
+      const state = comps.find((c) => c.types.includes("administrative_area_level_1"))?.short_name;
+      setManualLocation({
+        label: city ? (state ? `${city}, ${state}` : city) : text,
+        coords: { lat: loc.lat(), lng: loc.lng() },
+      });
+      setShowLocationInput(false);
+      setLocationInputText("");
+    });
+  };
+
+  const effectiveLocation = manualLocation
+    ? { status: "located", coords: manualLocation.coords, label: manualLocation.label, request: onRequestLocation }
+    : location;
+
+  const ChangeLocationControl = () => (
+    <div className="mt-2">
+      {!showLocationInput ? (
+        <div className="flex items-center gap-2 flex-wrap">
+          <button onClick={() => { setShowLocationInput(true); setLocationInputText(""); setLocationError(""); }} className="text-[12px] font-semibold underline" style={{ color: appMode === "adult" ? getAdultTheme(adultTimeOfDay).accent : "var(--accent)" }}>
+            📍 Change location
+          </button>
+          {manualLocation && (
+            <button onClick={() => setManualLocation(null)} className="text-[12px] font-medium" style={{ color: "#B8B0A0" }}>
+              · Use my current location instead
+            </button>
+          )}
+        </div>
+      ) : (
+        <div className="mt-1.5 flex items-center gap-2">
+          <input
+            value={locationInputText}
+            onChange={(e) => setLocationInputText(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && submitLocationChange()}
+            placeholder="Any city, town, or address…"
+            className="flex-1 rounded-xl px-3 py-2 text-[13px] border outline-none"
+            style={{ borderColor: "#E7E1D4" }}
+            autoFocus
+          />
+          <button onClick={submitLocationChange} disabled={locationSearching} className="px-3.5 py-2 rounded-xl text-white text-[12.5px] font-semibold" style={{ background: appMode === "adult" ? getAdultTheme(adultTimeOfDay).cta : "var(--cta)" }}>
+            {locationSearching ? "…" : "Go"}
+          </button>
+          <button onClick={() => setShowLocationInput(false)} className="text-[12px] font-medium" style={{ color: "#B8B0A0" }}>Cancel</button>
+        </div>
+      )}
+      {locationError && <p className="text-[11.5px] mt-1" style={{ color: "#C05621" }}>{locationError}</p>}
+    </div>
+  );
+
+  if (appMode === "adult") {
+    const theme = getAdultTheme(adultTimeOfDay);
+    const isNight = adultTimeOfDay === "night";
+    const dateStr2 = new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
+    return (
+      <div className="pb-4" style={{ backgroundColor: "transparent" }}>
+        <ModeSwitcher mode={appMode} onSetMode={onSetMode} />
+
+        <div className="px-5 pt-5">
+          <p className="text-[10.5px] font-bold tracking-[0.16em] uppercase mb-2" style={{ color: isNight ? "#fff" : "#2B2620", textShadow: isNight ? "0 1px 6px rgba(0,0,0,0.2)" : "none" }}>Ready?</p>
+          <div className="rounded-3xl p-5" style={{ background: theme.glassCard, backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", border: `1px solid ${theme.glassBorder}`, boxShadow: "0 8px 32px rgba(20,10,40,0.18)" }}>
+            <TimeOfDayToggle value={adultTimeOfDay} onChange={onSetAdultTimeOfDay} />
+            <button
+              onClick={() => setScreen("adultPlanner")}
+              className="w-full rounded-2xl py-5 flex items-center justify-center gap-2 text-white font-bold text-[19px] shadow-md"
+              style={{ background: theme.cta }}
+            >
+              <Sparkles size={22} />
+              {isNight ? "Plan My Night" : "Plan My Day"}
+            </button>
+          </div>
+        </div>
+
+        <div className="px-5">
+          <p className="text-[10.5px] font-bold tracking-[0.16em] uppercase mb-2 mt-6" style={{ color: isNight ? "#fff" : "#2B2620", textShadow: isNight ? "0 1px 6px rgba(0,0,0,0.2)" : "none" }}>Today's Notes</p>
+          <p className="text-[13px] font-semibold mb-1.5" style={{ color: isNight ? "#fff" : "#2B2620", textShadow: isNight ? "0 1px 6px rgba(0,0,0,0.15)" : "none" }}>{dateStr2}</p>
+          <div className="flex items-center gap-1.5 mb-1.5">
+            <span style={{ fontSize: 15 }}>{isNight ? "🌙" : "☀️"}</span>
+            <span className="text-[13px] font-medium" style={{ color: isNight ? "#D8CCEF" : "#5C4A2E" }}>{WEATHER.tempF}° {isNight ? "and clear" : "and sunny"}</span>
+          </div>
+          <LocationBar location={effectiveLocation} onRequest={onRequestLocation} />
+          <ChangeLocationControl />
+        </div>
+
+        <div className="px-5">
+          <p className="text-[10.5px] font-bold tracking-[0.16em] uppercase mb-2 mt-6" style={{ color: isNight ? "#fff" : "#2B2620", textShadow: isNight ? "0 1px 6px rgba(0,0,0,0.2)" : "none" }}>Explore Places</p>
+        </div>
+        <MapScreen
+          embedded
+          setSelectedPlace={onSelectAdultPlace}
+          favorites={favorites}
+          toggleFavorite={toggleFavorite}
+          location={effectiveLocation}
+          onRequestLocation={onRequestLocation}
+          setScreen={setScreen}
+          appMode={appMode}
+          onSetMode={onSetMode}
+          adultFavorites={adultFavorites}
+          onToggleAdultFavorite={onToggleAdultFavorite}
+          onSelectAdultPlace={onSelectAdultPlace}
+          adultTimeOfDay={adultTimeOfDay}
+          onSetAdultTimeOfDay={onSetAdultTimeOfDay}
+          onSelectGoogle={onSelectGoogle}
+        />
+      </div>
+    );
+  }
+  const nearestCuratedMi = useMemo(() => {
+    if (!effectiveLocation?.coords) return null;
+    const dists = PLACES.map((p) => { const pc = placeCoords(p); return pc ? haversineMiles(effectiveLocation.coords, pc) : Infinity; });
+    return Math.min(...dists);
+  }, [effectiveLocation?.coords]);
+  const farFromCoverage = nearestCuratedMi !== null && nearestCuratedMi > 60;
+  const nearby = useMemo(() => {
+    if (effectiveLocation?.coords) {
+      return [...PLACES]
+        .map((p) => { const pc = placeCoords(p); return { p, d: pc ? haversineMiles(effectiveLocation.coords, pc) : Infinity }; })
+        .sort((a, b) => a.d - b.d)
+        .slice(0, 4)
+        .map((x) => x.p);
+    }
+    return PLACES.slice(0, 4);
+  }, [effectiveLocation?.coords]);
   const hq = (searchQuery || "").trim().toLowerCase();
   const homeResults = hq
     ? PLACES.filter((p) =>
@@ -1891,26 +3588,21 @@ function HomeScreen({ setScreen, favorites, toggleFavorite, setSelectedPlace, lo
         (p.tags || []).some((t) => t.toLowerCase().includes(hq))
       ).slice(0, 8)
     : [];
+  const { results: gResults, searching: gSearching } = useGoogleSearch(searchQuery, homeResults.length, effectiveLocation?.coords);
+  const dateStr = new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
+
+  const Kicker = ({ children }) => (
+    <p className="text-[10.5px] font-bold tracking-[0.14em] uppercase mb-2 mt-6" style={{ color: "#fff", textShadow: "0 1px 6px rgba(0,0,0,0.18)" }}>{children}</p>
+  );
+
   return (
-    <div className="pb-4">
-      <div className="px-5 pt-6 pb-2">
-        <div className="flex items-center gap-2 mb-4">
-          <LittleDaySun size={32} />
-          <LittleDayWordmark size={22} />
-          <button onClick={onHowTo} className="ml-auto flex items-center gap-1 text-[12px] font-medium px-2.5 py-1.5 rounded-full" style={{ backgroundColor: "#FFF3E6", color: "#B08A5A" }}>
-            <HelpCircle size={14} /> How it works
-          </button>
-        </div>
-        <div className="flex items-center gap-1.5 mb-1.5">
-          <Sun size={20} color="#F5B71F" />
-          <span className="text-[13px] font-medium" style={{ color: "#B08A5A" }}>
-            {WEATHER.tempF}° and sunny
-          </span>
-        </div>
-        <LocationBar location={location} onRequest={onRequestLocation} />
+    <div className="pb-4" style={{ backgroundColor: "transparent" }}>
+      <ModeSwitcher mode={appMode} onSetMode={onSetMode} />
+
+      {/* ===== Plan My Day — the main event, right up top ===== */}
+      <div className="px-5 pt-5">
         {kids && kids.length > 0 && (
-          <div className="flex items-center gap-2 mt-3 overflow-x-auto">
-            <span className="text-[12px] text-[#8A8474] shrink-0">Planning for</span>
+          <div className="flex items-center gap-2 overflow-x-auto">
             {kids.map((k) => {
               const active = k.id === activeKidId;
               return (
@@ -1923,93 +3615,84 @@ function HomeScreen({ setScreen, favorites, toggleFavorite, setSelectedPlace, lo
             })}
           </div>
         )}
-        <p className="text-[13px] font-medium mt-3 mb-1" style={{ color: "#B08A5A" }}>
-          {new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}
-        </p>
-        <h1
-          className="text-[26px] leading-tight font-bold text-[#1B2A4A]"
-          style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
-        >
-          What should we do today?
-        </h1>
-      </div>
-
-      <div className="px-5 mt-1">
-        <div className="flex items-center gap-2 rounded-2xl px-3.5 py-2.5 border bg-white" style={{ borderColor: "#E7E1D4" }}>
-          <Search size={17} color="#9C9484" />
-          <input
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search places, towns, or categories"
-            className="flex-1 text-[14px] outline-none bg-transparent text-[#1B2A4A]"
-          />
-          {searchQuery && (
-            <button onClick={() => setSearchQuery("")}><X size={16} color="#9C9484" /></button>
-          )}
-        </div>
-        {hq && (
-          <div className="mt-2 rounded-2xl border bg-white overflow-hidden" style={{ borderColor: "#EFEAE0" }}>
-            {homeResults.length === 0 ? (
-              <p className="text-[13px] text-[#8A8474] p-4">No matches for “{searchQuery}”. Try a place, town, or category like “playground.”</p>
-            ) : (
-              <>
-                {homeResults.map((p) => (
-                  <button key={p.id} onClick={() => setSelectedPlace(p)} className="w-full flex items-center gap-3 p-3 text-left border-b last:border-b-0" style={{ borderColor: "#F3F0E8" }}>
-                    <span className="w-9 h-9 rounded-lg flex items-center justify-center text-[18px] shrink-0" style={{ backgroundColor: "#FFF3E6" }}>{p.photo}</span>
-                    <span className="flex-1 min-w-0">
-                      <span className="block text-[14px] font-medium text-[#1B2A4A] truncate">{p.name}</span>
-                      <span className="block text-[12px] text-[#8A8474] truncate">{p.category} · {p.town}</span>
-                    </span>
-                  </button>
-                ))}
-                <button onClick={() => setScreen("map")} className="w-full text-center text-[13px] font-semibold py-2.5" style={{ color: "var(--accent)" }}>See all in Categories List →</button>
-              </>
-            )}
+        {kids && kids.length > 1 && (
+          <div className="flex items-center gap-2 mt-1.5 overflow-x-auto">
+            <span className="text-[11px] text-[#B8B0A0] shrink-0">Also bringing</span>
+            {kids.filter((k) => k.id !== activeKidId).map((k) => {
+              const on = companionKidIds.includes(k.id);
+              return (
+                <button key={k.id} onClick={() => onToggleCompanionKid(k.id)} className="flex items-center gap-1 pl-1 pr-2 py-0.5 rounded-full border shrink-0"
+                  style={{ borderColor: on ? "var(--accent)" : "#EFEAE0", backgroundColor: on ? "#FFF6F0" : "#FAF8F3" }}>
+                  <span className="text-[11px]">{k.emoji}</span>
+                  <span className="text-[11px] font-medium" style={{ color: on ? "#1B2A4A" : "#B8B0A0" }}>{k.name || "Child"}</span>
+                </button>
+              );
+            })}
           </div>
         )}
-      </div>
 
-      <div className="px-5 mt-4">
-        <button
-          onClick={() => setScreen("planner")}
-          className="w-full rounded-2xl py-4 flex items-center justify-center gap-2 text-white font-semibold text-[16px] shadow-sm"
-          style={{ background: "var(--cta)" }}
-        >
-          <Sparkles size={19} />
-          Plan My Day
-        </button>
-        <button
-          onClick={onSurprise}
-          className="w-full rounded-2xl py-3 mt-2.5 flex items-center justify-center gap-2 font-semibold text-[15px] border"
-          style={{ borderColor: "var(--accent)", color: "var(--accent)", backgroundColor: "#fff" }}
-        >
-          <Shuffle size={17} />
-          Surprise me
-        </button>
-      </div>
-
-      <div className="px-5 mt-4">
-        <button onClick={() => setScreen("activities")} className="w-full rounded-2xl p-4 flex items-center gap-3 border text-left" style={{ borderColor: "#EFEAE0", backgroundColor: "#fff" }}>
-          <div className="w-11 h-11 rounded-xl flex items-center justify-center text-[22px]" style={{ backgroundColor: "#FFF3E6" }}>🤸</div>
-          <div className="flex-1">
-            <p className="font-semibold text-[14px] text-[#1B2A4A]">Classes & Activities</p>
-            <p className="text-[12px] text-[#8A8474]">Sports, dance, music, art & afterschool programs</p>
-          </div>
-          <ChevronRight size={18} color="#C9C2B2" />
-        </button>
-
-        <button onClick={() => setScreen("community")} className="w-full rounded-2xl p-4 flex items-center gap-3 border text-left mt-2.5" style={{ borderColor: "#EFEAE0", backgroundColor: "#fff" }}>
-          <div className="w-11 h-11 rounded-xl flex items-center justify-center text-[22px]" style={{ backgroundColor: "#FFF3E6" }}>🎪</div>
-          <div className="flex-1">
-            <p className="font-semibold text-[14px] text-[#1B2A4A]">Community Events</p>
-            <p className="text-[12px] text-[#8A8474]">Markets, story hours, festivals & family nights</p>
-          </div>
-          <ChevronRight size={18} color="#C9C2B2" />
+        <div className="mt-3 rounded-3xl p-5" style={{ background: "rgba(255,255,255,0.35)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.55)", boxShadow: "0 8px 32px rgba(80,60,100,0.12)" }}>
+          <DayNightToggle appMode={appMode} onSetMode={onSetMode} />
+          <button
+            onClick={() => setScreen("planner")}
+            className="w-full rounded-2xl py-5 flex items-center justify-center gap-2 text-white font-bold text-[19px] shadow-md"
+            style={{ background: "var(--cta)" }}
+          >
+            <Sparkles size={22} />
+            Plan My Day
+          </button>
+          <button
+            onClick={onSurprise}
+            className="w-full rounded-2xl py-3 mt-2.5 flex items-center justify-center gap-2 font-semibold text-[14.5px] border"
+            style={{ borderColor: "var(--accent)", color: "var(--accent)", backgroundColor: "#fff" }}
+          >
+            <Shuffle size={16} />
+            Surprise me
+          </button>
+        </div>
+        <button onClick={onHowTo} className="mt-3 mx-auto flex items-center gap-1 text-[11.5px] font-semibold px-3 py-1.5 rounded-full" style={{ background: "rgba(255,255,255,0.35)", backdropFilter: "blur(10px)", color: "#fff" }}>
+          <HelpCircle size={13} /> How it works
         </button>
       </div>
 
-      <div className="px-5 mt-8 mb-1">
-        <h2 className="font-semibold text-[15px] text-[#1B2A4A]">Happening this week</h2>
+      {/* ===== Date, weather, location ===== */}
+      <div className="px-5">
+        <Kicker>Today's Notes</Kicker>
+        <p className="text-[13px] font-semibold" style={{ color: "#fff", textShadow: "0 1px 6px rgba(0,0,0,0.15)" }}>{dateStr}</p>
+        <div className="flex items-center gap-1.5 mt-1.5 mb-1.5">
+          <Sun size={18} color="#F5B71F" />
+          <span className="text-[13px] font-medium" style={{ color: "#5C5648" }}>{WEATHER.tempF}° and sunny</span>
+        </div>
+        <LocationBar location={effectiveLocation} onRequest={onRequestLocation} />
+        <ChangeLocationControl />
+        <HomeSmartBanners kids={kids} companionKidIds={companionKidIds} schoolDistrictId={schoolDistrictId} onSetSchoolDistrict={onSetSchoolDistrict} completedDays={completedDays} onOpenBuilder={onOpenBuilder} />
+      </div>
+
+      {/* ===== Explore — the one search + map + browse experience ===== */}
+      <div className="px-5">
+        <Kicker>Explore Places</Kicker>
+      </div>
+      <MapScreen
+        embedded
+        setSelectedPlace={setSelectedPlace}
+        favorites={favorites}
+        toggleFavorite={toggleFavorite}
+        location={effectiveLocation}
+        onRequestLocation={onRequestLocation}
+        setScreen={setScreen}
+        appMode={appMode}
+        onSetMode={onSetMode}
+        onSelectGoogle={onSelectGoogle}
+      />
+
+      {/* ===== This Week ===== */}
+      <div className="px-5">
+        <Kicker>This Week</Kicker>
+        {farFromCoverage && (
+          <p className="text-[12px] mb-2" style={{ color: "#B8B0A0" }}>
+            These are Westchester-area events — about {Math.round(nearestCuratedMi)} mi from you. Check the Events tab or "Search any area live" for things closer to you.
+          </p>
+        )}
       </div>
       <div className="flex items-start gap-3 overflow-x-auto px-5 pb-1" style={{ scrollbarWidth: "none" }}>
         {[...EVENTS_SEED]
@@ -2046,7 +3729,7 @@ function HomeScreen({ setScreen, favorites, toggleFavorite, setSelectedPlace, lo
                   )}
                   {pl && (
                     <span className="text-[11px] font-medium px-2 py-0.5 rounded-full" style={{ backgroundColor: "#FFF3E6", color: "#B08A5A" }}>
-                      {pl.distanceMi} mi away
+                      {distanceLabel(pl, effectiveLocation?.coords)} away
                     </span>
                   )}
                 </div>
@@ -2061,26 +3744,32 @@ function HomeScreen({ setScreen, favorites, toggleFavorite, setSelectedPlace, lo
         })}
       </div>
 
-      <div className="px-5 mt-8 flex items-center justify-between">
-        <h2 className="font-semibold text-[15px] text-[#1B2A4A]">Family spots near you</h2>
-      </div>
-      <div className="px-5 mt-3 flex flex-col gap-2.5">
-        {nearby.map((p) => (
-          <PlaceCard
-            key={p.id}
-            place={p}
-            onSelect={(pl) => setSelectedPlace(pl)}
-            favorited={favorites.includes(p.id)}
-            onToggleFavorite={toggleFavorite}
-          />
-        ))}
-      </div>
+      {/* ===== More to Explore ===== */}
+      <div className="px-5">
+        <Kicker>More to Explore</Kicker>
+        <button onClick={() => setScreen("activities")} className="w-full rounded-2xl p-4 flex items-center gap-3 border text-left" style={{ borderColor: "#EFEAE0", backgroundColor: "#fff" }}>
+          <div className="w-11 h-11 rounded-xl flex items-center justify-center text-[22px]" style={{ backgroundColor: "#FFF3E6" }}>🤸</div>
+          <div className="flex-1">
+            <p className="font-semibold text-[14px] text-[#1B2A4A]">Classes & Activities</p>
+            <p className="text-[12px] text-[#8A8474]">Sports, dance, music, art & afterschool programs</p>
+          </div>
+          <ChevronRight size={18} color="#C9C2B2" />
+        </button>
 
+        <button onClick={() => setScreen("community")} className="w-full rounded-2xl p-4 flex items-center gap-3 border text-left mt-2.5" style={{ borderColor: "#EFEAE0", backgroundColor: "#fff" }}>
+          <div className="w-11 h-11 rounded-xl flex items-center justify-center text-[22px]" style={{ backgroundColor: "#FFF3E6" }}>🎪</div>
+          <div className="flex-1">
+            <p className="font-semibold text-[14px] text-[#1B2A4A]">Community Events</p>
+            <p className="text-[12px] text-[#8A8474]">Markets, story hours, festivals & family nights</p>
+          </div>
+          <ChevronRight size={18} color="#C9C2B2" />
+        </button>
+      </div>
     </div>
   );
 }
 
-function PlannerScreen({ onBack, onGenerate, locationLabel, initialAge, activeKidName }) {
+function PlannerScreen({ onBack, onGenerate, locationLabel, initialAge, activeKidName, companionKids }) {
   const now = new Date();
   const nowHour = roundToQuarter(now.getHours() + now.getMinutes() / 60);
   // sensible default deadline: 3.5 hrs from now, capped at 8pm
@@ -2091,7 +3780,8 @@ function PlannerScreen({ onBack, onGenerate, locationLabel, initialAge, activeKi
   const [distance, setDistance] = useState(15);
   const [startMode, setStartMode] = useState("now");
   const [dayOffset, setDayOffset] = useState(0);
-  const [pickedDate, setPickedDate] = useState(new Date().toISOString().slice(0, 10)); // "now" | custom (future)
+  const [pickedDate, setPickedDate] = useState(new Date().toISOString().slice(0, 10));
+  const [customStart, setCustomStart] = useState(9.5); // "now" | custom (future)
   const [endHour, setEndHour] = useState(defaultEnd);
   const [setting, setSetting] = useState("any");
   const [interests, setInterests] = useState([]);
@@ -2100,7 +3790,7 @@ function PlannerScreen({ onBack, onGenerate, locationLabel, initialAge, activeKi
   const [napAware, setNapAware] = useState(false);
   const [napHour, setNapHour] = useState(13);
 
-  const startHour = startMode === "now" ? nowHour : 9.5;
+  const startHour = startMode === "now" ? nowHour : startMode === "custom" ? customStart : 9.5;
   const windowHrs = Math.max(endHour - startHour, 0);
 
   const toggleInterest = (key) =>
@@ -2114,6 +3804,11 @@ function PlannerScreen({ onBack, onGenerate, locationLabel, initialAge, activeKi
           <p className="text-[13px] font-medium text-[#8A8474] mb-2">
             Child's age{activeKidName ? <span style={{ color: "var(--accent)" }}> · pre-set for {activeKidName}</span> : ""}
           </p>
+          {companionKids && companionKids.length > 0 && (
+            <p className="text-[11.5px] mb-2" style={{ color: "#B08A5A" }}>
+              Also bringing {companionKids.map((k) => k.name || "a sibling").join(", ")} — we'll try to skip anything too narrow for the group.
+            </p>
+          )}
           <div className="flex gap-2 flex-wrap">
             {["0-1", "1-2", "2-4", "4-6", "6-10"].map((a) => (
               <Pill key={a} active={age === a} onClick={() => setAge(a)}>
@@ -2164,12 +3859,12 @@ function PlannerScreen({ onBack, onGenerate, locationLabel, initialAge, activeKi
               dt.setDate(dt.getDate() + off);
               const label = off === 0 ? "Today" : off === 1 ? "Tomorrow" : dt.toLocaleDateString(undefined, { weekday: "long" });
               return (
-                <Pill key={off} active={dayOffset === off} onClick={() => setDayOffset(off)}>
+                <Pill key={off} active={dayOffset === off} onClick={() => { setDayOffset(off); if (off !== 0 && startMode === "now") setStartMode("custom"); }}>
                   {label}{off > 0 ? ` · ${dt.toLocaleDateString(undefined, { month: "short", day: "numeric" })}` : ""}
                 </Pill>
               );
             })}
-            <Pill active={dayOffset === "pick"} onClick={() => setDayOffset("pick")}>
+            <Pill active={dayOffset === "pick"} onClick={() => { setDayOffset("pick"); if (startMode === "now") setStartMode("custom"); }}>
               Another day…
             </Pill>
           </div>
@@ -2188,16 +3883,43 @@ function PlannerScreen({ onBack, onGenerate, locationLabel, initialAge, activeKi
         <div>
           <p className="text-[13px] font-medium text-[#8A8474] mb-2">When are you starting?</p>
           <div className="flex gap-2 flex-wrap">
-            <Pill active={startMode === "now"} onClick={() => setStartMode("now")} disabled={dayOffset !== 0}>
-              {dayOffset === 0 ? `Right now · ${formatHour(nowHour)}` : "Right now"}
-            </Pill>
+            {dayOffset === 0 && (
+              <Pill active={startMode === "now"} onClick={() => setStartMode("now")}>
+                Right now · {formatHour(nowHour)}
+              </Pill>
+            )}
             <Pill active={startMode === "morning"} onClick={() => setStartMode("morning")}>
               Morning · 9:30 AM
             </Pill>
+            <Pill active={startMode === "custom"} onClick={() => setStartMode("custom")}>
+              Pick a time
+            </Pill>
           </div>
+
+          {startMode === "custom" && (
+            <div className="mt-3">
+              <p className="text-[13px] font-medium text-[#8A8474] mb-2">
+                Starting at <span className="text-[#1B2A4A] font-semibold">{formatHour(customStart)}</span>
+              </p>
+              <input
+                type="range"
+                min="6"
+                max="19"
+                step="0.5"
+                value={customStart}
+                onChange={(e) => setCustomStart(Number(e.target.value))}
+                className="w-full [accent-color:var(--accent)]"
+              />
+              <div className="flex justify-between mt-1">
+                <span className="text-[11px] text-[#9C9484]">6:00 AM</span>
+                <span className="text-[11px] text-[#9C9484]">7:00 PM</span>
+              </div>
+            </div>
+          )}
+
           {dayOffset !== 0 && (
             <p className="text-[11.5px] mt-1.5" style={{ color: "#B08A5A" }}>
-              Planning ahead — we'll use opening hours for that day. Double-check seasonal spots before you go.
+              Planning ahead — we'll use typical opening hours for that day. Double-check seasonal spots before you go.
             </p>
           )}
         </div>
@@ -2302,6 +4024,7 @@ function PlannerScreen({ onBack, onGenerate, locationLabel, initialAge, activeKi
           onClick={() =>
             onGenerate({ plannedDate: dayOffset === "pick" ? pickedDate : (() => { const d = new Date(); d.setDate(d.getDate() + dayOffset); return d.toISOString().slice(0, 10); })(),
               age,
+              companionAges: (companionKids || []).map((k) => ageToBand(ageFromBirthday(k.birthday))),
               budget,
               distance,
               setting,
@@ -2532,6 +4255,7 @@ function GoogleMapView({ places, located, userCoords, onSelect }) {
   const { isLoaded, loadError } = useJsApiLoader({
     id: "little-day-gmaps",
     googleMapsApiKey: GMAPS_KEY,
+    libraries: GMAPS_LIBRARIES,
   });
 
   if (loadError) {
@@ -2605,51 +4329,144 @@ function MapView({ places, located, userCoords, onSelect }) {
   return <GoogleMapView places={places} located={located} userCoords={userCoords} onSelect={onSelect} />;
 }
 
-function MapScreen({ setSelectedPlace, favorites, toggleFavorite, location, onRequestLocation, initialQuery }) {
-  const [filter, setFilter] = useState("all");
+const US_STATES = [
+  "Alabama", "Alaska", "Arizona", "Arkansas", "California", "Colorado", "Connecticut", "Delaware",
+  "Florida", "Georgia", "Hawaii", "Idaho", "Illinois", "Indiana", "Iowa", "Kansas", "Kentucky",
+  "Louisiana", "Maine", "Maryland", "Massachusetts", "Michigan", "Minnesota", "Mississippi", "Missouri",
+  "Montana", "Nebraska", "Nevada", "New Hampshire", "New Jersey", "New Mexico", "New York",
+  "North Carolina", "North Dakota", "Ohio", "Oklahoma", "Oregon", "Pennsylvania", "Rhode Island",
+  "South Carolina", "South Dakota", "Tennessee", "Texas", "Utah", "Vermont", "Virginia", "Washington",
+  "Washington DC", "West Virginia", "Wisconsin", "Wyoming",
+];
+const CURATED_STATE_NAMES = { NY: "New York", CT: "Connecticut" };
+
+function stateOf(p) {
+  const t = p.town || "";
+  if (t.includes(", CT")) return "CT";
+  return "NY";
+}
+function cityOf(p) {
+  const t = p.town || "";
+  return t.split(",")[0].replace(/\s*\(.*\)\s*/g, "").trim();
+}
+
+function regionOf(p) {
+  const t = p.town || "";
+  if (t.includes(", CT")) return "Connecticut";
+  if (t.includes("Manhattan")) return "Manhattan";
+  if (t.includes("Brooklyn")) return "Brooklyn";
+  if (t.includes("Queens")) return "Queens";
+  if (t.includes("Bronx")) return "Bronx";
+  if (t.includes("Long Island")) return "Long Island";
+  return "Westchester";
+}
+
+function MapScreen({ setSelectedPlace, favorites, toggleFavorite, location, onRequestLocation, initialQuery, initialFilter, setScreen, appMode, onSetMode, adultFavorites, onToggleAdultFavorite, onSelectAdultPlace, onSelectGoogle, adultTimeOfDay, onSetAdultTimeOfDay, embedded }) {
+  const isAdult = appMode === "adult";
+  const theme = isAdult ? getAdultTheme(adultTimeOfDay) : null;
+  const dataset = isAdult ? ADULT_PLACES : PLACES;
+  const groups = isAdult ? ADULT_PRIMARY_GROUPS : PRIMARY_GROUPS;
+  const groupFn = isAdult ? adultPrimaryGroup : primaryGroup;
+  const favList = isAdult ? adultFavorites : favorites;
+  const toggleFav = isAdult ? onToggleAdultFavorite : toggleFavorite;
+  const selectHandler = isAdult ? onSelectAdultPlace : setSelectedPlace;
+  const CardComp = isAdult ? AdultPlaceCard : PlaceCard;
+  const accentColor = isAdult ? theme.accent : "var(--accent)";
+
+  const [filter, setFilter] = useState(initialFilter || "all");
   const [query, setQuery] = useState(initialQuery || "");
+  const [stateFilter, setStateFilter] = useState("all");
+  const [cityFilter, setCityFilter] = useState("all");
+  const curatedAbbrevToName = CURATED_STATE_NAMES; // { NY: "New York", CT: "Connecticut" }
+  const nameToAbbrev = useMemo(() => Object.fromEntries(Object.entries(curatedAbbrevToName).map(([a, n]) => [n, a])), []);
+  const stateOptions = useMemo(() => [{ k: "all", l: "All states (nationwide)" }, ...US_STATES.map((s) => ({ k: s, l: s }))], []);
+  const isCuratedState = stateFilter !== "all" && !!nameToAbbrev[stateFilter];
+  const cityOptions = useMemo(() => {
+    if (stateFilter === "all") {
+      const cities = Array.from(new Set(dataset.map(cityOf))).sort();
+      return [{ k: "all", l: "All cities" }, ...cities.map((c) => ({ k: c, l: c }))];
+    }
+    if (isCuratedState) {
+      const pool = dataset.filter((p) => stateOf(p) === nameToAbbrev[stateFilter]);
+      const cities = Array.from(new Set(pool.map(cityOf))).sort();
+      return [{ k: "all", l: "All cities" }, ...cities.map((c) => ({ k: c, l: c }))];
+    }
+    return [{ k: "all", l: "Type a city in search above" }];
+  }, [stateFilter, dataset, isCuratedState, nameToAbbrev]);
+  const handleSetState = (s) => { setStateFilter(s); setCityFilter("all"); };
   const filtered = useMemo(() => {
-    const GROUPS = {
-      play: (p) => ["Playground", "Park", "Pool", "Trail", "Beach", "Farm", "Indoor Play", "Nature Center"].includes(p.category)
-        || p.tags.includes("playground") || p.tags.includes("water"),
-      eat: (p) => ["Restaurant", "Ice Cream", "Farmers Market"].includes(p.category) || p.tags.includes("food"),
-      learn: (p) => ["Library", "Museum", "Historic Site", "Gym & Classes", "Martial Arts", "Dance Classes",
-        "Music Classes", "Art Studio", "Sports Program", "Afterschool", "Kids' Studio", "Daycare & Preschool", "Theater", "Aquarium"].includes(p.category),
-      shop: (p) => ["Toy Store", "Store"].includes(p.category) || p.tags.includes("shopping"),
-      free: (p) => p.tags.includes("free") || p.price === "Free",
-      indoor: (p) => p.tags.includes("indoor") || p.tags.includes("rain-friendly"),
-    };
-    let list = filter === "all" ? PLACES : PLACES.filter(GROUPS[filter] || ((p) => p.tags.includes(filter)));
+    let list = filter === "all" ? dataset : dataset.filter((p) => groupFn(p) === filter);
+    if (stateFilter !== "all") {
+      list = isCuratedState ? list.filter((p) => stateOf(p) === nameToAbbrev[stateFilter]) : [];
+    }
+    if (cityFilter !== "all") list = list.filter((p) => cityOf(p) === cityFilter);
     const q = query.trim().toLowerCase();
     if (q) {
       list = list.filter(
         (p) =>
           p.name.toLowerCase().includes(q) ||
           p.town.toLowerCase().includes(q) ||
-          p.category.toLowerCase().includes(q)
+          p.category.toLowerCase().includes(q) ||
+          (!isAdult && regionOf(p).toLowerCase().includes(q))
       );
     }
     return list;
-  }, [filter, query]);
+  }, [filter, query, stateFilter, cityFilter, dataset, isCuratedState, nameToAbbrev]);
+  const nearestCuratedMi = useMemo(() => {
+    if (!location?.coords) return null;
+    const dists = dataset.map((p) => { const pc = placeCoords(p); return pc ? haversineMiles(location.coords, pc) : Infinity; });
+    return Math.min(...dists);
+  }, [location?.coords, dataset]);
+  const farFromCoverage = nearestCuratedMi !== null && nearestCuratedMi > 60;
+  const manualStateSelected = stateFilter !== "all" && !isCuratedState;
+  // When you're far from our curated area (or you've picked a state we don't curate),
+  // don't make you type anything — just go pull real live results automatically,
+  // either near your real location or near the state you explicitly picked.
+  const effectiveQuery = manualStateSelected
+    ? (query.trim() ? `${query.trim()} ${stateFilter}` : `${isAdult ? "restaurants bars things to do" : "family friendly things to do playgrounds"} in ${stateFilter}`)
+    : (query.trim() || (farFromCoverage ? (isAdult ? "restaurants bars things to do" : "family friendly things to do playgrounds") : ""));
+  const { results: gResults, searching: gSearching, errorInfo: gError } = useGoogleSearch(effectiveQuery, (farFromCoverage || manualStateSelected) ? 0 : filtered.length, location?.coords, manualStateSelected);
   const located = location.status === "located";
+
   return (
-    <div className="pb-4">
-      <TopBar title="Categories List" />
-      <div className="px-5 mb-3">
-        <div className="flex items-center gap-2 rounded-2xl px-3.5 py-2.5 border bg-white" style={{ borderColor: "#E7E1D4" }}>
-          <Search size={17} color="#9C9484" />
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search places, towns, or type"
-            className="flex-1 text-[14px] outline-none bg-transparent text-[#1B2A4A]"
-          />
-          {query && (
-            <button onClick={() => setQuery("")}>
-              <X size={16} color="#9C9484" />
-            </button>
-          )}
+    <div className="pb-4" style={{ backgroundColor: "transparent", minHeight: "auto" }}>
+      {!embedded && <TopBar title="Categories List" hideHome={false} dark={isAdult && adultTimeOfDay === "night"} />}
+      {!embedded && <ModeSwitcher mode={appMode} onSetMode={onSetMode} />}
+      {!embedded && isAdult && (
+        <div className="px-5 mb-1">
+          <TimeOfDayToggle value={adultTimeOfDay} onChange={onSetAdultTimeOfDay} />
         </div>
+      )}
+      <div className="px-5 mb-3">
+        <div className="flex items-center gap-2">
+          <div className="flex-1 flex items-center gap-2 rounded-2xl px-3.5 py-2.5" style={{ background: "rgba(255,255,255,0.4)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", border: "1px solid rgba(255,255,255,0.6)" }}>
+            <Search size={17} color="#9C9484" />
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder={isAdult ? "Search restaurants, bars, concerts…" : "Search places, or a region: Westchester, CT, Manhattan…"}
+              className="flex-1 text-[14px] outline-none bg-transparent text-[#1B2A4A]"
+            />
+            {query && (
+              <button onClick={() => setQuery("")}>
+                <X size={16} color="#9C9484" />
+              </button>
+            )}
+          </div>
+          <CategoryFilterButton activeKey={filter} onSelect={setFilter} groups={groups} />
+        </div>
+        <div className="flex items-center gap-2 mt-2">
+          <SimpleFilterDropdown label="State" icon={MapPin} activeKey={stateFilter} options={stateOptions} onSelect={handleSetState} />
+          <SimpleFilterDropdown label="City" icon={MapPin} activeKey={cityFilter} options={cityOptions} onSelect={setCityFilter} />
+        </div>
+        <p className="text-[11px] mt-1.5" style={{ color: "#B8B0A0" }}>
+          Filters our curated list only ({stateOptions.length - 1} states covered). For anywhere else — try typing a search above, or use "Search any area live" below.
+        </p>
+        {setScreen && (
+          <button onClick={() => setScreen("travelSearch")} className="w-full text-center mt-2 text-[12.5px] font-semibold" style={{ color: accentColor }}>
+            ✈️ {isAdult ? "Somewhere new? Search any area live →" : "Traveling further out? Search any area live →"}
+          </button>
+        )}
       </div>
       <div className="px-5 mb-3">
         <button
@@ -2657,8 +4474,8 @@ function MapScreen({ setSelectedPlace, favorites, toggleFavorite, location, onRe
           disabled={location.status === "locating"}
           className="flex items-center gap-1.5 px-3.5 py-2 rounded-full text-sm font-medium border"
           style={{
-            borderColor: located ? "var(--accent)" : "#E7E1D4",
-            color: located ? "var(--accent)" : "#5C5648",
+            borderColor: located ? accentColor : "#E7E1D4",
+            color: located ? accentColor : "#5C5648",
             backgroundColor: "#FFFFFF",
           }}
         >
@@ -2670,46 +4487,98 @@ function MapScreen({ setSelectedPlace, favorites, toggleFavorite, location, onRe
             : "Use my location"}
         </button>
       </div>
-      <div className="px-5 mb-3 flex gap-2 overflow-x-auto">
-        {[
-          { k: "all", l: "All" },
-          { k: "play", l: "Play" },
-          { k: "eat", l: "Eat" },
-          { k: "learn", l: "Learn" },
-          { k: "shop", l: "Shop" },
-          { k: "free", l: "Free" },
-          { k: "indoor", l: "Rainy day" },
-        ].map((f) => (
-          <Pill key={f.k} active={filter === f.k} onClick={() => setFilter(f.k)}>
-            {f.l}
-          </Pill>
-        ))}
-      </div>
+
+      {(farFromCoverage || manualStateSelected) && (
+        <div className="mx-5 mb-3 rounded-2xl p-3.5" style={{ backgroundColor: isAdult ? theme.accentSoft : "#FFF3E6" }}>
+          <p className="text-[12.5px] leading-snug" style={{ color: isAdult ? theme.text : "#8A6A3D" }}>
+            {manualStateSelected
+              ? <>📍 Searching {stateFilter} live — we don't have a curated list there yet, so results below come straight from Google.</>
+              : <>📍 You're about {Math.round(nearestCuratedMi)} miles from our curated area (Westchester, CT, NYC & Long Island) — the map and list below won't have much for you here.{" "}
+                  {setScreen && (
+                    <button onClick={() => setScreen("travelSearch")} className="font-bold underline">Search this area live instead →</button>
+                  )}
+                </>
+            }
+          </p>
+          {gError && (
+            <p className="text-[11.5px] mt-2 font-semibold" style={{ color: "#C05621" }}>
+              ⚠️ Live search issue: {gError}
+            </p>
+          )}
+        </div>
+      )}
 
       <div className="mx-5 rounded-2xl relative overflow-hidden" style={{ height: 240 }}>
         <MapView
-          places={filtered}
+          places={(manualStateSelected || (farFromCoverage && !query.trim())) ? [] : filtered}
           located={located}
           userCoords={location.coords}
-          onSelect={setSelectedPlace}
+          onSelect={selectHandler}
         />
       </div>
 
       <div className="px-5 mt-4 flex flex-col gap-2.5">
-        {filtered.length === 0 && (
+        {!manualStateSelected && !(farFromCoverage && !query.trim()) && filtered.length === 0 && (
           <p className="text-[13px] text-[#8A8474] text-center py-4">
             No places match{query ? ` “${query}”` : " that filter"}. Try a different search or filter.
           </p>
         )}
-        {filtered.map((p) => (
-          <PlaceCard
-            key={p.id}
-            place={p}
-            onSelect={setSelectedPlace}
-            favorited={favorites.includes(p.id)}
-            onToggleFavorite={toggleFavorite}
-          />
-        ))}
+        {!manualStateSelected && !(farFromCoverage && !query.trim()) && groups.map((g) => {
+          const inGroup = filtered.filter((p) => groupFn(p) === g.k);
+          if (!inGroup.length) return null;
+          return (
+            <div key={g.k}>
+              <div className="flex items-center gap-2 mb-2 mt-1">
+                <span className="text-[17px]">{CATEGORY_ICON[g.cats[0]] || "📍"}</span>
+                <p className="text-[14px] font-semibold" style={{ color: isAdult && adultTimeOfDay === "night" ? "#F5F3FF" : "#1B2A4A" }}>{g.l}</p>
+                <span className="text-[11.5px]" style={{ color: isAdult && adultTimeOfDay === "night" ? "#8A81A3" : "#B8B0A0" }}>{inGroup.length}</span>
+              </div>
+              <div className="flex flex-col gap-2.5">
+                {inGroup.map((p) => (
+                  <CardComp
+                    key={p.id}
+                    place={p}
+                    onSelect={selectHandler}
+                    favorited={favList.includes(p.id)}
+                    onToggleFavorite={toggleFav}
+                    theme={theme}
+                    userCoords={location?.coords}
+                  />
+                ))}
+              </div>
+            </div>
+          );
+        })}
+
+        {(gResults.length > 0 || gSearching) && (
+          <div>
+            <div className="flex items-center gap-2 mb-2 mt-1">
+              <span className="text-[17px]">🌐</span>
+              <p className="text-[14px] font-semibold" style={{ color: isAdult && adultTimeOfDay === "night" ? "#F5F3FF" : "#1B2A4A" }}>
+                {manualStateSelected ? `Live results in ${stateFilter}` : (farFromCoverage && !query.trim() ? "Near you, live from Google" : "More nearby, from Google")}
+              </p>
+            </div>
+            <p className="text-[11.5px] mb-2" style={{ color: "#B8B0A0" }}>Real places, not yet verified by us — no extra notes for these.</p>
+            {gSearching && <p className="text-[13px] text-[#8A8474]">Searching…</p>}
+            <div className="flex flex-col gap-2.5">
+              {gResults.map((p) => (
+                <button
+                  key={p.id}
+                  onClick={() => onSelectGoogle && onSelectGoogle(p)}
+                  className="flex items-center gap-3 p-3 rounded-2xl bg-white border text-left"
+                  style={{ borderColor: "#EFEAE0" }}
+                >
+                  <div className="w-12 h-12 rounded-xl flex items-center justify-center text-[22px] shrink-0" style={{ backgroundColor: "#F3F5F9" }}>{p.photo}</div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[14px] font-semibold text-[#1B2A4A] truncate">{p.name}</p>
+                    <p className="text-[12px] text-[#8A8474] truncate">{p.category} · {p.town}</p>
+                  </div>
+                  <ChevronRight size={16} color="#B08A5A" className="shrink-0" />
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -2774,23 +4643,27 @@ function FavoritesScreen({ favorites, setSelectedPlace, toggleFavorite, savedDay
   );
 }
 
-function ProfileScreen({ onOpenPremium, onOpenPassport, stats, session, onOpenAuth, onSignOut, earnedBadges, kids, activeKidId, onSetActive, onAddKid, onEditKid, sitters, onAddSitter, onEditSitter, onShareWithSitter }) {
+function ProfileScreen({ onOpenPremium, onOpenPassport, stats, session, onOpenAuth, onSignOut, earnedBadges, kids, activeKidId, onSetActive, onAddKid, onEditKid, sitters, onAddSitter, onEditSitter, onShareWithSitter,
+  emergencyContacts, onAddEmergencyContact, onEditEmergencyContact,
+  profileNames, onSaveProfileNames, myCaregivers, caregiverLinks, caregiverInvite, onCreateCaregiverInvite, onRemoveCaregiverAccess, activeFamilyId, onSwitchFamily,
+  favorites, savedDays, onViewSaved, forceEditNameToken,
+  appMode, onSetMode,
+  friendsProps,
+}) {
   const activeKid = kids.find((k) => k.id === activeKidId) || kids[0] || null;
+  const [nameForm, setNameForm] = useState(profileNames || { firstName: "", lastName: "", handle: "" });
+  const [nameSaving, setNameSaving] = useState(false);
+  const [nameMsg, setNameMsg] = useState("");
+  const [editingName, setEditingName] = useState(false);
+  const hasSavedName = !!(profileNames && (profileNames.firstName || profileNames.lastName || profileNames.handle));
+  useEffect(() => { setNameForm(profileNames || { firstName: "", lastName: "", handle: "" }); }, [profileNames]);
+  useEffect(() => { if (forceEditNameToken) setEditingName(true); }, [forceEditNameToken]);
   return (
     <div className="pb-4">
-      <TopBar title="Family profile" />
-      <div className="px-5">
-        <div className="rounded-2xl p-4 bg-white border mb-3" style={{ borderColor: session ? "#CDE8D6" : "#EFEAE0", backgroundColor: session ? "#F4FBF6" : "#FFFFFF" }}>
-          {session ? (
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full flex items-center justify-center text-[18px]" style={{ backgroundColor: "#E4F4E9" }}>☁️</div>
-              <div className="flex-1 min-w-0">
-                <p className="text-[13.5px] font-semibold text-[#1B2A4A]">Synced to your account</p>
-                <p className="text-[11.5px] text-[#8A8474] truncate">{session.user.email} · kids, favorites & days follow you</p>
-              </div>
-              <button onClick={onSignOut} className="text-[12px] font-semibold shrink-0" style={{ color: "#8A8474" }}>Sign out</button>
-            </div>
-          ) : (
+      <TopBar title="My Profile" />
+      {!session && (
+        <div className="px-5 mb-3">
+          <div className="rounded-2xl p-4 bg-white border" style={{ borderColor: "#EFEAE0" }}>
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full flex items-center justify-center text-[18px]" style={{ backgroundColor: "#FFF3E6" }}>☁️</div>
               <div className="flex-1">
@@ -2799,8 +4672,165 @@ function ProfileScreen({ onOpenPremium, onOpenPassport, stats, session, onOpenAu
               </div>
               <button onClick={onOpenAuth} className="text-[12px] font-bold px-3 py-2 rounded-full text-white shrink-0" style={{ background: "var(--cta)" }}>Sign in</button>
             </div>
+          </div>
+        </div>
+      )}
+      {friendsProps && <FriendsScreen {...friendsProps} appMode={appMode} onSetMode={onSetMode} embedded />}
+      <div className="px-2"><div className="mx-3 border-t" style={{ borderColor: "#EFEAE0" }} /></div>
+      <div className="px-5">
+        <button
+          onClick={onViewSaved}
+          className="w-full rounded-2xl p-4 bg-white border mb-3 text-left flex items-center gap-3"
+          style={{ borderColor: "#EFEAE0" }}
+        >
+          <div className="w-10 h-10 rounded-full flex items-center justify-center text-[18px] shrink-0" style={{ backgroundColor: "#FFF3E6" }}>❤️</div>
+          <div className="flex-1 min-w-0">
+            <p className="text-[13.5px] font-semibold text-[#1B2A4A]">Saved places & days</p>
+            <p className="text-[11.5px] text-[#8A8474]">{favorites.length} favorite{favorites.length === 1 ? "" : "s"} · {savedDays.length} saved day{savedDays.length === 1 ? "" : "s"}</p>
+          </div>
+          <span className="text-[12px] font-medium shrink-0" style={{ color: "var(--accent)" }}>View →</span>
+        </button>
+
+        <div className="rounded-2xl p-4 bg-white border mb-3" style={{ borderColor: "#EFEAE0" }}>
+          <p className="font-semibold text-[#1B2A4A] mb-1">Your name & username</p>
+          <p className="text-[11.5px] text-[#8A8474] mb-3">So other parents can find and add you as a friend.</p>
+          {session ? (
+            hasSavedName && !editingName ? (
+              <div className="flex items-center justify-between gap-2 p-2.5 rounded-xl" style={{ backgroundColor: "#F7F4EC" }}>
+                <div className="min-w-0">
+                  <p className="text-[14px] font-medium text-[#1B2A4A] truncate">
+                    {[profileNames.firstName, profileNames.lastName].filter(Boolean).join(" ") || "No name set"}
+                  </p>
+                  {profileNames.handle && <p className="text-[12px] text-[#8A8474] truncate">@{profileNames.handle}</p>}
+                </div>
+                <button
+                  onClick={() => { setNameForm(profileNames); setNameMsg(""); setEditingName(true); }}
+                  className="text-[12px] font-semibold px-3 py-1.5 rounded-full shrink-0"
+                  style={{ color: "var(--accent)", backgroundColor: "#FFF3E6" }}
+                >
+                  Edit
+                </button>
+              </div>
+            ) : (
+              <>
+                <div className="flex gap-2 mb-2">
+                  <input value={nameForm.firstName} onChange={(e) => setNameForm({ ...nameForm, firstName: e.target.value })} placeholder="First name"
+                    className="flex-1 min-w-0 rounded-xl px-3 py-2 text-[14px] border outline-none" style={{ borderColor: "#E7E1D4" }} />
+                  <input value={nameForm.lastName} onChange={(e) => setNameForm({ ...nameForm, lastName: e.target.value })} placeholder="Last name"
+                    className="flex-1 min-w-0 rounded-xl px-3 py-2 text-[14px] border outline-none" style={{ borderColor: "#E7E1D4" }} />
+                </div>
+                <input value={nameForm.handle} onChange={(e) => setNameForm({ ...nameForm, handle: e.target.value.replace(/[^a-zA-Z0-9_]/g, "") })} placeholder="Username (optional, e.g. essiek)"
+                  className="w-full rounded-xl px-3 py-2 text-[14px] border outline-none mb-2" style={{ borderColor: "#E7E1D4" }} />
+                <div className="flex gap-2">
+                  {hasSavedName && (
+                    <button
+                      onClick={() => { setNameForm(profileNames); setNameMsg(""); setEditingName(false); }}
+                      className="flex-1 rounded-xl py-2.5 font-semibold text-[13px] border"
+                      style={{ borderColor: "#E7E1D4", color: "#8A8474" }}
+                    >
+                      Cancel
+                    </button>
+                  )}
+                  <button
+                    onClick={async () => {
+                      setNameSaving(true);
+                      const r = await onSaveProfileNames(nameForm);
+                      setNameMsg(r.message);
+                      setNameSaving(false);
+                      if (r.ok) setEditingName(false);
+                    }}
+                    className="flex-1 rounded-xl py-2.5 text-white font-semibold text-[13px]"
+                    style={{ background: "var(--cta)" }}
+                  >
+                    {nameSaving ? "Saving…" : "Save"}
+                  </button>
+                </div>
+                {nameMsg && <p className="text-[11.5px] text-center mt-2" style={{ color: "#8A8474" }}>{nameMsg}</p>}
+              </>
+            )
+          ) : (
+            <button onClick={onOpenAuth} className="w-full rounded-xl py-2.5 text-white font-semibold text-[13px]" style={{ background: "var(--cta)" }}>
+              Sign in to set your name
+            </button>
           )}
         </div>
+
+        <div className="rounded-2xl p-4 bg-white border mb-3" style={{ borderColor: "#EFEAE0" }}>
+            <p className="font-semibold text-[#1B2A4A] mb-1">Family Circle</p>
+            <p className="text-[11.5px] text-[#8A8474] mb-3">Give a co-parent, grandparent, or nanny their own sign-in that shares your kids, favorites, and plans.</p>
+
+            {caregiverLinks && caregiverLinks.length > 0 && (
+              <div className="mb-3">
+                <p className="text-[12px] font-semibold text-[#1B2A4A] mb-1.5">Families you can help plan for</p>
+                <div className="flex flex-col gap-1.5">
+                  <button
+                    onClick={() => onSwitchFamily(null)}
+                    className="text-left p-2 rounded-xl border text-[13px]"
+                    style={{ borderColor: !activeFamilyId ? "var(--accent)" : "#EFEAE0", backgroundColor: !activeFamilyId ? "#FFF6F0" : "#fff" }}
+                  >
+                    Your own family {!activeFamilyId && "· viewing"}
+                  </button>
+                  {caregiverLinks.map((link) => {
+                    const p = link.profiles || {};
+                    const label = [p.first_name, p.last_name].filter(Boolean).join(" ") || p.display_name || "A family";
+                    const active = activeFamilyId === link.owner_id;
+                    return (
+                      <button
+                        key={link.id}
+                        onClick={() => onSwitchFamily(link.owner_id)}
+                        className="text-left p-2 rounded-xl border text-[13px]"
+                        style={{ borderColor: active ? "var(--accent)" : "#EFEAE0", backgroundColor: active ? "#FFF6F0" : "#fff" }}
+                      >
+                        {label}'s family {active && "· viewing"}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {myCaregivers && myCaregivers.length > 0 && (
+              <div className="mb-3">
+                <p className="text-[12px] font-semibold text-[#1B2A4A] mb-1.5">People who can help plan for your kids</p>
+                <div className="flex flex-col gap-1.5">
+                  {myCaregivers.map((m) => {
+                    const p = m.profiles || {};
+                    const label = [p.first_name, p.last_name].filter(Boolean).join(" ") || p.display_name || "A caregiver";
+                    return (
+                      <div key={m.id} className="flex items-center justify-between p-2 rounded-xl" style={{ backgroundColor: "#F7F4EC" }}>
+                        <p className="text-[13px] text-[#1B2A4A]">{label}</p>
+                        <button onClick={() => onRemoveCaregiverAccess(m.id)} className="text-[11.5px] font-semibold" style={{ color: "#C0604B" }}>Remove</button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {session ? (
+              caregiverInvite ? (
+                <div className="rounded-xl p-3" style={{ backgroundColor: "#FFF3E6" }}>
+                  <p className="text-[12px] text-[#8A8474] mb-1.5">Share this link — they'll sign in, set up their name, and get access:</p>
+                  <p className="text-[12.5px] font-mono break-all text-[#1B2A4A] mb-2">{caregiverInvite.link}</p>
+                  <button
+                    onClick={() => { navigator.clipboard?.writeText(caregiverInvite.link); }}
+                    className="w-full rounded-xl py-2 text-white font-semibold text-[13px]"
+                    style={{ background: "var(--cta)" }}
+                  >
+                    Copy link
+                  </button>
+                </div>
+              ) : (
+                <button onClick={onCreateCaregiverInvite} className="w-full rounded-xl py-2.5 border font-semibold text-[13px]" style={{ borderColor: "var(--accent)", color: "var(--accent)" }}>
+                  + Invite a caregiver
+                </button>
+              )
+            ) : (
+              <button onClick={onOpenAuth} className="w-full rounded-xl py-2.5 text-white font-semibold text-[13px]" style={{ background: "var(--cta)" }}>
+                Sign in to invite a caregiver
+              </button>
+            )}
+          </div>
 
         <div className="rounded-2xl p-4 bg-white border" style={{ borderColor: "#EFEAE0" }}>
           <div className="flex items-center justify-between mb-3">
@@ -2864,6 +4894,34 @@ function ProfileScreen({ onOpenPremium, onOpenPassport, stats, session, onOpenAu
           )}
         </div>
 
+        <div className="rounded-2xl p-4 bg-white border mt-3" style={{ borderColor: "#EFEAE0" }}>
+          <div className="flex items-center justify-between mb-3">
+            <p className="font-semibold text-[#1B2A4A]">🚨 Emergency contacts</p>
+            <button onClick={onAddEmergencyContact} className="text-[12px] font-semibold flex items-center gap-1" style={{ color: "var(--accent)" }}><Plus size={14} /> Add</button>
+          </div>
+          {(!emergencyContacts || emergencyContacts.length === 0) ? (
+            <p className="text-[13px] text-[#8A8474]">Add a grandparent, pediatrician, or neighbor — visible to whoever you share this profile with.</p>
+          ) : (
+            <div className="flex flex-col gap-2.5">
+              {emergencyContacts.map((c) => (
+                <div key={c.id} className="flex items-center gap-3 p-2.5 rounded-xl border" style={{ borderColor: "#F3F0E8" }}>
+                  <div className="w-10 h-10 rounded-full flex items-center justify-center text-[18px] shrink-0" style={{ backgroundColor: "#FDEDEA" }}>🚨</div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[14px] font-medium text-[#1B2A4A] truncate">{c.name}{c.relationship ? <span className="text-[11px] font-normal text-[#8A8474]"> · {c.relationship}</span> : null}</p>
+                    <p className="text-[11.5px] text-[#8A8474] truncate">{c.notes || c.phone || "No details yet"}</p>
+                  </div>
+                  {c.phone && (
+                    <a href={`tel:${c.phone.replace(/[^0-9+]/g, "")}`} onClick={(e) => e.stopPropagation()} className="w-8 h-8 rounded-full flex items-center justify-center shrink-0" style={{ backgroundColor: "#E4F4E9" }}>
+                      <Phone size={14} color="#2E8B57" />
+                    </a>
+                  )}
+                  <button onClick={() => onEditEmergencyContact(c)} className="text-[11px] font-medium shrink-0" style={{ color: "var(--accent)" }}>Edit</button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
         <button onClick={onOpenPassport} className="w-full rounded-2xl p-4 bg-white border mt-3 text-left" style={{ borderColor: "#EFEAE0" }}>
           <div className="flex items-center justify-between mb-2">
             <p className="font-semibold text-[#1B2A4A]">Adventure Passport</p>
@@ -2883,7 +4941,7 @@ function ProfileScreen({ onOpenPremium, onOpenPassport, stats, session, onOpenAu
         </button>
 
         <div className="rounded-2xl p-4 mt-3 text-center" style={{ backgroundColor: "#FFF8EE" }}>
-          <p className="font-semibold text-[#1B2A4A] text-[14px]">Little Day Premium</p>
+          <p className="font-semibold text-[#1B2A4A] text-[14px]">Little Day Memories Premium</p>
           <p className="text-[12px] text-[#8A8474] mt-1">Unlimited planning, vacation mode, offline guides</p>
           <button
             onClick={onOpenPremium}
@@ -2893,6 +4951,12 @@ function ProfileScreen({ onOpenPremium, onOpenPassport, stats, session, onOpenAu
             See Premium
           </button>
         </div>
+
+        {session && (
+          <button onClick={onSignOut} className="w-full text-center mt-5 text-[13px] font-semibold" style={{ color: "#B08A5A" }}>
+            Sign out
+          </button>
+        )}
       </div>
     </div>
   );
@@ -2914,13 +4978,13 @@ function PremiumScreen({ onBack, onUpgrade }) {
 
   return (
     <div className="pb-10">
-      <TopBar title="Little Day Premium" onBack={onBack} />
+      <TopBar title="Little Day Memories Premium" onBack={onBack} />
       <div className="px-5">
         <div className="rounded-3xl p-6 text-center" style={{ background: "linear-gradient(160deg,#FFF3E6,#FFF8EE)" }}>
           <div className="flex justify-center mb-2">
             <LittleDaySun size={64} />
           </div>
-          <h2 className="text-[22px] font-bold text-[#1B2A4A]" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+          <h2 className="text-[22px] font-bold text-[#1B2A4A]" style={{ fontFamily: "'Poppins', sans-serif" }}>
             Unlock the full adventure
           </h2>
           <p className="text-[13px] text-[#8A8474] mt-1.5 max-w-[290px] mx-auto">
@@ -3042,7 +5106,7 @@ function PlaceDetailScreen({ place, onBack, favorited, onToggleFavorite, checkIn
 
         <div className="flex items-start justify-between">
           <div>
-            <h2 className="text-[21px] font-bold text-[#1B2A4A]" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+            <h2 className="text-[21px] font-bold text-[#1B2A4A]" style={{ fontFamily: "'Poppins', sans-serif" }}>
               {place.name}
             </h2>
             <p className="text-[13px] text-[#8A8474] mt-0.5">
@@ -3059,6 +5123,7 @@ function PlaceDetailScreen({ place, onBack, favorited, onToggleFavorite, checkIn
             <div className="mt-2 flex items-center gap-2 flex-wrap">
               <PriceBadge price={place.price} detail />
               <OpenNowBadge place={place} nowHour={currentHour()} />
+              <HoursChip place={place} size="lg" />
             </div>
             {placeHours(place) && (
               <p className="text-[12px] text-[#B8B0A0] mt-1.5 italic">
@@ -3307,11 +5372,11 @@ function WelcomeScreen({ onStart }) {
     <div className="flex flex-col h-full">
       <div className="flex-1 flex flex-col items-center justify-center px-8 text-center">
         <LittleDayLockup sunSize={88} wordSize={44} tagline />
-        <p className="text-[16px] font-semibold text-[#1B2A4A] mt-6 leading-snug max-w-[290px]" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+        <p className="text-[16px] font-semibold text-[#1B2A4A] mt-6 leading-snug max-w-[290px]" style={{ fontFamily: "'Poppins', sans-serif" }}>
           Every other app gives you a piece of the day.
         </p>
         <p className="text-[14px] text-[#8A8474] mt-2.5 leading-relaxed max-w-[290px]">
-          Little Day is the first to plan the <span className="font-semibold text-[#5C5648]">whole</span> day with the kids — where to go, eat, play, potty, and everything in between. One app. One tap. One less thing to figure out.
+          Little Day Memories is the first to plan the <span className="font-semibold text-[#5C5648]">whole</span> day with the kids — where to go, eat, play, potty, and everything in between. One app. One tap. One less thing to figure out.
         </p>
       </div>
       <div className="px-6 pb-10">
@@ -3339,11 +5404,22 @@ function useGeolocation() {
     setState((s) => ({ ...s, status: "locating" }));
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        setState({
-          status: "located",
-          coords: { lat: pos.coords.latitude, lng: pos.coords.longitude },
-          label: "your location",
-        });
+        const coords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        setState({ status: "located", coords, label: "your location" });
+        // Reverse-geocode to a real city/state name instead of showing raw coordinates.
+        // Falls back gracefully to "your location" if the Maps script isn't loaded yet.
+        const g = window.google;
+        if (g?.maps?.Geocoder) {
+          new g.maps.Geocoder().geocode({ location: coords }, (results, status) => {
+            if (status !== "OK" || !results || !results[0]) return;
+            const comps = results[0].address_components || [];
+            const city = comps.find((c) => c.types.includes("locality"))?.long_name
+              || comps.find((c) => c.types.includes("postal_town"))?.long_name
+              || comps.find((c) => c.types.includes("administrative_area_level_2"))?.long_name;
+            const state = comps.find((c) => c.types.includes("administrative_area_level_1"))?.short_name;
+            if (city) setState((s) => ({ ...s, label: state ? `${city}, ${state}` : city }));
+          });
+        }
       },
       () => setState((s) => ({ ...s, status: "denied", label: "Westchester, NY" })),
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
@@ -3357,7 +5433,7 @@ function LocationBar({ location, onRequest }) {
   let text;
   if (status === "locating") text = "Locating you…";
   else if (status === "located")
-    text = `Showing places near you · ${coords.lat.toFixed(3)}, ${coords.lng.toFixed(3)}`;
+    text = `Showing places near ${label}`;
   else if (status === "denied" || status === "unsupported")
     text = "Location off — showing Westchester, NY";
   else text = "Tap to use your location · Westchester, NY";
@@ -3383,6 +5459,81 @@ function Avatar({ emoji, size = 40 }) {
   );
 }
 
+function kidAge(birthday) {
+  if (!birthday) return null;
+  const b = new Date(birthday);
+  if (isNaN(b)) return null;
+  const now = new Date();
+  let age = now.getFullYear() - b.getFullYear();
+  const m = now.getMonth() - b.getMonth();
+  if (m < 0 || (m === 0 && now.getDate() < b.getDate())) age--;
+  return age;
+}
+
+function FriendDetailScreen({ friend, kids, onBack, onPlanDay, onRemoveFriend }) {
+  if (!friend) return null;
+  return (
+    <div className="min-h-screen pb-8" style={{ backgroundColor: "#FFFBF5" }}>
+      <TopBar title="Friend" onBack={onBack} />
+      <div className="px-5 pt-2 flex flex-col items-center text-center">
+        <Avatar emoji={friend.emoji} size={72} />
+        <p className="text-[20px] font-bold text-[#1B2A4A] mt-3">{friend.name}</p>
+        {friend.demo && (
+          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full mt-1" style={{ backgroundColor: "#F0EEE6", color: "#8A8474" }}>DEMO PROFILE</span>
+        )}
+        {!friend.real && !friend.demo && <p className="text-[12.5px] text-[#8A8474] mt-1">Added by phone number · preview only for now</p>}
+
+        <div className="w-full mt-6 text-left">
+          <p className="text-[13px] font-semibold text-[#1B2A4A] mb-2">Kids</p>
+          {kids === null ? (
+            <p className="text-[13px] text-[#8A8474]">Loading…</p>
+          ) : kids.length === 0 ? (
+            <div className="rounded-2xl p-4 bg-white border" style={{ borderColor: "#EFEAE0" }}>
+              <p className="text-[13px] text-[#8A8474]">
+                {friend.real ? "They haven't added their kids yet." : "Not available for demo or phone-added friends yet."}
+              </p>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-2">
+              {kids.map((k) => {
+                const age = kidAge(k.birthday);
+                return (
+                  <div key={k.id} className="flex items-center gap-3 p-3 rounded-2xl bg-white border" style={{ borderColor: "#EFEAE0" }}>
+                    <div className="w-11 h-11 rounded-full flex items-center justify-center text-[20px]" style={{ backgroundColor: "#FFF3E6" }}>{k.emoji || "🧒"}</div>
+                    <div>
+                      <p className="text-[14px] font-medium text-[#1B2A4A]">{k.name}</p>
+                      {age !== null && <p className="text-[12px] text-[#8A8474]">{age} years old</p>}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {friend.real && (
+          <button
+            onClick={onPlanDay}
+            className="w-full rounded-2xl py-3.5 mt-6 flex items-center justify-center gap-2 text-white font-semibold text-[14.5px]"
+            style={{ background: "var(--cta)" }}
+          >
+            📅 Plan a day together
+          </button>
+        )}
+        {friend.real && (
+          <p className="text-[11.5px] text-[#B8B0A0] mt-2.5">Build a day, then tap "Invite friends to join" and pick {friend.name.split(" ")[0]}.</p>
+        )}
+
+        {onRemoveFriend && (
+          <button onClick={() => onRemoveFriend(friend)} className="mt-6 text-[13px] font-semibold" style={{ color: "#C05621" }}>
+            Remove friend
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function FriendsScreen({ onOpenInvite,
   friends,
   sharedDays,
@@ -3391,16 +5542,83 @@ function FriendsScreen({ onOpenInvite,
   onDecline,
   onUseDay,
   onAddFriend,
+  onSelectFriend,
   setSelectedPlace,
+  session,
+  onSearchProfiles,
+  onAddRealFriend,
+  onOpenChat,
+  appMode,
+  onSetMode,
+  embedded,
 }) {
   const [newName, setNewName] = useState("");
+  const [phoneInput, setPhoneInput] = useState("");
+  const [nameQuery, setNameQuery] = useState("");
+  const [nameResults, setNameResults] = useState([]);
+  const [searching, setSearching] = useState(false);
+  useEffect(() => {
+    if (!session || nameQuery.trim().length < 2) { setNameResults([]); return; }
+    setSearching(true);
+    const t = setTimeout(() => {
+      onSearchProfiles(nameQuery).then((r) => { setNameResults(r); setSearching(false); });
+    }, 400);
+    return () => clearTimeout(t);
+  }, [nameQuery, session]);
   const incoming = playDates.filter((p) => p.direction === "incoming" && p.status === "pending");
   const upcoming = playDates.filter((p) => p.status === "confirmed" || p.status === "invited");
   const place = (id) => PLACES.find((p) => p.id === id);
 
+  const chatGroups = [];
+  const seenGroups = new Set();
+  playDates.filter((p) => p.real && p.groupId).forEach((p) => {
+    if (seenGroups.has(p.groupId)) {
+      const g = chatGroups.find((x) => x.groupId === p.groupId);
+      if (g && !g.names.includes(p.friend)) g.names.push(p.friend);
+    } else {
+      seenGroups.add(p.groupId);
+      chatGroups.push({ groupId: p.groupId, names: [p.friend], placeId: p.placeId });
+    }
+  });
+
   return (
-    <div className="pb-4">
-      <TopBar title="Friends & play dates" />
+    <div className={embedded ? "" : "pb-4"}>
+      {!embedded && <TopBar title="Friends & play dates" />}
+      {!embedded && <ModeSwitcher mode={appMode} onSetMode={onSetMode} />}
+
+      <div className="px-5 mb-5">
+        <p className="text-[13px] font-semibold text-[#1B2A4A] mb-2">💬 Chats about your days</p>
+        {chatGroups.length > 0 ? (
+          <div className="flex flex-col gap-2">
+            {chatGroups.map((g) => {
+              const pl = place(g.placeId);
+              return (
+                <button
+                  key={g.groupId}
+                  onClick={() => onOpenChat(g.groupId)}
+                  className="flex items-center gap-3 p-3 rounded-2xl border text-left"
+                  style={{ borderColor: "var(--accent)", backgroundColor: "#FFF6F0" }}
+                >
+                  <div className="w-10 h-10 rounded-full flex items-center justify-center text-[18px] shrink-0" style={{ backgroundColor: "#FFFFFF" }}>💬</div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[13.5px] font-semibold text-[#1B2A4A] truncate">With {g.names.join(", ")}</p>
+                    <p className="text-[11.5px] text-[#8A8474] truncate">{pl ? pl.name : "Your shared day"} · tap to open chat</p>
+                  </div>
+                  <ChevronRight size={16} color="#B08A5A" />
+                </button>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="p-3.5 rounded-2xl border" style={{ borderColor: "#EFEAE0", backgroundColor: "#FAF8F3" }}>
+            <p className="text-[12.5px] text-[#8A8474] leading-snug">
+              {!session
+                ? "Sign in from the Profile tab, then invite a real friend (added by name search) to a day plan — a chat for that group will show up right here."
+                : "No active group chats yet. Build a day, tap 'Invite friends to join,' and pick a friend you've added by name search — a chat for that day will appear here once they're invited."}
+            </p>
+          </div>
+        )}
+      </div>
 
       {incoming.length > 0 && (
         <div className="px-5 mb-5">
@@ -3434,6 +5652,15 @@ function FriendsScreen({ onOpenInvite,
                     >
                       <X size={15} /> Can't
                     </button>
+                    {pd.real && pd.groupId && (
+                      <button
+                        onClick={() => onOpenChat(pd.groupId)}
+                        className="px-3 rounded-xl py-2.5 flex items-center justify-center border"
+                        style={{ borderColor: "#E7E1D4", color: "#8A8474" }}
+                      >
+                        💬
+                      </button>
+                    )}
                   </div>
                 </div>
               );
@@ -3461,7 +5688,7 @@ function FriendsScreen({ onOpenInvite,
                       </p>
                     </div>
                     <span
-                      className="text-[11px] px-2.5 py-1 rounded-full font-medium"
+                      className="text-[11px] px-2.5 py-1 rounded-full font-medium shrink-0"
                       style={{
                         backgroundColor: pd.status === "confirmed" ? "#E7F3EA" : "#FFF3E6",
                         color: pd.status === "confirmed" ? "#3B7A57" : "#B08A5A",
@@ -3469,6 +5696,11 @@ function FriendsScreen({ onOpenInvite,
                     >
                       {pd.status === "confirmed" ? "Confirmed" : "Invited"}
                     </span>
+                    {pd.real && pd.groupId && (
+                      <button onClick={() => onOpenChat(pd.groupId)} className="shrink-0 w-8 h-8 rounded-full flex items-center justify-center" style={{ backgroundColor: "#F7F4EC" }}>
+                        💬
+                      </button>
+                    )}
                   </div>
                 </div>
               );
@@ -3525,19 +5757,104 @@ function FriendsScreen({ onOpenInvite,
 
       <div className="px-5">
         <p className="text-[13px] font-semibold text-[#1B2A4A] mb-2">Your friends</p>
+        {friends.some((f) => f.demo) && (
+          <p className="text-[11.5px] mb-2" style={{ color: "#B08A5A" }}>
+            The friends marked "Demo" below are sample profiles to show how this screen works — invite real friends to replace them.
+          </p>
+        )}
         <div className="flex flex-col gap-2 mb-3">
           {friends.map((f) => (
-            <div key={f.id} className="flex items-center gap-2.5 p-2.5 rounded-2xl bg-white border" style={{ borderColor: "#EFEAE0" }}>
+            <button key={f.id} onClick={() => onSelectFriend(f)} className="flex items-center gap-2.5 p-2.5 rounded-2xl bg-white border text-left w-full" style={{ borderColor: "#EFEAE0" }}>
               <Avatar emoji={f.emoji} size={38} />
               <div className="flex-1 min-w-0">
-                <p className="text-[14px] font-medium text-[#1B2A4A]">{f.name}</p>
+                <div className="flex items-center gap-1.5">
+                  <p className="text-[14px] font-medium text-[#1B2A4A]">{f.name}</p>
+                  {f.demo && (
+                    <span className="text-[9.5px] font-bold px-1.5 py-0.5 rounded-full" style={{ backgroundColor: "#F0EEE6", color: "#8A8474" }}>DEMO</span>
+                  )}
+                </div>
                 <p className="text-[12px] text-[#8A8474] truncate">
                   {f.kids} · {f.town}
                 </p>
               </div>
-            </div>
+              <ChevronRight size={16} color="#B08A5A" className="shrink-0" />
+            </button>
           ))}
         </div>
+
+        <div className="rounded-2xl p-3.5 mb-2.5 border" style={{ borderColor: "#EFEAE0", backgroundColor: "#FFFDF8" }}>
+          <p className="text-[12.5px] font-semibold text-[#1B2A4A] mb-2">Search by name or username</p>
+          {session ? (
+            <>
+              <input
+                value={nameQuery}
+                onChange={(e) => setNameQuery(e.target.value)}
+                placeholder="First and last name, or @handle"
+                className="w-full rounded-xl px-3.5 py-2.5 text-[14px] border outline-none"
+                style={{ borderColor: "#E7E1D4", backgroundColor: "#FFFFFF" }}
+              />
+              {searching && <p className="text-[11.5px] text-[#B8B0A0] mt-2">Searching…</p>}
+              {!searching && nameQuery.trim().length >= 2 && nameResults.length === 0 && (
+                <p className="text-[11.5px] text-[#B8B0A0] mt-2">No one found — check the spelling or ask them to set a username.</p>
+              )}
+              {nameResults.length > 0 && (
+                <div className="flex flex-col gap-1.5 mt-2">
+                  {nameResults.map((r) => {
+                    const label = [r.first_name, r.last_name].filter(Boolean).join(" ") || r.display_name || r.handle || "Little Day Memories parent";
+                    return (
+                      <div key={r.id} className="flex items-center justify-between gap-2 p-2 rounded-xl" style={{ backgroundColor: "#F7F4EC" }}>
+                        <div className="min-w-0">
+                          <p className="text-[13.5px] font-medium text-[#1B2A4A] truncate">{label}</p>
+                          {r.handle && <p className="text-[11.5px] text-[#8A8474] truncate">@{r.handle}</p>}
+                        </div>
+                        <button
+                          onClick={() => { onAddRealFriend(r.id, label); setNameQuery(""); setNameResults([]); }}
+                          className="text-[12px] font-semibold px-3 py-1.5 rounded-full text-white shrink-0"
+                          style={{ background: "var(--cta)" }}
+                        >
+                          Add
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </>
+          ) : (
+            <p className="text-[11.5px]" style={{ color: "#B8B0A0" }}>Sign in from the Profile tab to search for friends by name.</p>
+          )}
+        </div>
+
+        <div className="rounded-2xl p-3.5 mb-2.5 border" style={{ borderColor: "#EFEAE0", backgroundColor: "#FFFDF8" }}>
+          <p className="text-[12.5px] font-semibold text-[#1B2A4A] mb-2">Add a friend by phone number</p>
+          <div className="flex gap-2">
+            <input
+              value={phoneInput}
+              onChange={(e) => setPhoneInput(e.target.value)}
+              type="tel"
+              inputMode="tel"
+              placeholder="(914) 555-0123"
+              className="flex-1 rounded-xl px-3.5 py-2.5 text-[14px] border outline-none"
+              style={{ borderColor: "#E7E1D4", backgroundColor: "#FFFFFF" }}
+            />
+            <button
+              onClick={() => {
+                if (phoneInput.replace(/\D/g, "").length >= 10) {
+                  onAddFriend(phoneInput);
+                  setPhoneInput("");
+                }
+              }}
+              className="px-4 rounded-xl flex items-center gap-1.5 text-white font-medium text-[13px]"
+              style={{ backgroundColor: "#1B2A4A" }}
+            >
+              <UserPlus size={15} /> Add
+            </button>
+          </div>
+          <p className="text-[11px] mt-2" style={{ color: "#B8B0A0" }}>
+            Preview only for now — once accounts are fully connected, this will text your friend an invite if they're not on Little Day Memories yet, or connect you instantly if they are.
+          </p>
+        </div>
+
         <button
           onClick={onOpenInvite}
           className="w-full rounded-2xl py-3.5 flex items-center justify-center gap-2 text-white font-semibold text-[14px] mb-2.5"
@@ -3567,22 +5884,36 @@ function FakeQR({ size = 120, seed = 7 }) {
   return <svg width={size} height={size}>{cells}</svg>;
 }
 
-function InviteSheet({ open, onClose, onShared }) {
+function InviteSheet({ open, onClose, onShared, session }) {
+  const [copied, setCopied] = useState(false);
+  useEffect(() => { if (open) setCopied(false); }, [open]);
   if (!open) return null;
-  const link = "littleday.app/invite/essie-7H3K";
+  const hasRealLink = !!session;
+  const link = hasRealLink
+    ? `${window.location.origin}${window.location.pathname}?addfriend=${session.user.id}`
+    : null;
+  const shareText = link
+    ? `Join me on Little Day Memories — the app that plans whole days out with the kids! ${link}`
+    : "Join me on Little Day Memories — the app that plans whole days out with the kids!";
   const doShare = async () => {
     try {
-      if (navigator.share) { await navigator.share({ title: "Join me on Little Day", text: `Join me on Little Day — the app that plans whole days out with the kids! ${link}` }); onShared(); return; }
+      if (navigator.share) { await navigator.share({ title: "Join me on Little Day Memories", text: shareText }); onShared(); return; }
     } catch (e) {}
     onShared();
+  };
+  const doCopy = async () => {
+    if (!link) return;
+    try { await navigator.clipboard.writeText(link); setCopied(true); } catch (e) {}
   };
   return (
     <div className="absolute inset-0 z-30 flex items-end" onClick={onClose}>
       <div className="absolute inset-0 bg-black/30" />
       <div className="relative w-full rounded-t-3xl bg-white p-6 pb-8 text-center" onClick={(e) => e.stopPropagation()} style={{ animation: "sheetUp 0.22s ease-out" }}>
         <div className="w-10 h-1 rounded-full bg-[#E7E1D4] mx-auto mb-4" />
-        <p className="text-[17px] font-bold text-[#1B2A4A]" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Invite a friend</p>
-        <p className="text-[13px] text-[#8A8474] mt-1 max-w-[280px] mx-auto">Send your personal link, or let them scan your code at the playground.</p>
+        <p className="text-[17px] font-bold text-[#1B2A4A]" style={{ fontFamily: "'Poppins', sans-serif" }}>Invite a friend</p>
+        <p className="text-[13px] text-[#8A8474] mt-1 max-w-[280px] mx-auto">
+          {hasRealLink ? "Send your personal link — when they tap it and sign in, you'll be connected as friends automatically." : "Sign in first to get your personal invite link."}
+        </p>
 
         <div className="flex justify-center my-5">
           <div className="rounded-2xl p-3 border-2" style={{ borderColor: "#F0E4D4", backgroundColor: "#FFFBF5" }}>
@@ -3590,15 +5921,82 @@ function InviteSheet({ open, onClose, onShared }) {
           </div>
         </div>
 
-        <div className="rounded-xl px-3.5 py-3 flex items-center justify-between border mb-3" style={{ borderColor: "#E7E1D4", backgroundColor: "#FFF8EE" }}>
-          <span className="text-[13px] font-medium text-[#1B2A4A] truncate">{link}</span>
-          <span className="text-[12px] font-semibold shrink-0 ml-2" style={{ color: "var(--accent)" }}>Copy</span>
-        </div>
+        {hasRealLink && (
+          <div className="rounded-xl px-3.5 py-3 flex items-center justify-between border mb-3" style={{ borderColor: "#E7E1D4", backgroundColor: "#FFF8EE" }}>
+            <span className="text-[13px] font-medium text-[#1B2A4A] truncate">{link}</span>
+            <button onClick={doCopy} className="text-[12px] font-semibold shrink-0 ml-2" style={{ color: "var(--accent)" }}>{copied ? "Copied!" : "Copy"}</button>
+          </div>
+        )}
 
-        <button onClick={doShare} className="w-full rounded-2xl py-3.5 flex items-center justify-center gap-2 text-white font-semibold text-[14px]" style={{ background: "var(--cta)" }}>
+        <button onClick={doShare} disabled={!hasRealLink} className="w-full rounded-2xl py-3.5 flex items-center justify-center gap-2 text-white font-semibold text-[14px] disabled:opacity-50" style={{ background: "var(--cta)" }}>
           <Share2 size={16} /> Share invite link
         </button>
-        <p className="text-[11px] text-[#B8B0A0] mt-3 leading-snug">Preview — invite links connect real friends once accounts launch. Friends only ever see what you choose to share.</p>
+        <p className="text-[11px] text-[#B8B0A0] mt-3 leading-snug">The QR code above is a visual only for now — sharing the link (text, email, etc.) is what actually connects you. Friends only ever see what you choose to share.</p>
+      </div>
+    </div>
+  );
+}
+
+function GroupChatSheet({ open, groupId, session, onClose }) {
+  const [messages, setMessages] = useState([]);
+  const [text, setText] = useState("");
+  const [sending, setSending] = useState(false);
+
+  const load = async () => {
+    if (!groupId || !backendReady()) return;
+    const { data } = await supabase.from("day_plan_messages").select("*").eq("group_id", groupId).order("created_at", { ascending: true });
+    if (data) setMessages(data);
+  };
+  useEffect(() => {
+    if (!open || !groupId) return;
+    load();
+    const t = setInterval(load, 4000);
+    return () => clearInterval(t);
+  }, [open, groupId]);
+
+  if (!open) return null;
+
+  const send = async () => {
+    const body = text.trim();
+    if (!body || !backendReady() || !session) return;
+    setSending(true);
+    await supabase.from("day_plan_messages").insert({ group_id: groupId, sender_id: session.user.id, body });
+    setText("");
+    await load();
+    setSending(false);
+  };
+
+  return (
+    <div className="absolute inset-0 z-30 flex items-end" onClick={onClose}>
+      <div className="absolute inset-0 bg-black/30" />
+      <div className="relative w-full rounded-t-3xl bg-white p-5 pb-6 max-h-[80%] flex flex-col" onClick={(e) => e.stopPropagation()} style={{ animation: "sheetUp 0.22s ease-out" }}>
+        <div className="w-10 h-1 rounded-full bg-[#E7E1D4] mx-auto mb-4 shrink-0" />
+        <p className="text-[15px] font-semibold text-[#1B2A4A] mb-3 shrink-0">Chat about this day</p>
+        <div className="flex-1 overflow-y-auto flex flex-col gap-2 mb-3">
+          {messages.length === 0 && <p className="text-[12.5px] text-[#B8B0A0] text-center mt-4">No messages yet — say hi!</p>}
+          {messages.map((m) => {
+            const mine = session && m.sender_id === session.user.id;
+            return (
+              <div key={m.id} className={`max-w-[80%] px-3 py-2 rounded-2xl text-[13px] ${mine ? "self-end text-white" : "self-start text-[#1B2A4A]"}`}
+                style={{ background: mine ? "var(--cta)" : "#F7F4EC" }}>
+                {m.body}
+              </div>
+            );
+          })}
+        </div>
+        <div className="flex gap-2 shrink-0">
+          <input
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") send(); }}
+            placeholder="Message the group…"
+            className="flex-1 rounded-xl px-3.5 py-2.5 text-[14px] border outline-none"
+            style={{ borderColor: "#E7E1D4" }}
+          />
+          <button onClick={send} disabled={sending || !text.trim()} className="px-4 rounded-xl text-white font-medium text-[13px]" style={{ background: "var(--cta)", opacity: sending || !text.trim() ? 0.5 : 1 }}>
+            Send
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -3706,7 +6104,7 @@ function PlanningScreen({ onDone }) {
       </div>
       <p
         className="mt-7 text-[16px] font-semibold text-[#1B2A4A] text-center"
-        style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+        style={{ fontFamily: "'Poppins', sans-serif" }}
       >
         {messages[idx]}
       </p>
@@ -3745,6 +6143,25 @@ function Confetti() {
   );
 }
 
+function MiniCelebration({ data, onDone }) {
+  useEffect(() => {
+    if (!data) return;
+    const t = setTimeout(onDone, 1500);
+    return () => clearTimeout(t);
+  }, [data]);
+  if (!data) return null;
+  return (
+    <div className="absolute inset-0 z-30 flex items-center justify-center pointer-events-none" onClick={onDone}>
+      <Confetti />
+      <div className="rounded-3xl px-7 py-6 flex flex-col items-center gap-1.5 bg-white shadow-xl" style={{ animation: "sunFloat 0.3s ease-out" }}>
+        <span className="text-[44px]" style={{ display: "inline-block", animation: "burstPop 0.5s ease-out" }}>{data.emoji}</span>
+        <p className="text-[14.5px] font-bold text-[#1B2A4A] text-center max-w-[220px]">{data.text}</p>
+        {data.subtext && <p className="text-[12px] text-[#8A8474] text-center max-w-[220px]">{data.subtext}</p>}
+      </div>
+    </div>
+  );
+}
+
 function CelebrationOverlay({ data, onClose, onPassport, onShare }) {
   if (!data) return null;
   const { record, newBadges } = data;
@@ -3753,7 +6170,7 @@ function CelebrationOverlay({ data, onClose, onPassport, onShare }) {
       <Confetti />
       <div className="relative w-full max-w-[340px] rounded-3xl bg-white p-6 text-center" onClick={(e) => e.stopPropagation()} style={{ animation: "sunFloat 0.4s ease-out" }}>
         <div className="flex justify-center mb-2"><LittleDaySun size={64} /></div>
-        <h2 className="text-[22px] font-bold text-[#1B2A4A]" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Day complete!</h2>
+        <h2 className="text-[22px] font-bold text-[#1B2A4A]" style={{ fontFamily: "'Poppins', sans-serif" }}>Day complete!</h2>
         <p className="text-[13px] text-[#8A8474] mt-1">You earned {record.stops.length} new stamp{record.stops.length !== 1 ? "s" : ""} 🎉</p>
         <div className="flex justify-center gap-2 flex-wrap mt-4">
           {record.stops.map((s, i) => (
@@ -3788,8 +6205,8 @@ function DayCardOverlay({ record, onClose, onShared }) {
   const dateStr = dt.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
   const items = record.stops.map((s) => ({ place: { id: s.placeId, photo: s.photo }, time: s.time || 0 }));
   const doShare = async () => {
-    const text = `Our Little Day (${dateStr}): ${record.stops.map((s) => s.name).join(" → ")}`;
-    try { if (navigator.share) { await navigator.share({ title: "Our Little Day", text }); } } catch (e) {}
+    const text = `Our Little Day Memories (${dateStr}): ${record.stops.map((s) => s.name).join(" → ")}`;
+    try { if (navigator.share) { await navigator.share({ title: "Our Little Day Memories", text }); } } catch (e) {}
     onShared && onShared();
   };
   return (
@@ -3825,21 +6242,21 @@ function RewardOverlay({ data, onClose }) {
       <Confetti />
       <div className="relative w-full max-w-[340px] rounded-3xl bg-white p-6 text-center" onClick={(e) => e.stopPropagation()} style={{ animation: "sunFloat 0.4s ease-out" }}>
         <div className="text-[44px]">🎁</div>
-        <h2 className="text-[22px] font-bold text-[#1B2A4A] mt-1" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Reward unlocked!</h2>
+        <h2 className="text-[22px] font-bold text-[#1B2A4A] mt-1" style={{ fontFamily: "'Poppins', sans-serif" }}>Reward unlocked!</h2>
         <p className="text-[13px] text-[#8A8474] mt-1">5 check-ins at {place.name} — nice work!</p>
         <div className="rounded-2xl p-4 mt-4 border-2 border-dashed" style={{ borderColor: "#E7B989", backgroundColor: "#FFF8EE" }}>
           <p className="text-[15px] font-bold text-[#1B2A4A]">Free drink or dessert</p>
           <p className="text-[12px] text-[#8A8474] mt-0.5">Show this at the counter</p>
           <p className="text-[17px] font-bold mt-2" style={{ color: "#B08A5A", letterSpacing: "0.15em" }}>{code}</p>
         </div>
-        <p className="text-[11px] text-[#B8B0A0] mt-3 leading-snug">Sample reward. Real perks appear when {place.name} joins Little Day as a partner.</p>
+        <p className="text-[11px] text-[#B8B0A0] mt-3 leading-snug">Sample reward. Real perks appear when {place.name} joins Little Day Memories as a partner.</p>
         <button onClick={onClose} className="w-full rounded-2xl py-3 mt-4 text-white font-semibold text-[14px]" style={{ background: "var(--cta)" }}>Awesome</button>
       </div>
     </div>
   );
 }
 
-function PassportScreen({ onBack, completedDays, stats, earnedBadges, onShareDay }) {
+function PassportScreen({ onBack, completedDays, stats, earnedBadges, onShareDay, onAddPhoto }) {
   const earnedIds = new Set(earnedBadges.map((b) => b.id));
   const allStamps = completedDays.flatMap((d) => d.stops.map((s) => ({ ...s, date: d.date })));
   return (
@@ -3888,15 +6305,75 @@ function PassportScreen({ onBack, completedDays, stats, earnedBadges, onShareDay
             <div className="flex flex-col gap-2.5">
               {completedDays.slice(0, 5).map((d) => (
                 <div key={d.id} className="rounded-2xl p-3.5 bg-white border" style={{ borderColor: "#EFEAE0" }}>
+                  {d.memoryPhoto && (
+                    <img src={d.memoryPhoto} alt="" className="w-full h-32 object-cover rounded-xl mb-2.5" />
+                  )}
                   <div className="flex items-center justify-between">
                     <p className="text-[13px] text-[#5C5648]">{d.stops.map((s) => s.photo).join(" ")}</p>
                     <button onClick={() => onShareDay(d)} className="text-[12px] font-medium flex items-center gap-1" style={{ color: "var(--accent)" }}><Share2 size={13} /> Card</button>
                   </div>
-                  <p className="text-[11px] text-[#8A8474] mt-1">{new Date(d.date).toLocaleDateString(undefined, { month: "short", day: "numeric" })} · {d.stops.length} stop{d.stops.length !== 1 ? "s" : ""}</p>
+                  <div className="flex items-center justify-between mt-1">
+                    <p className="text-[11px] text-[#8A8474]">{new Date(d.date).toLocaleDateString(undefined, { month: "short", day: "numeric" })} · {d.stops.length} stop{d.stops.length !== 1 ? "s" : ""}</p>
+                    <label className="text-[11px] font-medium shrink-0" style={{ color: "var(--accent)" }}>
+                      {d.memoryPhoto ? "Change photo" : "+ Add photo"}
+                      <input
+                        type="file" accept="image/*" className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files && e.target.files[0];
+                          if (!file) return;
+                          const reader = new FileReader();
+                          reader.onload = () => onAddPhoto(d.id, reader.result);
+                          reader.readAsDataURL(file);
+                        }}
+                      />
+                    </label>
+                  </div>
                 </div>
               ))}
             </div>
           </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function EmergencyContactEditorSheet({ data, onSave, onDelete, onClose }) {
+  const [name, setName] = useState(data.name || "");
+  const [relationship, setRelationship] = useState(data.relationship || "");
+  const [phone, setPhone] = useState(data.phone || "");
+  const [notes, setNotes] = useState(data.notes || "");
+  return (
+    <div className="absolute inset-0 z-30 flex items-end" onClick={onClose}>
+      <div className="absolute inset-0 bg-black/30" />
+      <div className="relative w-full rounded-t-3xl bg-white p-5 pb-8 max-h-[85%] overflow-y-auto" onClick={(e) => e.stopPropagation()} style={{ animation: "sheetUp 0.22s ease-out" }}>
+        <div className="w-10 h-1 rounded-full bg-[#E7E1D4] mx-auto mb-4" />
+        <p className="text-[15px] font-semibold text-[#1B2A4A] mb-3">{data.isNew ? "Add emergency contact" : "Edit emergency contact"}</p>
+
+        <p className="text-[12px] font-medium text-[#8A8474] mb-1.5">Name</p>
+        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Grandma Rosa"
+          className="w-full rounded-xl px-3.5 py-2.5 text-[14px] border outline-none mb-4" style={{ borderColor: "#E7E1D4" }} />
+
+        <p className="text-[12px] font-medium text-[#8A8474] mb-1.5">Relationship</p>
+        <input value={relationship} onChange={(e) => setRelationship(e.target.value)} placeholder="e.g. Grandmother, Pediatrician, Neighbor"
+          className="w-full rounded-xl px-3.5 py-2.5 text-[14px] border outline-none mb-4" style={{ borderColor: "#E7E1D4" }} />
+
+        <p className="text-[12px] font-medium text-[#8A8474] mb-1.5">Phone</p>
+        <input value={phone} onChange={(e) => setPhone(e.target.value)} inputMode="tel" placeholder="(914) 555-0123"
+          className="w-full rounded-xl px-3.5 py-2.5 text-[14px] border outline-none mb-4" style={{ borderColor: "#E7E1D4" }} />
+
+        <p className="text-[12px] font-medium text-[#8A8474] mb-1.5">Notes (optional)</p>
+        <input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="e.g. Allergies, medications, special instructions"
+          className="w-full rounded-xl px-3.5 py-2.5 text-[14px] border outline-none mb-5" style={{ borderColor: "#E7E1D4" }} />
+
+        <button onClick={() => onSave({ ...data, name, relationship, phone, notes })}
+          className="w-full rounded-2xl py-3.5 text-white font-semibold text-[14px]" style={{ background: "var(--cta)" }}>
+          {data.isNew ? "Add contact" : "Save"}
+        </button>
+        {!data.isNew && (
+          <button onClick={() => onDelete(data.id)} className="w-full rounded-2xl py-3 mt-2 font-semibold text-[13px] flex items-center justify-center gap-1.5" style={{ color: "#C6564B" }}>
+            <Trash2 size={15} /> Remove contact
+          </button>
         )}
       </div>
     </div>
@@ -4025,6 +6502,7 @@ function ActivitiesScreen({ setSelectedPlace }) {
                         {isClassBased(p) && <span className="text-[10.5px] px-2 py-0.5 rounded-full" style={{ backgroundColor: "#EEF0F5", color: "#5B6B8C" }}>Sign-up</span>}
                         {classInfo(p)?.freeTrial === true && <span className="text-[10.5px] px-2 py-0.5 rounded-full" style={{ backgroundColor: "#E4F4E9", color: "#2E8B57" }}>Free trial</span>}
                         <span className="text-[10.5px] px-2 py-0.5 rounded-full bg-[#F0EEE6] text-[#5C5648]">Ages {p.ageRange}</span>
+                        {hoursLabel(p) && <span className="text-[10.5px] px-2 py-0.5 rounded-full bg-[#F0EEE6] text-[#5C5648]">{hoursLabel(p)}</span>}
                       </div>
                     </div>
                   </button>
@@ -4039,13 +6517,15 @@ function ActivitiesScreen({ setSelectedPlace }) {
 }
 
 const HOWTO_STEPS = [
-  { emoji: "🌅", title: "Welcome to Little Day", body: "The first app that plans your whole day out with the kids — where to go, eat, play, and everything in between. Here's a quick tour." },
-  { emoji: "🧒", title: "1. Add your children", body: "In the Family tab, add each child with their name and birthday. Switch between them anytime — the planner tailors ideas to whoever you've selected." },
-  { emoji: "✨", title: "2. Plan My Day", body: "Tap Plan My Day, then set the age, budget, time you have, and nap or 'home by' time. Little Day builds a full itinerary — with a lunch stop and a treat — in seconds." },
-  { emoji: "🔍", title: "3. Search & explore", body: "Use the search bar on the home screen to find anything — a place, a town, or a category like 'playground' or 'ice cream.' Or open the Map to browse with filters." },
-  { emoji: "🤸", title: "4. Classes & Activities", body: "Browse sports, dance, music, art, and afterschool programs. Look for the 'Free trial' tag, and note which need sign-up (no drop-ins)." },
-  { emoji: "🎟️", title: "5. Check in & earn rewards", body: "Check in when you arrive somewhere. Every 5 check-ins unlocks a reward, and finishing a day earns stamps and badges in your Adventure Passport." },
-  { emoji: "🔀", title: "6. Reshuffle, save & share", body: "Not feeling a plan? Reshuffle for a fresh one. Save the days you love, and share a day card with friends and family." },
+  { emoji: "🌅", title: "Welcome to Little Day Memories", body: "The first app that plans your whole day out with the kids — where to go, eat, play, and everything in between. Here's a quick tour." },
+  { emoji: "🧒", title: "1. Add your children", body: "In the Profile tab, add each child with their name and birthday. Switch between them anytime — the planner tailors ideas to whoever you've selected. Planning for more than one? Use 'Also bringing' on Home to plan around everyone." },
+  { emoji: "✨", title: "2. Plan My Day", body: "Tap Plan My Day, then set the age, budget, time you have, and nap or 'home by' time. Little Day Memories builds a full itinerary — with a lunch stop and a treat — in seconds." },
+  { emoji: "🔔", title: "3. Smart nudges on Home", body: "Little Day Memories watches the weather, your kids' birthdays, and no-school days (once you add your school district in a Home banner) to nudge you toward a plan before you even ask." },
+  { emoji: "🔍", title: "4. Search & explore", body: "Use the search bar on the home screen to find anything — a place, a town, or a category like 'playground' or 'ice cream.' Or open Categories to browse by type." },
+  { emoji: "🤸", title: "5. Classes & Activities", body: "Browse sports, dance, music, art, and afterschool programs. Look for the 'Free trial' tag, and note which need sign-up (no drop-ins)." },
+  { emoji: "🎟️", title: "6. Check in & earn rewards", body: "Check in when you arrive somewhere. Every 5 check-ins unlocks a reward, and finishing a day earns stamps and badges in your Adventure Passport — add a photo to remember it by." },
+  { emoji: "🔀", title: "7. Reshuffle, save & share", body: "Not feeling a plan? Reshuffle for a fresh one. Save the days you love, and share a day card with friends and family." },
+  { emoji: "👨‍👩‍👧", title: "8. Friends, Family Circle & play dates", body: "Sign in from the Profile tab to set your name and username, invite a co-parent or caregiver into your Family Circle, and plan group play dates — with a built-in chat to coordinate details." },
 ];
 
 function HowToOverlay({ open, onClose }) {
@@ -4061,7 +6541,7 @@ function HowToOverlay({ open, onClose }) {
         </div>
         <div className="text-center px-2">
           <div className="text-[46px] mb-2">{s.emoji}</div>
-          <h2 className="text-[20px] font-bold text-[#1B2A4A] mb-2" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>{s.title}</h2>
+          <h2 className="text-[20px] font-bold text-[#1B2A4A] mb-2" style={{ fontFamily: "'Poppins', sans-serif" }}>{s.title}</h2>
           <p className="text-[14px] text-[#5C5648] leading-relaxed" style={{ minHeight: 80 }}>{s.body}</p>
         </div>
         <div className="flex justify-center gap-1.5 my-4">
@@ -4137,18 +6617,48 @@ const SAFETY_RESOURCES = [
   },
 ];
 
-function SafetyScreen({ onBack }) {
+const ADULT_SAFETY_RESOURCES = [
+  {
+    group: "Getting home safely", emoji: "🚗", intro: "Plan your ride home before you go out — it's the single biggest thing that keeps a night out safe.",
+    items: [
+      { name: "Uber", town: "Westchester & NYC area", detail: "On-demand rides, available throughout Westchester, CT and NYC", phone: "", website: "uber.com", note: "Book in the app" },
+      { name: "Lyft", town: "Westchester & NYC area", detail: "On-demand rides, similar coverage to Uber", phone: "", website: "lyft.com", note: "Book in the app" },
+      { name: "Designate a driver before you go", town: "", detail: "The simplest, free option — pick who's not drinking before the night starts, not after.", phone: "", note: "Plan ahead" },
+    ],
+  },
+  {
+    group: "Know before you go", emoji: "🪪", intro: "Good to double check before heading to a bar, brewery, or tasting room.",
+    items: [
+      { name: "Bring a valid ID", town: "", detail: "New York's legal drinking age is 21 — most venues will ask, even if you're clearly over it.", phone: "", note: "21+" },
+      { name: "NY legal BAC limit is 0.08%", town: "", detail: "Above this is considered driving while intoxicated (DWI) under New York law.", phone: "", website: "ny.gov", note: "Know the limit" },
+      { name: "Check reservation policies", town: "", detail: "Several of the spots in \"For myself\" mode (like Muse Paintbar) require booking a specific time slot in advance — walk-ins aren't guaranteed.", phone: "", note: "Book ahead" },
+    ],
+  },
+  {
+    group: "Support resources", emoji: "💬", intro: "Free, confidential help if a night out (or a pattern around drinking) becomes a bigger concern.",
+    items: [
+      { name: "SAMHSA National Helpline", town: "Nationwide, 24/7", detail: "Free, confidential support for substance use or mental health concerns — for yourself or someone you care about.", phone: "1-800-662-4357", note: "Free · 24/7" },
+    ],
+  },
+];
+
+function SafetyScreen({ onBack, appMode, onSetMode }) {
+  const isAdult = appMode === "adult";
+  const resources = isAdult ? ADULT_SAFETY_RESOURCES : SAFETY_RESOURCES;
   return (
     <div className="pb-8">
       <TopBar title="Safety & Prep" onBack={onBack} />
+      <ModeSwitcher mode={appMode} onSetMode={onSetMode} />
       <div className="px-5 -mt-1 mb-2">
-        <span className="inline-flex items-center gap-1.5 text-[11.5px] font-semibold px-2.5 py-1 rounded-full" style={{ backgroundColor: "#E4F4E9", color: "#2E8B57" }}>
+        <span className="inline-flex items-center gap-1.5 text-[11.5px] font-semibold px-2.5 py-1 rounded-full" style={{ backgroundColor: isAdult ? "#F3ECF7" : "#E4F4E9", color: isAdult ? "#6B4E8C" : "#2E8B57" }}>
           📍 Westchester County · more regions coming
         </span>
       </div>
-      <p className="px-5 mb-4 text-[13px] text-[#8A8474]">Real local resources to keep little ones safe — car seat checks, CPR classes, and safety programs.</p>
+      <p className="px-5 mb-4 text-[13px] text-[#8A8474]">
+        {isAdult ? "Getting home safely, ID & legal basics, and support resources for a night out." : "Real local resources to keep little ones safe — car seat checks, CPR classes, and safety programs."}
+      </p>
       <div className="px-5 flex flex-col gap-6">
-        {SAFETY_RESOURCES.map((g) => (
+        {resources.map((g) => (
           <div key={g.group}>
             <div className="flex items-center gap-2 mb-1">
               <span className="text-[18px]">{g.emoji}</span>
@@ -4161,7 +6671,7 @@ function SafetyScreen({ onBack }) {
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1 min-w-0">
                       <p className="text-[14px] font-semibold text-[#1B2A4A]">{it.name}</p>
-                      <p className="text-[12px] text-[#8A8474]">{it.town} · {it.detail}</p>
+                      <p className="text-[12px] text-[#8A8474]">{it.town ? `${it.town} · ` : ""}{it.detail}</p>
                     </div>
                     {it.phone && (
                       <a href={`tel:${it.phone.replace(/[^0-9+]/g, "")}`} className="w-9 h-9 rounded-full flex items-center justify-center shrink-0" style={{ backgroundColor: "#E4F4E9" }}>
@@ -4182,7 +6692,7 @@ function SafetyScreen({ onBack }) {
             </div>
           </div>
         ))}
-        <p className="text-[11px] text-[#B8B0A0] leading-snug">Details verified from county and hospital listings, but schedules and contacts change — always call ahead. Car seat checks need a booked slot — call before you drive over. Resources cover Westchester County for now — built to expand region by region as Little Day grows.</p>
+        <p className="text-[11px] text-[#B8B0A0] leading-snug">Details verified from county and hospital listings, but schedules and contacts change — always call ahead. Car seat checks need a booked slot — call before you drive over. Resources cover Westchester County for now — built to expand region by region as Little Day Memories grows.</p>
       </div>
     </div>
   );
@@ -4202,10 +6712,10 @@ function BetaGate({ onUnlock }) {
     <div className="min-h-screen w-full flex items-center justify-center px-6" style={{ backgroundColor: "#FFFBF5" }}>
       <div className="w-full max-w-sm text-center" style={{ animation: shake ? "shakeX 0.4s" : "none" }}>
         <div className="flex justify-center mb-3"><LittleDaySun size={64} /></div>
-        <h1 className="text-[26px] font-bold" style={{ color: "#1B2A4A", fontFamily: "'Plus Jakarta Sans', sans-serif" }}>little day</h1>
+        <h1 className="text-[22px] font-bold" style={{ color: "#1B2A4A", fontFamily: "'Poppins', sans-serif" }}>little day memories</h1>
         <p className="text-[12px] font-bold tracking-widest mt-1" style={{ color: "#F5B71F" }}>PRIVATE BETA</p>
         <p className="text-[14px] mt-4 mb-5" style={{ color: "#8A8474" }}>
-          Little Day is in early testing with a small group of Westchester families. Enter your invite code to come in.
+          Little Day Memories is in early testing with a small group of Westchester families. Enter your invite code to come in.
         </p>
         <input
           value={code}
@@ -4219,9 +6729,132 @@ function BetaGate({ onUnlock }) {
         <button onClick={tryUnlock} className="w-full rounded-2xl py-3.5 mt-3 text-white font-semibold text-[15px]" style={{ background: "linear-gradient(135deg, #FF8C61, #FFC857)" }}>
           Let's go
         </button>
-        <p className="text-[11px] mt-5" style={{ color: "#B8B0A0" }}>Don't have a code? Little Day opens wider soon. {"☀️"}</p>
+        <p className="text-[11px] mt-5" style={{ color: "#B8B0A0" }}>Don't have a code? Little Day Memories opens wider soon. {"☀️"}</p>
       </div>
       <style>{`@keyframes shakeX { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-8px)} 75%{transform:translateX(8px)} }`}</style>
+    </div>
+  );
+}
+
+function InviteWelcomeScreen({ inviterName }) {
+  const [email, setEmail] = useState("");
+  const [code, setCode] = useState("");
+  const [stage, setStage] = useState("email"); // email -> sent -> code
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState("");
+
+  const signInWithGoogle = async () => {
+    setBusy(true); setMsg("");
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: window.location.origin + window.location.pathname },
+    });
+    setBusy(false);
+    if (error) {
+      setMsg(error.message.includes("not enabled")
+        ? "Google sign-in isn't switched on yet — use your email below for now."
+        : error.message);
+    }
+  };
+  const sendLink = async () => {
+    if (!email.includes("@")) { setMsg("Enter a valid email"); return; }
+    setBusy(true); setMsg("");
+    const { error } = await supabase.auth.signInWithOtp({
+      email: email.trim(),
+      options: { shouldCreateUser: true, emailRedirectTo: window.location.origin + window.location.pathname },
+    });
+    setBusy(false);
+    if (error) { setMsg(error.message); return; }
+    setStage("sent");
+  };
+  const verifyCode = async () => {
+    setBusy(true); setMsg("");
+    const { error } = await supabase.auth.verifyOtp({ email: email.trim(), token: code.trim(), type: "email" });
+    setBusy(false);
+    if (error) { setMsg("That code didn't match — check the email and try again."); }
+  };
+
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center px-6 py-10" style={{ backgroundColor: "#FFFBF5", fontFamily: "'Poppins', sans-serif" }}>
+      <LittleDaySun size={84} />
+      <p className="text-[22px] font-bold text-[#1B2A4A] mt-3 text-center" style={{ fontFamily: "'Poppins', sans-serif" }}>
+        🎉 {inviterName ? `${inviterName} invited you` : "You've been invited"} to Little Day Memories
+      </p>
+      <p className="text-[13px] font-bold tracking-widest mt-1" style={{ color: "#F5B71F" }}>BIG ADVENTURES. LITTLE DAYS.</p>
+      <p className="text-[14px] text-center mt-4 max-w-[320px]" style={{ color: "#8A8474" }}>
+        Little Day Memories plans a whole day out with your kids in one tap — where to go, where to eat, when to head home, all in one place.
+        {inviterName ? ` Sign up and you'll be connected with ${inviterName} right away.` : " Sign up to get started."}
+      </p>
+
+      <div className="w-full max-w-[340px] mt-7">
+        {stage !== "code" && (
+          <button
+            onClick={signInWithGoogle}
+            disabled={busy}
+            className="w-full rounded-2xl py-3.5 flex items-center justify-center gap-2.5 font-semibold text-[14px] border-2 bg-white"
+            style={{ borderColor: "#E7E1D4", color: "#1B2A4A", opacity: busy ? 0.6 : 1 }}
+          >
+            <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">
+              <path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9 3.6l6.7-6.7C35.6 2.6 30.2 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.8 6.1C12.3 13.2 17.6 9.5 24 9.5z"/>
+              <path fill="#4285F4" d="M46.9 24.5c0-1.6-.1-3.2-.4-4.7H24v9h12.9c-.6 3-2.3 5.5-4.8 7.2l7.6 5.9c4.4-4.1 7.2-10.2 7.2-17.4z"/>
+              <path fill="#FBBC05" d="M10.4 28.7c-.5-1.4-.8-2.9-.8-4.7s.3-3.3.8-4.7l-7.8-6.1C.9 16.5 0 20.1 0 24s.9 7.5 2.6 10.8l7.8-6.1z"/>
+              <path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.8-5.8l-7.6-5.9c-2.1 1.4-4.8 2.3-8.2 2.3-6.4 0-11.7-3.7-13.6-9.9l-7.8 6.1C6.5 42.6 14.6 48 24 48z"/>
+            </svg>
+            Continue with Google
+          </button>
+        )}
+
+        {stage === "email" && (
+          <>
+            <div className="flex items-center gap-3 my-3.5">
+              <span className="flex-1 h-px" style={{ backgroundColor: "#EFEAE0" }} />
+              <span className="text-[11.5px]" style={{ color: "#B8B0A0" }}>or use email</span>
+              <span className="flex-1 h-px" style={{ backgroundColor: "#EFEAE0" }} />
+            </div>
+            <input
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && sendLink()}
+              inputMode="email"
+              autoCapitalize="none"
+              placeholder="you@example.com"
+              className="w-full rounded-2xl px-4 py-3.5 text-[15px] border-2 outline-none text-center"
+              style={{ borderColor: "#F0E4D4" }}
+            />
+            <button onClick={sendLink} disabled={busy}
+              className="w-full rounded-2xl py-3.5 mt-3 text-white font-semibold text-[14px]"
+              style={{ background: "var(--cta)", opacity: busy ? 0.6 : 1 }}>
+              {busy ? "Sending…" : "Sign up with email"}
+            </button>
+            <p className="text-[11px] text-center mt-3" style={{ color: "#B8B0A0" }}>No passwords — we email you a secure link or code.</p>
+          </>
+        )}
+
+        {stage === "sent" && (
+          <div className="mt-2">
+            <p className="text-[13px] text-center" style={{ color: "#8A8474" }}>
+              Check <strong>{email}</strong> for a sign-in link — or enter the 6-digit code from that email below.
+            </p>
+            <input
+              value={code}
+              onChange={(e) => setCode(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && verifyCode()}
+              inputMode="numeric"
+              placeholder="6-digit code"
+              className="w-full rounded-2xl px-4 py-3.5 mt-3 text-[16px] text-center tracking-widest border-2 outline-none"
+              style={{ borderColor: "#F0E4D4" }}
+            />
+            <button onClick={verifyCode} disabled={busy}
+              className="w-full rounded-2xl py-3.5 mt-3 text-white font-semibold text-[14px]"
+              style={{ background: "var(--cta)", opacity: busy ? 0.6 : 1 }}>
+              {busy ? "Checking…" : "Confirm code"}
+            </button>
+            <button onClick={() => setStage("email")} className="w-full text-[12.5px] mt-3" style={{ color: "#B08A5A" }}>Use a different email</button>
+          </div>
+        )}
+
+        {!!msg && <p className="text-[12px] text-center mt-3" style={{ color: "#E0603A" }}>{msg}</p>}
+      </div>
     </div>
   );
 }
@@ -4229,62 +6862,151 @@ function BetaGate({ onUnlock }) {
 function AuthSheet({ open, onClose, session }) {
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
-  const [stage, setStage] = useState("email"); // email -> code
+  const [stage, setStage] = useState("email"); // email -> sent -> code
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
   if (!open) return null;
-  const sendCode = async () => {
+
+  const signInWithGoogle = async () => {
+    setBusy(true); setMsg("");
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: window.location.origin + window.location.pathname },
+    });
+    setBusy(false);
+    if (error) {
+      setMsg(error.message.includes("not enabled")
+        ? "Google sign-in isn't switched on yet — use your email below for now."
+        : error.message);
+    }
+    // On success the browser redirects to Google, so nothing else to do here.
+  };
+
+  const sendLink = async () => {
     if (!email.includes("@")) { setMsg("Enter a valid email"); return; }
     setBusy(true); setMsg("");
-    const { error } = await supabase.auth.signInWithOtp({ email: email.trim(), options: { shouldCreateUser: true } });
+    const { error } = await supabase.auth.signInWithOtp({
+      email: email.trim(),
+      options: {
+        shouldCreateUser: true,
+        emailRedirectTo: window.location.origin + window.location.pathname,
+      },
+    });
     setBusy(false);
     if (error) { setMsg(error.message); return; }
-    setStage("code"); setMsg("");
+    setStage("sent");
   };
-  const verify = async () => {
+
+  const verifyCode = async () => {
     setBusy(true); setMsg("");
     const { error } = await supabase.auth.verifyOtp({ email: email.trim(), token: code.trim(), type: "email" });
     setBusy(false);
     if (error) { setMsg("That code didn't match — check the email and try again."); return; }
     onClose();
   };
+
   return (
     <div className="absolute inset-0 z-40 flex items-end" onClick={onClose}>
       <div className="absolute inset-0 bg-black/30" />
       <div className="relative w-full rounded-t-3xl bg-white p-6 pb-8" onClick={(e) => e.stopPropagation()} style={{ animation: "sheetUp 0.22s ease-out" }}>
         <div className="w-10 h-1 rounded-full bg-[#E7E1D4] mx-auto mb-4" />
-        <p className="text-[17px] font-bold text-[#1B2A4A] text-center" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-          {stage === "email" ? "Sign in or create your account" : "Enter your code"}
-        </p>
-        <p className="text-[13px] text-[#8A8474] text-center mt-1 mb-4 max-w-[300px] mx-auto">
-          {stage === "email"
-            ? "Your kids, favorites and saved days will sync to any device you sign in on."
-            : `We emailed a 6-digit code to ${email}. It can take a minute — check spam too.`}
-        </p>
-        {stage === "email" ? (
+
+        {stage === "email" && (
           <>
-            <input value={email} onChange={(e) => setEmail(e.target.value)} inputMode="email" autoCapitalize="none" placeholder="you@example.com"
-              className="w-full rounded-2xl px-4 py-3.5 text-[15px] border-2 outline-none text-center" style={{ borderColor: "#F0E4D4" }} />
-            <button onClick={sendCode} disabled={busy}
-              className="w-full rounded-2xl py-3.5 mt-3 text-white font-semibold text-[14px]" style={{ background: "var(--cta)", opacity: busy ? 0.6 : 1 }}>
-              {busy ? "Sending…" : "Email me a sign-in code"}
+            <p className="text-[17px] font-bold text-[#1B2A4A] text-center" style={{ fontFamily: "'Poppins', sans-serif" }}>
+              Sign in or create your account
+            </p>
+            <p className="text-[13px] text-[#8A8474] text-center mt-1 mb-4 max-w-[300px] mx-auto">
+              Your children, caregivers and favorites will sync to any device you sign in on.
+            </p>
+
+            <button
+              onClick={signInWithGoogle}
+              disabled={busy}
+              className="w-full rounded-2xl py-3.5 flex items-center justify-center gap-2.5 font-semibold text-[14px] border-2 bg-white"
+              style={{ borderColor: "#E7E1D4", color: "#1B2A4A", opacity: busy ? 0.6 : 1 }}
+            >
+              <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">
+                <path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9 3.6l6.7-6.7C35.6 2.6 30.2 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.8 6.1C12.3 13.2 17.6 9.5 24 9.5z"/>
+                <path fill="#4285F4" d="M46.9 24.5c0-1.6-.1-3.2-.4-4.7H24v9h12.9c-.6 3-2.3 5.5-4.8 7.2l7.6 5.9c4.4-4.1 7.2-10.2 7.2-17.4z"/>
+                <path fill="#FBBC05" d="M10.4 28.7c-.5-1.4-.8-2.9-.8-4.7s.3-3.3.8-4.7l-7.8-6.1C.9 16.5 0 20.1 0 24s.9 7.5 2.6 10.8l7.8-6.1z"/>
+                <path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.8-5.8l-7.6-5.9c-2.1 1.4-4.8 2.3-8.2 2.3-6.4 0-11.7-3.7-13.6-9.9l-7.8 6.1C6.5 42.6 14.6 48 24 48z"/>
+              </svg>
+              Continue with Google
             </button>
-          </>
-        ) : (
-          <>
-            <input value={code} onChange={(e) => setCode(e.target.value)} inputMode="numeric" placeholder="123456"
-              className="w-full rounded-2xl px-4 py-3.5 text-[19px] tracking-[0.4em] border-2 outline-none text-center font-bold" style={{ borderColor: "#F0E4D4", color: "#1B2A4A" }} />
-            <button onClick={verify} disabled={busy}
-              className="w-full rounded-2xl py-3.5 mt-3 text-white font-semibold text-[14px]" style={{ background: "var(--cta)", opacity: busy ? 0.6 : 1 }}>
-              {busy ? "Checking…" : "Sign in"}
+
+            <div className="flex items-center gap-3 my-3.5">
+              <span className="flex-1 h-px" style={{ backgroundColor: "#EFEAE0" }} />
+              <span className="text-[11.5px]" style={{ color: "#B8B0A0" }}>or use email</span>
+              <span className="flex-1 h-px" style={{ backgroundColor: "#EFEAE0" }} />
+            </div>
+
+            <input
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && sendLink()}
+              inputMode="email"
+              autoCapitalize="none"
+              placeholder="you@example.com"
+              className="w-full rounded-2xl px-4 py-3.5 text-[15px] border-2 outline-none text-center"
+              style={{ borderColor: "#F0E4D4" }}
+            />
+            <button onClick={sendLink} disabled={busy}
+              className="w-full rounded-2xl py-3.5 mt-3 text-white font-semibold text-[14px]"
+              style={{ background: "var(--cta)", opacity: busy ? 0.6 : 1 }}>
+              {busy ? "Sending…" : "Email me a sign-in link"}
             </button>
-            <button onClick={() => { setStage("email"); setCode(""); }} className="w-full py-2.5 mt-1 text-[13px] font-medium" style={{ color: "#8A8474" }}>
-              Use a different email
-            </button>
+            <p className="text-[11px] text-[#B8B0A0] text-center mt-3">No passwords — we email you a secure link.</p>
           </>
         )}
+
+        {stage === "sent" && (
+          <div className="text-center">
+            <div className="flex justify-center mb-2"><LittleDaySun size={48} /></div>
+            <p className="text-[17px] font-bold text-[#1B2A4A]" style={{ fontFamily: "'Poppins', sans-serif" }}>Check your email</p>
+            <p className="text-[13.5px] text-[#5C5648] mt-2 max-w-[300px] mx-auto leading-snug">
+              We sent a sign-in link to <span className="font-semibold">{email}</span>. Open it on this device and you'll land right back here, signed in.
+            </p>
+            <div className="rounded-2xl p-3.5 mt-4 text-left" style={{ backgroundColor: "#FFF8EE" }}>
+              <p className="text-[12px]" style={{ color: "#B08A5A" }}>
+                Can't find it? Check spam or promotions — it can take a minute to arrive.
+              </p>
+            </div>
+            <button onClick={sendLink} disabled={busy} className="w-full rounded-2xl py-3 mt-3 font-semibold text-[13px] border" style={{ borderColor: "#E7E1D4", color: "#1B2A4A" }}>
+              {busy ? "Sending…" : "Resend the link"}
+            </button>
+            <button onClick={() => setStage("code")} className="w-full py-2.5 mt-1 text-[12.5px] font-medium" style={{ color: "#8A8474" }}>
+              My email has a 6-digit code instead
+            </button>
+            <button onClick={() => { setStage("email"); setMsg(""); }} className="w-full py-1 text-[12.5px] font-medium" style={{ color: "#8A8474" }}>
+              Use a different email
+            </button>
+          </div>
+        )}
+
+        {stage === "code" && (
+          <>
+            <p className="text-[17px] font-bold text-[#1B2A4A] text-center" style={{ fontFamily: "'Poppins', sans-serif" }}>Enter your code</p>
+            <p className="text-[13px] text-[#8A8474] text-center mt-1 mb-4">Type the 6-digit code from the email.</p>
+            <input
+              value={code}
+              onChange={(e) => setCode(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && verifyCode()}
+              inputMode="numeric"
+              placeholder="123456"
+              className="w-full rounded-2xl px-4 py-3.5 text-[19px] tracking-[0.4em] border-2 outline-none text-center font-bold"
+              style={{ borderColor: "#F0E4D4", color: "#1B2A4A" }}
+            />
+            <button onClick={verifyCode} disabled={busy}
+              className="w-full rounded-2xl py-3.5 mt-3 text-white font-semibold text-[14px]"
+              style={{ background: "var(--cta)", opacity: busy ? 0.6 : 1 }}>
+              {busy ? "Checking…" : "Sign in"}
+            </button>
+            <button onClick={() => setStage("sent")} className="w-full py-2.5 mt-1 text-[13px] font-medium" style={{ color: "#8A8474" }}>Back</button>
+          </>
+        )}
+
         {msg && <p className="text-[12px] text-center mt-2" style={{ color: "#C6564B" }}>{msg}</p>}
-        <p className="text-[11px] text-[#B8B0A0] text-center mt-3">No passwords — we email you a code each time.</p>
       </div>
     </div>
   );
@@ -4367,32 +7089,63 @@ export default function LittleDayApp() {
   const [savedDays, setSavedDays] = usePersistentState("savedDays", []);
   const [reviews, setReviews] = usePersistentState("reviews", REVIEWS_SEED);
   const [completedDays, setCompletedDays] = usePersistentState("completedDays", []);
+  const addDayPhoto = (dayId, dataUrl) => {
+    setCompletedDays((cur) => cur.map((d) => d.id === dayId ? { ...d, memoryPhoto: dataUrl } : d));
+  };
   const [celebration, setCelebration] = useState(null);
   const [dayCard, setDayCard] = useState(null);
   const [checkIns, setCheckIns] = usePersistentState("checkIns", {});
   const [reward, setReward] = useState(null);
+  const [burst, setBurst] = useState(null);
   const [surpriseMode, setSurpriseMode] = useState(false);
   const [lastPrefs, setLastPrefs] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [homeFilter, setHomeFilter] = useState("all");
+  const [adultTimeOfDay, setAdultTimeOfDay] = usePersistentState("adultTimeOfDay", "day");
   const [showHowTo, setShowHowTo] = useState(false);
   const [, setWeatherV] = useState(0);
   useEffect(() => { fetchLiveWeather().then(() => setWeatherV((v) => v + 1)); }, []);
 
   const [kids, setKids] = usePersistentState("kids", [{ id: "k1", name: "Little one", birthday: "2022-06-15", emoji: "🧒" }]);
   const [activeKidId, setActiveKidId] = usePersistentState("activeKidId", "k1");
+  const [companionKidIds, setCompanionKidIds] = usePersistentState("companionKidIds", []);
+  const toggleCompanionKid = (id) => {
+    setCompanionKidIds((cur) => cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]);
+  };
+  const [schoolDistrictId, setSchoolDistrictId] = usePersistentState("schoolDistrictId", null);
   const [kidEditor, setKidEditor] = useState(null);
   const [sitters, setCaregivers] = usePersistentState("sitters", []);
+  const [emergencyContacts, setEmergencyContacts] = usePersistentState("emergencyContacts", []);
   const [sitterEditor, setSitterEditor] = useState(null);
+  const [emergencyEditor, setEmergencyEditor] = useState(null);
   const [inviteOpen, setInviteOpen] = useState(false);
+  const [googlePlace, setGooglePlace] = useState(null);
 
-  const [favorites, setFavorites] = usePersistentState("favorites", ["muscoot-farm"]);
+  const [favorites, setFavorites] = usePersistentState("favorites", []);
+  const [appMode, setAppMode] = usePersistentState("appMode", "kids");
+  const [adultFavorites, setAdultFavorites] = usePersistentState("adultFavorites", []);
+  const [savedEvents, setSavedEvents] = usePersistentState("savedEvents", []);
+  const toggleSavedEvent = (id) =>
+    setSavedEvents((cur) => (cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]));
+  const [adultSelectedPlace, setAdultSelectedPlace] = useState(null);
+  const toggleAdultFavorite = (id) =>
+    setAdultFavorites((cur) => (cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]));
   const location = useGeolocation();
+  useEffect(() => {
+    // Start with the user's real location automatically, rather than waiting for a manual tap.
+    // If they've already granted/denied permission before, the browser resolves this instantly
+    // (or silently), so this doesn't add an extra prompt beyond what the OS would show anyway.
+    if (location.status === "idle") location.request();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [friends, setFriends] = usePersistentState("friends", FRIENDS_SEED);
 
   // ---- Accounts & cloud sync (Stage 1) ----
   const [session, setSession] = useState(null);
   const [authOpen, setAuthOpen] = useState(false);
   const cloudLoaded = useRef(false);
+  const [activeFamilyId, setActiveFamilyId] = usePersistentState("activeFamilyId", null);
+  const effectiveFamilyId = activeFamilyId || (session ? session.user.id : null);
   useEffect(() => {
     if (!backendReady()) return;
     supabase.auth.getSession().then(({ data }) => setSession(data.session || null));
@@ -4400,54 +7153,313 @@ export default function LittleDayApp() {
     return () => sub.subscription.unsubscribe();
   }, []);
   useEffect(() => {
-    if (!backendReady() || !session) { cloudLoaded.current = false; return; }
+    if (!backendReady() || !session || !effectiveFamilyId) { cloudLoaded.current = false; return; }
+    cloudLoaded.current = false;
+    let cancelled = false;
+    const fetchOnce = () => supabase.from("user_data").select("*").eq("user_id", effectiveFamilyId).maybeSingle();
     (async () => {
-      const { data } = await supabase.from("user_data").select("*").eq("user_id", session.user.id).maybeSingle();
-      if (data) {
-        const has = (v) => Array.isArray(v) ? v.length > 0 : v && Object.keys(v).length > 0;
-        if (has(data.kids)) { setKids(data.kids); setActiveKidId(data.kids[0].id); }
-        if (has(data.sitters)) setCaregivers(data.sitters);
-        if (has(data.favorites)) setFavorites(data.favorites);
-        if (has(data.saved_days)) setSavedDays(data.saved_days);
-        if (has(data.check_ins)) setCheckIns(data.check_ins);
-        if (has(data.completed_days)) setCompletedDays(data.completed_days);
+      let { data } = await fetchOnce();
+      console.log("[LDM DEBUG] user_data pull — effectiveFamilyId:", effectiveFamilyId, "session uid:", session?.user?.id, "first result:", data);
+      // Right after sign-in there's a brief window where the auth token hasn't fully
+      // propagated yet, which can make this query come back empty even though a real
+      // row exists. If we get nothing back, wait a beat and try again before giving up.
+      if (!data) {
+        await new Promise((r) => setTimeout(r, 1500));
+        if (cancelled) return;
+        ({ data } = await fetchOnce());
+        console.log("[LDM DEBUG] user_data pull retry result:", data);
       }
+      if (cancelled) return;
+      const data2 = data || {};
+      const hasNonEmpty = (v) => Array.isArray(v) ? v.length > 0 : v && Object.keys(v).length > 0;
+      const wasSynced = (v) => v !== null && v !== undefined; // trust the cloud even when it's genuinely empty
+      if (hasNonEmpty(data2.kids)) { setKids(data2.kids); setActiveKidId(data2.kids[0].id); }
+      if (hasNonEmpty(data2.sitters)) setCaregivers(data2.sitters);
+      if (wasSynced(data2.emergency_contacts)) setEmergencyContacts(data2.emergency_contacts);
+      if (wasSynced(data2.favorites)) setFavorites(data2.favorites);
+      if (wasSynced(data2.saved_days)) setSavedDays(data2.saved_days);
+      if (wasSynced(data2.check_ins)) setCheckIns(data2.check_ins);
+      if (wasSynced(data2.completed_days)) setCompletedDays(data2.completed_days);
       cloudLoaded.current = true;
     })();
-  }, [session]);
+    return () => { cancelled = true; };
+  }, [session, effectiveFamilyId]);
   useEffect(() => {
-    if (!backendReady() || !session || !cloudLoaded.current) return;
+    if (!backendReady() || !session || !effectiveFamilyId || !cloudLoaded.current) return;
     const t = setTimeout(() => {
       supabase.from("user_data").upsert({
-        user_id: session.user.id,
+        user_id: effectiveFamilyId,
         kids, sitters, favorites,
         saved_days: savedDays, check_ins: checkIns, completed_days: completedDays,
+        emergency_contacts: emergencyContacts,
         updated_at: new Date().toISOString(),
       }).then(() => {});
     }, 1200);
     return () => clearTimeout(t);
-  }, [session, kids, sitters, favorites, savedDays, checkIns, completedDays]);
+  }, [session, effectiveFamilyId, kids, sitters, favorites, savedDays, checkIns, completedDays, emergencyContacts]);
   const signOut = async () => { if (backendReady()) await supabase.auth.signOut(); showToast("Signed out — this device keeps its local copy"); };
+
+  // ---- Family Circle (caregiver access) ----
+  const [myCaregivers, setMyCaregivers] = useState([]);
+  const [caregiverLinks, setCaregiverLinks] = useState([]);
+  const [caregiverInvite, setCaregiverInvite] = useState(null);
+  const [pendingCaregiverCode, setPendingCaregiverCode] = useState(null);
+  const [forceEditNameToken, setForceEditNameToken] = useState(null);
+
+  const [pendingFriendId, setPendingFriendId] = usePersistentState("pendingFriendId", null);
+  const [inviterName, setInviterName] = useState(null);
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get("caregiver");
+    const addfriend = params.get("addfriend");
+    if (code) {
+      setPendingCaregiverCode(code);
+      params.delete("caregiver");
+    }
+    if (addfriend) {
+      setPendingFriendId(addfriend);
+      setBetaOk(true); // a personal invite from a real friend is credential enough to skip the beta-code screen
+      params.delete("addfriend");
+    }
+    if (code || addfriend) {
+      const clean = window.location.pathname + (params.toString() ? `?${params}` : "");
+      window.history.replaceState({}, "", clean);
+    }
+  }, []);
+  // Look up the inviter's name to show on the welcome screen, even before the new person signs in.
+  useEffect(() => {
+    if (!pendingFriendId || session || !backendReady()) return;
+    supabase.rpc("get_profiles_by_ids", { ids: [pendingFriendId] }).then(({ data }) => {
+      const other = (data || [])[0];
+      setInviterName(other ? ([other.first_name, other.last_name].filter(Boolean).join(" ") || other.display_name || (other.handle ? `@${other.handle}` : null)) : null);
+    });
+  }, [pendingFriendId, session]);
+  useEffect(() => {
+    if (!pendingFriendId || !backendReady() || !session) return;
+    (async () => {
+      if (pendingFriendId === session.user.id) { showToast("That's your own invite link!"); setPendingFriendId(null); return; }
+      const { data: profs } = await supabase.rpc("get_profiles_by_ids", { ids: [pendingFriendId] });
+      const other = (profs || [])[0];
+      const label = other ? ([other.first_name, other.last_name].filter(Boolean).join(" ") || other.display_name || (other.handle ? `@${other.handle}` : "your friend")) : "your friend";
+      const { error } = await supabase.rpc("add_friendship", { other_id: pendingFriendId });
+      if (error) { showToast("That invite link didn't work — ask for a new one"); }
+      else {
+        setBurst({ emoji: "🎉", text: `You're connected with ${label}!`, subtext: "Add your name so they recognize you" });
+        loadRealFriends();
+        setSeenWelcome(true);
+        goTo("profile");
+        setForceEditNameToken(Date.now());
+      }
+      setPendingFriendId(null);
+    })();
+  }, [pendingFriendId, session]);
+  useEffect(() => {
+    if (!pendingCaregiverCode || !backendReady() || !session) return;
+    (async () => {
+      const { data, error } = await supabase.rpc("redeem_family_invite", { p_code: pendingCaregiverCode });
+      if (error) { showToast("That caregiver invite link didn't work — ask for a new one"); }
+      else {
+        showToast(`You're in! Add your name so ${data || "they"} recognize you`);
+        goTo("profile");
+        setForceEditNameToken(Date.now());
+      }
+      setPendingCaregiverCode(null);
+    })();
+  }, [pendingCaregiverCode, session]);
+
+  const loadFamilyCircle = async () => {
+    if (!backendReady() || !session) { setMyCaregivers([]); setCaregiverLinks([]); return; }
+    const { data: mine } = await supabase
+      .from("family_members").select("id, caregiver_id")
+      .eq("owner_id", session.user.id);
+    const { data: access } = await supabase
+      .from("family_members").select("id, owner_id")
+      .eq("caregiver_id", session.user.id);
+    const allIds = [...(mine || []).map((m) => m.caregiver_id), ...(access || []).map((a) => a.owner_id)];
+    let profileById = {};
+    if (allIds.length) {
+      const { data: profs } = await supabase.rpc("get_profiles_by_ids", { ids: allIds });
+      (profs || []).forEach((p) => { profileById[p.id] = p; });
+    }
+    const label = (p) => p ? ([p.first_name, p.last_name].filter(Boolean).join(" ") || p.display_name || (p.handle ? `@${p.handle}` : "Little Day Memories parent")) : "Little Day Memories parent";
+    setMyCaregivers((mine || []).map((m) => ({ ...m, profiles: { display_name: label(profileById[m.caregiver_id]) } })));
+    setCaregiverLinks((access || []).map((a) => ({ ...a, profiles: { display_name: label(profileById[a.owner_id]) } })));
+  };
+  useEffect(() => { loadFamilyCircle(); }, [session]);
+
+  const createCaregiverInvite = async () => {
+    if (!backendReady() || !session) return;
+    const { data, error } = await supabase.rpc("create_family_invite");
+    if (error || !data) { showToast("Couldn't create an invite — try again"); return; }
+    const link = `${window.location.origin}${window.location.pathname}?caregiver=${data}`;
+    setCaregiverInvite({ code: data, link });
+  };
+  const removeCaregiverAccess = async (rowId) => {
+    if (!backendReady()) return;
+    await supabase.from("family_members").delete().eq("id", rowId);
+    loadFamilyCircle();
+    showToast("Caregiver access removed");
+  };
+  const switchFamily = (ownerId) => {
+    setActiveFamilyId(ownerId);
+    showToast(ownerId ? "Now viewing that family's plans" : "Back to your own family");
+  };
+
+  // ---- Friends: real name/handle search ----
+  const [profileNames, setProfileNames] = useState({ firstName: "", lastName: "", handle: "" });
+  useEffect(() => {
+    if (!backendReady() || !session) return;
+    let cancelled = false;
+    (async () => {
+      let { data } = await supabase.from("profiles").select("first_name, last_name, handle").eq("id", session.user.id).maybeSingle();
+      if (!data) {
+        await new Promise((r) => setTimeout(r, 1500));
+        if (cancelled) return;
+        ({ data } = await supabase.from("profiles").select("first_name, last_name, handle").eq("id", session.user.id).maybeSingle());
+      }
+      if (!cancelled && data) setProfileNames({ firstName: data.first_name || "", lastName: data.last_name || "", handle: data.handle || "" });
+    })();
+    return () => { cancelled = true; };
+  }, [session]);
+  const saveProfileNames = async (next) => {
+    if (!backendReady() || !session) return { ok: false, message: "Sign in first to set your name" };
+    const { error } = await supabase.from("profiles").update({
+      first_name: next.firstName.trim(), last_name: next.lastName.trim(), handle: next.handle.trim() || null,
+    }).eq("id", session.user.id);
+    if (error) {
+      const msg = /duplicate|unique/i.test(error.message) ? "That username is taken — try another" : "Couldn't save — try again";
+      return { ok: false, message: msg };
+    }
+    setProfileNames(next);
+    return { ok: true, message: "Profile saved" };
+  };
+  const searchRealProfiles = async (q) => {
+    if (!backendReady() || !session || q.trim().length < 2) return [];
+    const { data, error } = await supabase.rpc("search_profiles", { q: q.trim() });
+    return error ? [] : (data || []);
+  };
+  const addRealFriend = async (otherId, label) => {
+    if (!backendReady() || !session) return;
+    const { error } = await supabase.rpc("add_friendship", { other_id: otherId });
+    if (!error) { showToast(`${label} added to your friends`); loadRealFriends(); }
+  };
+  const loadRealFriends = async () => {
+    if (!backendReady() || !session) return;
+    const uid = session.user.id;
+    let { data: rows } = await supabase.from("friendships").select("a,b").or(`a.eq.${uid},b.eq.${uid}`);
+    console.log("[LDM DEBUG] friendships pull — uid:", uid, "first result:", rows);
+    if (!rows || !rows.length) {
+      await new Promise((r) => setTimeout(r, 1500));
+      ({ data: rows } = await supabase.from("friendships").select("a,b").or(`a.eq.${uid},b.eq.${uid}`));
+      console.log("[LDM DEBUG] friendships pull retry result:", rows);
+    }
+    const otherIds = (rows || []).map((r) => (r.a === uid ? r.b : r.a));
+    if (!otherIds.length) { setFriends((cur) => cur.filter((f) => !f.real)); return; }
+    const { data: profiles } = await supabase.rpc("get_profiles_by_ids", { ids: otherIds });
+    const real = (profiles || []).map((p) => ({
+      id: p.id,
+      name: [p.first_name, p.last_name].filter(Boolean).join(" ") || p.display_name || (p.handle ? `@${p.handle}` : "Little Day Memories parent"),
+      emoji: "🙂", kids: "", town: "", real: true,
+    }));
+    setFriends((cur) => [...real, ...cur.filter((f) => !f.real)]);
+  };
+  useEffect(() => { loadRealFriends(); }, [session]);
   const [sharedDays, setSharedDays] = useState(SHARED_DAYS_SEED);
   const [playDates, setPlayDates] = useState(PLAYDATES_SEED);
+  const [ackAcceptedIds, setAckAcceptedIds] = usePersistentState("ackAcceptedInvites", []);
+  const [friendsBadge, setFriendsBadge] = useState(0);
+  const [selectedFriend, setSelectedFriend] = useState(null);
+  const [friendKids, setFriendKids] = useState(null);
+  const openFriendDetail = (f) => {
+    setSelectedFriend(f);
+    setFriendKids(null);
+    setScreen("friendDetail");
+    if (f.real && backendReady()) {
+      supabase.rpc("get_friend_kids", { p_friend_id: f.id }).then(({ data }) => setFriendKids(data || []));
+    } else {
+      setFriendKids([]);
+    }
+  };
   const [toast, setToast] = useState(null);
   const [invitePickerOpen, setInvitePickerOpen] = useState(false);
+  const [chatGroupId, setChatGroupId] = useState(null);
 
   const showToast = (msg) => {
     setToast(msg);
     setTimeout(() => setToast(null), 2400);
   };
 
-  const acceptPlayDate = (id) => {
-    setPlayDates((cur) => cur.map((p) => (p.id === id ? { ...p, status: "confirmed" } : p)));
+  const loadRealPlayDates = async () => {
+    if (!backendReady() || !session) return;
+    const uid = session.user.id;
+    const { data: rows } = await supabase.from("play_dates").select("*").or(`from_user.eq.${uid},to_user.eq.${uid}`).order("created_at", { ascending: false });
+    if (!rows || !rows.length) { setPlayDates((cur) => cur.filter((p) => !p.real)); return; }
+    const otherIds = [...new Set(rows.map((r) => (r.from_user === uid ? r.to_user : r.from_user)))];
+    const { data: profiles } = await supabase.rpc("get_profiles_by_ids", { ids: otherIds });
+    const nameFor = (id) => {
+      const p = (profiles || []).find((x) => x.id === id);
+      if (!p) return "A Little Day Memories parent";
+      return [p.first_name, p.last_name].filter(Boolean).join(" ") || p.display_name || (p.handle ? `@${p.handle}` : "A Little Day Memories parent");
+    };
+    const mapped = rows.map((r) => {
+      const stops = (r.day_plan && r.day_plan.stops) || [];
+      const mine = r.from_user === uid;
+      return {
+        id: r.id, real: true, groupId: r.group_id, stops,
+        direction: mine ? "outgoing" : "incoming",
+        friend: nameFor(mine ? r.to_user : r.from_user),
+        friendEmoji: "🙂",
+        placeId: stops[0] ? stops[0].placeId : null,
+        time: stops[0] ? stops[0].time : null,
+        day: "Planned",
+        status: r.status === "invited" ? "pending" : r.status,
+      };
+    });
+    setPlayDates((cur) => {
+      const merged = [...mapped, ...cur.filter((p) => !p.real)];
+      const newlyConfirmed = mapped.filter(
+        (p) => p.direction === "outgoing" && p.status === "confirmed" && !ackAcceptedIds.includes(p.id)
+      );
+      if (newlyConfirmed.length) {
+        const first = newlyConfirmed[0];
+        setBurst({ emoji: "🙌", text: `${first.friend} accepted your invite!`, subtext: "Check Friends to see your plan together" });
+        setAckAcceptedIds((ids) => [...ids, ...newlyConfirmed.map((p) => p.id)]);
+        setFriendsBadge((n) => n + newlyConfirmed.length);
+      }
+      return merged;
+    });
+  };
+  useEffect(() => { loadRealPlayDates(); }, [session]);
+
+  const acceptPlayDate = async (id) => {
+    const pd = playDates.find((p) => p.id === id);
+    if (pd && pd.real && backendReady()) {
+      await supabase.from("play_dates").update({ status: "confirmed" }).eq("id", id);
+      loadRealPlayDates();
+    } else {
+      setPlayDates((cur) => cur.map((p) => (p.id === id ? { ...p, status: "confirmed" } : p)));
+    }
     showToast("You're in! Play date confirmed 🎉");
   };
-  const declinePlayDate = (id) => {
-    setPlayDates((cur) => cur.filter((p) => p.id !== id));
+  const declinePlayDate = async (id) => {
+    const pd = playDates.find((p) => p.id === id);
+    if (pd && pd.real && backendReady()) {
+      await supabase.from("play_dates").delete().eq("id", id);
+      loadRealPlayDates();
+    } else {
+      setPlayDates((cur) => cur.filter((p) => p.id !== id));
+    }
   };
-  const addFriend = (name) => {
-    setFriends((cur) => [...cur, { id: `f${Date.now()}`, name, emoji: "🙂", kids: "New friend", town: "Nearby" }]);
-    showToast(`${name} added to your friends`);
+  const addFriend = (nameOrPhone) => {
+    const isPhone = /^[\d\s()+-]{7,}$/.test(nameOrPhone.trim());
+    setFriends((cur) => [...cur, {
+      id: `f${Date.now()}`,
+      name: isPhone ? nameOrPhone.trim() : nameOrPhone,
+      emoji: "🙂",
+      kids: "New friend",
+      town: "Nearby",
+    }]);
+    showToast(isPhone ? "Invite noted — we'll text them once real invites are live" : `${nameOrPhone} added to your friends`);
   };
   const shareCurrentDay = () => {
     if (!itinerary.length) return;
@@ -4463,24 +7475,34 @@ export default function LittleDayApp() {
     ]);
     showToast("Day shared with your friends");
   };
-  const inviteFriendToDay = (picked) => {
+  const inviteFriendToDay = async (picked) => {
     const first = itinerary[0];
     if (!first) return;
     const arr = Array.isArray(picked) ? picked : [picked];
     if (!arr.length) return;
-    setPlayDates((cur) => [
-      ...cur,
-      ...arr.map((friend, i) => ({
-        id: `pd${Date.now()}_${i}`,
-        direction: "outgoing",
-        friend: friend.name,
-        friendEmoji: friend.emoji,
-        placeId: first.place.id,
-        time: first.time,
-        day: "Soon",
-        status: "invited",
-      })),
-    ]);
+    const realFriends = arr.filter((f) => f.real);
+    const demoFriends = arr.filter((f) => !f.real);
+
+    if (realFriends.length && backendReady() && session) {
+      const dayPlan = { stops: itinerary.map((i) => ({ placeId: i.place.id, time: i.time })) };
+      const { error } = await supabase.rpc("create_group_plan", { p_day_plan: dayPlan, p_friend_ids: realFriends.map((f) => f.id) });
+      if (!error) loadRealPlayDates();
+    }
+    if (demoFriends.length) {
+      setPlayDates((cur) => [
+        ...cur,
+        ...demoFriends.map((friend, i) => ({
+          id: `pd${Date.now()}_${i}`,
+          direction: "outgoing",
+          friend: friend.name,
+          friendEmoji: friend.emoji,
+          placeId: first.place.id,
+          time: first.time,
+          day: "Soon",
+          status: "invited",
+        })),
+      ]);
+    }
     setInvitePickerOpen(false);
     showToast(
       arr.length === 1
@@ -4572,7 +7594,7 @@ export default function LittleDayApp() {
     if (newCount % 5 === 0) {
       setReward({ place, number: newCount / 5 });
     } else {
-      showToast(`Checked in at ${place.name}! ${newCount % 5}/5 toward a reward`);
+      setBurst({ emoji: place.photo || "📍", text: `Checked in at ${place.name}!`, subtext: `${newCount % 5}/5 toward a reward` });
     }
   };
 
@@ -4602,9 +7624,22 @@ export default function LittleDayApp() {
   const toggleFavorite = (id) =>
     setFavorites((cur) => (cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]));
 
+  const removeFriend = async (f) => {
+    if (f.real && backendReady() && session) {
+      const uid = session.user.id;
+      await supabase.from("friendships").delete().or(`and(a.eq.${uid},b.eq.${f.id}),and(a.eq.${f.id},b.eq.${uid})`);
+      loadRealFriends();
+    } else {
+      setFriends((cur) => cur.filter((x) => x.id !== f.id));
+    }
+    showToast(`Removed ${f.name} from your friends`);
+    goTo("profile");
+  };
+
   const goTo = (next) => {
     setPrevScreen(screen);
     setScreen(next);
+    if (next === "profile") { setFriendsBadge(0); loadRealPlayDates(); }
   };
 
   const handleSelectPlace = (place) => {
@@ -4670,15 +7705,35 @@ export default function LittleDayApp() {
     setSitterEditor(null);
     showToast("Removed");
   };
+  const openAddEmergencyContact = () => setEmergencyEditor({ id: null, name: "", relationship: "", phone: "", notes: "", isNew: true });
+  const openEditEmergencyContact = (c) => setEmergencyEditor({ ...c, isNew: false });
+  const saveEmergencyContact = (d) => {
+    if (d.isNew) {
+      setEmergencyContacts((cur) => [...cur, { id: `ec${Date.now()}`, name: d.name || "Contact", relationship: d.relationship, phone: d.phone, notes: d.notes }]);
+      showToast("Emergency contact added");
+    } else {
+      setEmergencyContacts((cur) => cur.map((c) => (c.id === d.id ? { ...c, name: d.name || c.name, relationship: d.relationship, phone: d.phone, notes: d.notes } : c)));
+      showToast("Saved");
+    }
+    setEmergencyEditor(null);
+  };
+  const deleteEmergencyContact = (id) => {
+    setEmergencyContacts((cur) => cur.filter((c) => c.id !== id));
+    setEmergencyEditor(null);
+    showToast("Removed");
+  };
   const shareWithSitter = async (sitter) => {
     const lines = itinerary.length
       ? itinerary.map((i) => `${formatHour(i.time)} — ${i.place.name} (${i.place.address || i.place.town})`).join("\n")
       : "";
     const napLine = napHour ? `Nap time: around ${formatHour(napHour)}\n` : "";
     const homeLine = homeBy ? `Home by: ${formatHour(homeBy)}\n` : "";
+    const ecLine = emergencyContacts && emergencyContacts.length
+      ? `Emergency: ${emergencyContacts.map((c) => `${c.name}${c.relationship ? ` (${c.relationship})` : ""}${c.phone ? ` ${c.phone}` : ""}`).join(", ")}\n`
+      : "";
     const text = itinerary.length
-      ? `Today's Little Day plan for the kids:\n${lines}\n${napLine}${homeLine}Thanks ${sitter.name}!`
-      : `Hi ${sitter.name}! Sharing our Little Day app info — today's plan will follow.`;
+      ? `Today's Little Day Memories plan for the kids:\n${lines}\n${napLine}${homeLine}${ecLine}Thanks ${sitter.name}!`
+      : `Hi ${sitter.name}! Sharing our Little Day Memories app info — today's plan will follow.`;
     try {
       if (navigator.share) { await navigator.share({ title: "Today's plan", text }); return; }
     } catch (e) {}
@@ -4702,11 +7757,25 @@ export default function LittleDayApp() {
         onSetActive={setActiveKidId}
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
+        onFilterToCategory={(k) => { setHomeFilter(k); goTo("map"); }}
+        appMode={appMode} onSetMode={setAppMode}
+        adultFavorites={adultFavorites} onToggleAdultFavorite={toggleAdultFavorite}
+        onSelectAdultPlace={setAdultSelectedPlace}
+        adultTimeOfDay={adultTimeOfDay} onSetAdultTimeOfDay={setAdultTimeOfDay}
         onHowTo={() => setShowHowTo(true)}
+        onSelectGoogle={setGooglePlace}
+        companionKidIds={companionKidIds}
+        onToggleCompanionKid={toggleCompanionKid}
+        schoolDistrictId={schoolDistrictId}
+        onSetSchoolDistrict={setSchoolDistrictId}
+        completedDays={completedDays}
+        onOpenBuilder={() => goTo("planner")}
       />
     );
   } else if (screen === "planner") {
-    content = <PlannerScreen onBack={() => goTo("home")} onGenerate={handleGenerate} locationLabel={location.label} initialAge={ageToBand(ageFromBirthday(activeKid?.birthday))} activeKidName={activeKid?.name || ""} />;
+    content = <PlannerScreen onBack={() => goTo("home")} onGenerate={handleGenerate} locationLabel={location.label} initialAge={ageToBand(ageFromBirthday(activeKid?.birthday))} activeKidName={activeKid?.name || ""} companionKids={kids.filter((k) => companionKidIds.includes(k.id))} />;
+  } else if (screen === "adultPlanner") {
+    content = <AdultPlannerScreen onBack={() => goTo("home")} onSelectAdultPlace={setAdultSelectedPlace} appMode={appMode} onSetMode={setAppMode} adultTimeOfDay={adultTimeOfDay} onSetAdultTimeOfDay={setAdultTimeOfDay} />;
   } else if (screen === "planning") {
     content = <PlanningScreen onDone={() => setScreen("itinerary")} />;
   } else if (screen === "itinerary") {
@@ -4731,27 +7800,46 @@ export default function LittleDayApp() {
       />
     );
   } else if (screen === "map") {
-    content = <MapScreen setSelectedPlace={handleSelectPlace} favorites={favorites} toggleFavorite={toggleFavorite} location={location} onRequestLocation={location.request} initialQuery={searchQuery} />;
+    content = <MapScreen setSelectedPlace={handleSelectPlace} favorites={favorites} toggleFavorite={toggleFavorite} location={location} onRequestLocation={location.request} initialQuery={searchQuery} initialFilter={homeFilter} setScreen={goTo}
+      appMode={appMode} onSetMode={setAppMode} adultFavorites={adultFavorites} onToggleAdultFavorite={toggleAdultFavorite} onSelectAdultPlace={setAdultSelectedPlace} onSelectGoogle={setGooglePlace}
+      adultTimeOfDay={adultTimeOfDay} onSetAdultTimeOfDay={setAdultTimeOfDay} />;
   } else if (screen === "favorites") {
     content = <FavoritesScreen favorites={favorites} setSelectedPlace={handleSelectPlace} toggleFavorite={toggleFavorite} savedDays={savedDays} onLoadDay={useSharedDay} onDeleteDay={deleteSavedDay} />;
-  } else if (screen === "friends") {
+  } else if (screen === "events") {
+    content = <EventsScreen appMode={appMode} onSetMode={setAppMode} savedEvents={savedEvents} onToggleSave={toggleSavedEvent} />;
+  } else if (screen === "friendDetail") {
     content = (
-      <FriendsScreen
-        onOpenInvite={() => setInviteOpen(true)}
-        friends={friends}
-        sharedDays={sharedDays}
-        playDates={playDates}
-        onAccept={acceptPlayDate}
-        onDecline={declinePlayDate}
-        onUseDay={useSharedDay}
-        onAddFriend={addFriend}
-        setSelectedPlace={handleSelectPlace}
+      <FriendDetailScreen
+        friend={selectedFriend}
+        kids={friendKids}
+        onBack={() => goTo("profile")}
+        onPlanDay={() => { showToast("Build a day, then invite " + selectedFriend.name.split(" ")[0] + " to join!"); goTo("home"); }}
+        onRemoveFriend={removeFriend}
       />
     );
   } else if (screen === "profile") {
-    content = <ProfileScreen onOpenPremium={() => goTo("premium")} onOpenPassport={() => goTo("passport")} stats={stats} session={session} onOpenAuth={() => setAuthOpen(true)} onSignOut={signOut} earnedBadges={earnedBadges} kids={kids} activeKidId={activeKidId} onSetActive={setActiveKidId} onAddKid={openAddKid} onEditKid={openEditKid} sitters={sitters} onAddSitter={openAddSitter} onEditSitter={openEditSitter} onShareWithSitter={shareWithSitter} />;
+    content = <ProfileScreen onOpenPremium={() => goTo("premium")} onOpenPassport={() => goTo("passport")} stats={stats} session={session} onOpenAuth={() => setAuthOpen(true)} onSignOut={signOut} earnedBadges={earnedBadges} kids={kids} activeKidId={activeKidId} onSetActive={setActiveKidId} onAddKid={openAddKid} onEditKid={openEditKid} sitters={sitters} onAddSitter={openAddSitter} onEditSitter={openEditSitter} onShareWithSitter={shareWithSitter}
+      emergencyContacts={emergencyContacts} onAddEmergencyContact={openAddEmergencyContact} onEditEmergencyContact={openEditEmergencyContact}
+      profileNames={profileNames} onSaveProfileNames={saveProfileNames}
+      myCaregivers={myCaregivers} caregiverLinks={caregiverLinks} caregiverInvite={caregiverInvite}
+      onCreateCaregiverInvite={createCaregiverInvite} onRemoveCaregiverAccess={removeCaregiverAccess}
+      activeFamilyId={activeFamilyId} onSwitchFamily={switchFamily}
+      favorites={favorites} savedDays={savedDays} onViewSaved={() => goTo("favorites")}
+      forceEditNameToken={forceEditNameToken}
+      appMode={appMode} onSetMode={setAppMode}
+      friendsProps={{
+        onOpenInvite: () => setInviteOpen(true),
+        friends, sharedDays, playDates,
+        onAccept: acceptPlayDate, onDecline: declinePlayDate, onUseDay: useSharedDay,
+        onAddFriend: addFriend, onSelectFriend: openFriendDetail, setSelectedPlace: handleSelectPlace,
+        session, onSearchProfiles: searchRealProfiles, onAddRealFriend: addRealFriend,
+        onOpenChat: (gid) => setChatGroupId(gid),
+      }}
+    />;
+  } else if (screen === "travelSearch") {
+    content = <TravelSearchScreen onBack={() => goTo("home")} onOpenGooglePlace={(p) => setGooglePlace(p)} appMode={appMode} onSetMode={setAppMode} />;
   } else if (screen === "safety") {
-    content = <SafetyScreen />;
+    content = <SafetyScreen appMode={appMode} onSetMode={setAppMode} />;
   } else if (screen === "community") {
     content = <CommunityScreen setSelectedPlace={handleSelectPlace} />;
   } else if (screen === "activities") {
@@ -4766,6 +7854,7 @@ export default function LittleDayApp() {
         stats={stats}
         earnedBadges={earnedBadges}
         onShareDay={(rec) => setDayCard(rec)}
+        onAddPhoto={addDayPhoto}
       />
     );
   } else if (screen === "place") {
@@ -4784,46 +7873,73 @@ export default function LittleDayApp() {
     );
   }
 
-  const showNav = ["home", "map", "friends", "favorites", "safety", "profile"].includes(screen);
+  const showNav = ["home", "map", "events", "favorites", "safety", "profile"].includes(screen);
 
   const [betaOk, setBetaOk] = usePersistentState("betaOk", false);
+  // Sunrise plays once per fresh open (not on tab switches within a session).
+  const [showSplash, setShowSplash] = useState(() => {
+    try {
+      if (window.sessionStorage.getItem("littleday.sawSunrise")) return false;
+      window.sessionStorage.setItem("littleday.sawSunrise", "1");
+      return true;
+    } catch (e) { return true; }
+  });
+  if (showSplash) return <SunriseSplash onDone={() => setShowSplash(false)} />;
+  if (pendingFriendId && !session) return <InviteWelcomeScreen inviterName={inviterName} />;
   if (!betaOk) return <BetaGate onUnlock={() => setBetaOk(true)} />;
 
   return (
     <ReviewsContext.Provider value={{ reviews, addReview }}>
+    <NavContext.Provider value={{ goHome: () => { setSelectedPlace(null); setSurpriseMode(false); goTo("home"); } }}>
     <div
       className="min-h-screen flex justify-center"
       style={{
-        backgroundColor: "#EFEAE0",
-        fontFamily: "'Inter', sans-serif",
-        "--accent": "#FF8C61",
-        "--cta": "linear-gradient(135deg,#FF8C61,#FFC857)",
-        "--bg": APP_BG,
+        background: appMode === "adult"
+          ? (adultTimeOfDay === "night"
+              ? "linear-gradient(160deg,#2B2350 0%,#4A3B7C 55%,#6B4E9E 100%)"
+              : "linear-gradient(160deg,#FFE0B2 0%,#FFAB91 55%,#CE93D8 100%)")
+          : "linear-gradient(160deg,#A8C8EC 0%,#E8B4D8 55%,#F5D6A8 100%)",
+        backgroundAttachment: "fixed",
+        fontFamily: "'Poppins', sans-serif",
+        "--accent": appMode === "adult" ? (adultTimeOfDay === "night" ? "#B08AE2" : "#B8863B") : "#FF8C61",
+        "--cta": appMode === "adult"
+          ? (adultTimeOfDay === "night" ? "linear-gradient(135deg,#5B3A8C,#B08AE2)" : "linear-gradient(135deg,#9A6E22,#E8C674)")
+          : "linear-gradient(135deg,#FF8C61,#FFC857)",
+        "--bg": appMode === "adult" ? (adultTimeOfDay === "night" ? "#1E1A2E" : "#F3E8D3") : APP_BG,
       }}
     >
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Fredoka:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Fredoka:wght@400;500;600;700&family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap');
         input[type="range"] { height: 4px; border-radius: 4px; background: #E7E1D4; }
         @keyframes sheetUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
         @keyframes sheetDown { from { transform: translateY(-100%); } to { transform: translateY(0); } }
+        @keyframes sunRise { from { transform: translateY(110px) scale(0.82); opacity: 0; } to { transform: translateY(0) scale(1); opacity: 1; } }
+        @keyframes rayPop { from { transform: scale(0.25); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        @keyframes fadeUp { from { transform: translateY(14px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        @keyframes glowUp { from { transform: translateY(90px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        @keyframes splashOut { to { opacity: 0; transform: translateY(-24px); } }
         @keyframes toastIn { from { opacity: 0; transform: translate(-50%, 8px); } to { opacity: 1; transform: translate(-50%, 0); } }
         @keyframes fadeSlide { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes sunFloat { from { opacity: 0; transform: translateY(18px) scale(0.85); } to { opacity: 1; transform: translateY(0) scale(1); } }
         @keyframes sunBob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-7px); } }
         @keyframes raysShimmer { 0%, 100% { opacity: 0.55; } 50% { opacity: 1; } }
         @keyframes confettiFall { 0% { transform: translateY(-20px) rotate(0deg); opacity: 1; } 100% { transform: translateY(760px) rotate(600deg); opacity: 0.9; } }
+        @keyframes burstPop { 0% { transform: scale(0.3) rotate(-8deg); opacity: 0; } 55% { transform: scale(1.2) rotate(4deg); opacity: 1; } 100% { transform: scale(1) rotate(0deg); opacity: 1; } }
+        @keyframes alertPulse { 0% { transform: scale(1); opacity: 0.7; } 70% { transform: scale(2.2); opacity: 0; } 100% { transform: scale(2.2); opacity: 0; } }
       `}</style>
       <div
-        className="w-full flex flex-col relative"
-        style={{ maxWidth: 420, minHeight: "100vh", backgroundColor: "var(--bg)" }}
+        className="w-full flex relative"
+        style={{ maxWidth: 420, height: "100dvh", backgroundColor: "transparent" }}
       >
-        <div className="flex-1 overflow-y-auto">
-          <div key={screen} style={{ animation: "fadeSlide 0.28s ease-out" }}>
-            {content}
+        {showNav && <SidebarNav screen={screen} setScreen={goTo} friendsBadge={friendsBadge} />}
+        <div className="flex-1 flex flex-col relative min-w-0">
+          <div className="flex-1 overflow-y-auto overscroll-contain">
+            <div key={screen} style={{ animation: "fadeSlide 0.28s ease-out" }}>
+              <ErrorBoundary key={screen + appMode}>{content}</ErrorBoundary>
+            </div>
           </div>
+          <Toast message={toast} />
         </div>
-        {showNav && <BottomNav screen={screen} setScreen={goTo} />}
-        <Toast message={toast} />
         <FriendPickerSheet
           open={invitePickerOpen}
           friends={friends}
@@ -4839,6 +7955,7 @@ export default function LittleDayApp() {
         />
         <DayCardOverlay record={dayCard} onClose={() => setDayCard(null)} onShared={() => showToast("Shared — or screenshot to send!")} />
         <RewardOverlay data={reward} onClose={() => setReward(null)} />
+        <MiniCelebration data={burst} onDone={() => setBurst(null)} />
         <HowToOverlay key={showHowTo ? "howto-open" : "howto-closed"} open={showHowTo} onClose={() => setShowHowTo(false)} />
         {kidEditor && (
           <KidEditorSheet key={kidEditor.id || "new"} data={kidEditor} onSave={saveKid} onDelete={deleteKid} onClose={() => setKidEditor(null)} />
@@ -4846,10 +7963,17 @@ export default function LittleDayApp() {
         {sitterEditor && (
           <SitterEditorSheet key={sitterEditor.id || "snew"} data={sitterEditor} onSave={saveSitter} onDelete={deleteSitter} onClose={() => setSitterEditor(null)} />
         )}
+        {emergencyEditor && (
+          <EmergencyContactEditorSheet key={emergencyEditor.id || "enew"} data={emergencyEditor} onSave={saveEmergencyContact} onDelete={deleteEmergencyContact} onClose={() => setEmergencyEditor(null)} />
+        )}
         <AuthSheet open={authOpen} onClose={() => setAuthOpen(false)} session={session} />
-        <InviteSheet open={inviteOpen} onClose={() => setInviteOpen(false)} onShared={() => { setInviteOpen(false); showToast("Invite sent — preview only for now"); }} />
+        <GooglePlaceSheet place={googlePlace} onClose={() => setGooglePlace(null)} />
+        <AdultPlaceSheet place={adultSelectedPlace} onClose={() => setAdultSelectedPlace(null)} favorited={adultSelectedPlace && adultFavorites.includes(adultSelectedPlace.id)} onToggleFavorite={toggleAdultFavorite} adultTimeOfDay={adultTimeOfDay} />
+        <InviteSheet open={inviteOpen} onClose={() => setInviteOpen(false)} onShared={() => { setInviteOpen(false); showToast("Invite link shared!"); }} session={session} />
+        <GroupChatSheet open={!!chatGroupId} groupId={chatGroupId} session={session} onClose={() => setChatGroupId(null)} />
       </div>
     </div>
+    </NavContext.Provider>
     </ReviewsContext.Provider>
   );
 }
