@@ -1902,7 +1902,7 @@ function EventCard({ event, saved, onToggleSave, onSelectPlace }) {
         <span className="inline-block text-[11px] font-bold px-2.5 py-1 rounded-full mb-3" style={{ backgroundColor: "rgba(255,255,255,0.2)" }}>
           {event.category.toUpperCase()} · {event.price}
         </span>
-        <p className="text-[24px] font-bold leading-tight" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>{event.emoji} {event.name}</p>
+        <p className="text-[24px] font-bold leading-tight" style={{ fontFamily: "'Poppins', sans-serif" }}>{event.emoji} {event.name}</p>
         <p className="text-[15px] font-semibold mt-2 opacity-95">{formatEventDate(event.date)} · {event.time}</p>
         <p className="text-[13.5px] opacity-85 mt-0.5">{event.town}</p>
         <p className="text-[13.5px] mt-3 leading-snug opacity-90">{event.blurb}</p>
@@ -2075,7 +2075,7 @@ function GooglePlaceSheet({ place, onClose }) {
         <div className="flex items-start gap-3">
           <div className="w-12 h-12 rounded-xl flex items-center justify-center text-[24px] shrink-0" style={{ backgroundColor: "#FFF3E6" }}>{place.photo}</div>
           <div className="flex-1 min-w-0">
-            <p className="text-[17px] font-bold text-[#1B2A4A]" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>{place.name}</p>
+            <p className="text-[17px] font-bold text-[#1B2A4A]" style={{ fontFamily: "'Poppins', sans-serif" }}>{place.name}</p>
             <p className="text-[13px] text-[#8A8474]">{place.category} · {place.town}{place.rating ? ` · ⭐ ${place.rating}` : ""}</p>
           </div>
         </div>
@@ -2509,9 +2509,19 @@ function SunriseSplash({ onDone }) {
     setTimeout(onDone, 420);
   };
   useEffect(() => {
-    const t = setTimeout(finish, 1900);
+    const t = setTimeout(finish, 2100);
     return () => clearTimeout(t);
   }, []);
+  const bursts = [
+    { color: "#FF8C61", size: 26, angle: -55, dist: 130, delay: 0.15 },
+    { color: "#F5B71F", size: 20, angle: -15, dist: 150, delay: 0.22 },
+    { color: "#8B5CF6", size: 22, angle: 25, dist: 125, delay: 0.18 },
+    { color: "#4CAF6D", size: 18, angle: 65, dist: 140, delay: 0.28 },
+    { color: "#FF6F5E", size: 24, angle: 105, dist: 130, delay: 0.12 },
+    { color: "#5B9BD5", size: 20, angle: 150, dist: 145, delay: 0.25 },
+    { color: "#F5B71F", size: 16, angle: -105, dist: 120, delay: 0.32 },
+    { color: "#FF8C61", size: 18, angle: -145, dist: 135, delay: 0.2 },
+  ];
   return (
     <div
       onClick={finish}
@@ -2519,33 +2529,44 @@ function SunriseSplash({ onDone }) {
         position: "fixed", inset: 0, zIndex: 9999,
         display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
         overflow: "hidden",
-        background: "linear-gradient(180deg, #FFFBF5 0%, #FFF3E6 60%, #FFE8CF 100%)",
+        background: "linear-gradient(160deg,#A8C8EC 0%,#E8B4D8 55%,#F5D6A8 100%)",
         animation: leaving ? "splashOut 0.42s ease-in forwards" : "none",
-        fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif",
+        fontFamily: "'Poppins', system-ui, sans-serif",
       }}
     >
-      <div
-        style={{
-          position: "absolute", left: "50%", bottom: -210, width: 420, height: 420,
-          marginLeft: -210, borderRadius: "50%",
-          background: "radial-gradient(circle, rgba(245,183,31,0.30) 0%, rgba(245,183,31,0) 70%)",
-          animation: "glowUp 1.5s ease-out forwards",
-        }}
-      />
-      <div style={{ animation: "sunRise 1.25s cubic-bezier(0.22, 1, 0.36, 1) forwards" }}>
-        <LittleDaySun size={132} animateRays />
+      <div style={{ position: "relative", width: 300, height: 300, display: "flex", alignItems: "center", justifyContent: "center" }}>
+        {bursts.map((b, i) => {
+          const rad = (b.angle * Math.PI) / 180;
+          const tx = Math.cos(rad) * b.dist;
+          const ty = Math.sin(rad) * b.dist;
+          return (
+            <div
+              key={i}
+              style={{
+                position: "absolute", width: b.size, height: b.size, borderRadius: "50%",
+                background: b.color, opacity: 0,
+                animation: `burstOut 0.65s cubic-bezier(0.22,1,0.36,1) ${b.delay}s forwards`,
+                "--tx": `${tx}px`, "--ty": `${ty}px`,
+              }}
+            />
+          );
+        })}
+        <div style={{ position: "relative", zIndex: 2, animation: "centerPop 0.55s cubic-bezier(0.34,1.56,0.64,1) 0.05s both" }}>
+          <div style={{ width: 88, height: 88, borderRadius: 28, background: "linear-gradient(135deg,#FF8C61,#FFC857)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 40, boxShadow: "0 12px 32px rgba(255,140,97,0.4)" }}>
+            ✨
+          </div>
+        </div>
       </div>
-      <div style={{ marginTop: 12, textAlign: "center", animation: "fadeUp 0.7s ease-out 0.75s both" }}>
+      <div style={{ marginTop: 8, textAlign: "center", animation: "fadeUp 0.7s ease-out 0.55s both" }}>
         <p style={{ fontSize: 26, fontWeight: 800, color: "#1B2A4A", margin: 0 }}>little day memories</p>
-        <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.18em", color: "#F5B71F", marginTop: 4 }}>
+        <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.18em", color: "#B8863B", marginTop: 4 }}>
           BIG ADVENTURES. LITTLE DAYS.
         </p>
       </div>
       <style>{`
-        @keyframes sunRise { from { transform: translateY(110px) scale(0.82); opacity: 0; } to { transform: translateY(0) scale(1); opacity: 1; } }
-        @keyframes rayPop { from { transform: scale(0.25); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        @keyframes burstOut { 0% { transform: translate(0,0) scale(0); opacity: 0; } 40% { opacity: 1; } 100% { transform: translate(var(--tx), var(--ty)) scale(1); opacity: 0; } }
+        @keyframes centerPop { 0% { transform: scale(0) rotate(-20deg); opacity: 0; } 60% { transform: scale(1.15) rotate(5deg); opacity: 1; } 100% { transform: scale(1) rotate(0deg); opacity: 1; } }
         @keyframes fadeUp { from { transform: translateY(14px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-        @keyframes glowUp { from { transform: translateY(90px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
         @keyframes splashOut { to { opacity: 0; transform: translateY(-24px); } }
       `}</style>
     </div>
@@ -2585,7 +2606,7 @@ function LittleDayWordmark({ size = 22 }) {
   return (
     <span
       style={{
-        fontFamily: "'Fredoka', sans-serif",
+        fontFamily: "'Poppins', sans-serif",
         fontWeight: 600,
         fontSize: size,
         color: "#16284A",
@@ -2609,7 +2630,7 @@ function LittleDayLockup({ sunSize = 44, wordSize = 24, tagline = false }) {
         <p
           className="mt-1.5"
           style={{
-            fontFamily: "'Fredoka', sans-serif",
+            fontFamily: "'Poppins', sans-serif",
             fontWeight: 500,
             fontSize: 11,
             letterSpacing: "0.08em",
@@ -2635,7 +2656,7 @@ function TopBar({ title, onBack, right, hideHome, dark }) {
       )}
       <h1
         className="text-[19px] font-semibold flex-1"
-        style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", color: dark ? "#F5F3FF" : "#1B2A4A" }}
+        style={{ fontFamily: "'Poppins', sans-serif", color: dark ? "#F5F3FF" : "#1B2A4A" }}
       >
         {title}
       </h1>
@@ -2673,7 +2694,7 @@ function Pill({ children, active, onClick, disabled }) {
   );
 }
 
-function BottomNav({ screen, setScreen, friendsBadge = 0 }) {
+function SidebarNav({ screen, setScreen, friendsBadge = 0 }) {
   const items = [
     { key: "home", label: "Home", icon: Home },
     { key: "events", label: "Events", icon: CalendarDays },
@@ -2682,8 +2703,14 @@ function BottomNav({ screen, setScreen, friendsBadge = 0 }) {
   ];
   return (
     <div
-      className="flex justify-around items-center border-t bg-white/95 backdrop-blur"
-      style={{ borderColor: "#EFEAE0", paddingBottom: "env(safe-area-inset-bottom, 10px)" }}
+      className="flex flex-col items-center shrink-0"
+      style={{
+        width: 64,
+        background: "#1B2A4A",
+        paddingTop: "calc(env(safe-area-inset-top, 20px) + 20px)",
+        paddingBottom: "env(safe-area-inset-bottom, 16px)",
+        gap: 26,
+      }}
     >
       {items.map(({ key, label, icon: Icon, badge }) => {
         const active = screen === key;
@@ -2691,31 +2718,29 @@ function BottomNav({ screen, setScreen, friendsBadge = 0 }) {
           <button
             key={key}
             onClick={() => setScreen(key)}
-            className="flex flex-col items-center gap-1 py-2.5 px-3 relative"
+            title={label}
+            className="relative flex items-center justify-center"
+            style={{
+              width: 38, height: 38, borderRadius: 12,
+              background: active ? "var(--cta)" : "transparent",
+              transition: "background 0.15s ease",
+            }}
           >
-            <div className="relative">
-              <Icon size={22} color={active ? "var(--accent)" : "#9C9484"} strokeWidth={active ? 2.4 : 2} />
-              {!!badge && (
-                <>
-                  <span
-                    className="absolute -top-1.5 -right-2 min-w-[16px] h-4 rounded-full"
-                    style={{ background: "var(--cta)", animation: "alertPulse 1.6s ease-out infinite" }}
-                  />
-                  <span
-                    className="absolute -top-1.5 -right-2 min-w-[16px] h-4 px-1 rounded-full flex items-center justify-center text-[10px] font-bold text-white"
-                    style={{ background: "var(--cta)" }}
-                  >
-                    {badge > 9 ? "9+" : badge}
-                  </span>
-                </>
-              )}
-            </div>
-            <span
-              className="text-[11px] font-medium"
-              style={{ color: active ? "#1B2A4A" : "#9C9484" }}
-            >
-              {label}
-            </span>
+            <Icon size={19} color={active ? "#fff" : "rgba(255,255,255,0.5)"} strokeWidth={active ? 2.4 : 2} />
+            {!!badge && (
+              <>
+                <span
+                  className="absolute -top-1 -right-1 min-w-[14px] h-3.5 rounded-full"
+                  style={{ background: "#FF6F5E", animation: "alertPulse 1.6s ease-out infinite" }}
+                />
+                <span
+                  className="absolute -top-1 -right-1 min-w-[14px] h-3.5 px-1 rounded-full flex items-center justify-center text-[9px] font-bold text-white"
+                  style={{ background: "#FF6F5E" }}
+                >
+                  {badge > 9 ? "9+" : badge}
+                </span>
+              </>
+            )}
           </button>
         );
       })}
@@ -3076,21 +3101,19 @@ function getAdultTheme(t) {
 
 function TimeOfDayToggle({ value, onChange }) {
   const isNight = value === "night";
-  const dayTheme = getAdultTheme("day");
-  const nightTheme = getAdultTheme("night");
   return (
-    <div className="flex rounded-full p-1 mb-3" style={{ backgroundColor: isNight ? nightTheme.toggleTrack : dayTheme.toggleTrack, border: `1px solid ${isNight ? nightTheme.cardBorder : dayTheme.cardBorder}` }}>
+    <div className="flex rounded-full p-1 mb-3" style={{ backgroundColor: "#fff", border: "1px solid rgba(0,0,0,0.08)", boxShadow: "0 2px 8px rgba(0,0,0,0.08)" }}>
       <button
         onClick={() => onChange("day")}
-        className="flex-1 rounded-full py-2 text-[13px] font-semibold flex items-center justify-center gap-1.5"
-        style={{ backgroundColor: !isNight ? dayTheme.accent : "transparent", color: !isNight ? "#fff" : (isNight ? nightTheme.muted : dayTheme.muted) }}
+        className="flex-1 rounded-full py-2.5 text-[13.5px] font-bold flex items-center justify-center gap-1.5"
+        style={{ backgroundColor: !isNight ? "#B8863B" : "transparent", color: !isNight ? "#fff" : "#8A7A5C" }}
       >
         ☀️ Daytime
       </button>
       <button
         onClick={() => onChange("night")}
-        className="flex-1 rounded-full py-2 text-[13px] font-semibold flex items-center justify-center gap-1.5"
-        style={{ backgroundColor: isNight ? nightTheme.accent : "transparent", color: isNight ? "#fff" : (isNight ? nightTheme.muted : dayTheme.muted) }}
+        className="flex-1 rounded-full py-2.5 text-[13.5px] font-bold flex items-center justify-center gap-1.5"
+        style={{ backgroundColor: isNight ? "#5B3A8C" : "transparent", color: isNight ? "#fff" : "#8A7A5C" }}
       >
         🌙 Nighttime
       </button>
@@ -3177,7 +3200,7 @@ function AdultHomeContent({ favorites, toggleFavorite, setSelectedPlace, setScre
         <p className="text-[10.5px] font-bold tracking-[0.16em] uppercase" style={{ color: theme.accent }}>
           {dateStr} · {isNight ? "Tonight's" : "Today's"} Issue
         </p>
-        <h1 style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 25, color: theme.text, marginTop: 4, lineHeight: 1.15 }}>
+        <h1 style={{ fontFamily: "'Poppins', sans-serif", fontWeight: 700, fontSize: 25, color: theme.text, marginTop: 4, lineHeight: 1.15 }}>
           What's the plan {isNight ? "tonight" : "today"}?
         </h1>
       </div>
@@ -3364,7 +3387,7 @@ function AdultPlaceSheet({ place, onClose, favorited, onToggleFavorite, adultTim
         <div className="flex items-start gap-3">
           <div className="w-12 h-12 rounded-xl flex items-center justify-center text-[24px] shrink-0" style={{ backgroundColor: theme.accentSoft }}>{place.photo}</div>
           <div className="flex-1 min-w-0">
-            <p className="text-[17px] font-bold" style={{ fontFamily: "'Space Grotesk', sans-serif", color: theme.text }}>{place.name}</p>
+            <p className="text-[17px] font-bold" style={{ fontFamily: "'Poppins', sans-serif", color: theme.text }}>{place.name}</p>
             <p className="text-[13px]" style={{ color: theme.muted }}>{place.category} · {place.town}</p>
           </div>
           <button onClick={() => onToggleFavorite(place.id)} className="shrink-0">
@@ -3481,7 +3504,7 @@ function HomeScreen({ setScreen, favorites, toggleFavorite, setSelectedPlace, lo
           <p className="text-[10.5px] font-bold tracking-[0.16em] uppercase" style={{ color: isNight ? "#fff" : "#2B2620", textShadow: isNight ? "0 1px 6px rgba(0,0,0,0.2)" : "none" }}>
             {dateStr2} · {isNight ? "Tonight's" : "Today's"} Issue
           </p>
-          <h1 style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 25, color: isNight ? "#fff" : "#2B2620", marginTop: 4, lineHeight: 1.15, textShadow: isNight ? "0 2px 12px rgba(0,0,0,0.22)" : "none" }}>
+          <h1 style={{ fontFamily: "'Poppins', sans-serif", fontWeight: 700, fontSize: 25, color: isNight ? "#fff" : "#2B2620", marginTop: 4, lineHeight: 1.15, textShadow: isNight ? "0 2px 12px rgba(0,0,0,0.22)" : "none" }}>
             What's the plan {isNight ? "tonight" : "today"}?
           </h1>
         </div>
@@ -3568,16 +3591,10 @@ function HomeScreen({ setScreen, favorites, toggleFavorite, setSelectedPlace, lo
 
       {/* ===== Masthead ===== */}
       <div className="px-5 pt-5 pb-4 text-center border-b-2" style={{ borderColor: "rgba(255,255,255,0.5)" }}>
-        <div style={{ background: "#FF0000", color: "#fff", fontWeight: 900, fontSize: 13, padding: "6px", borderRadius: 8, marginBottom: 10 }}>
-          BUILD CHECK: v-GLASS-03
-        </div>
-        <div className="flex items-center justify-center gap-2 mb-1">
-          <LittleDaySun size={30} />
-        </div>
         <p className="text-[10.5px] font-bold tracking-[0.15em] uppercase" style={{ color: "#fff", textShadow: "0 1px 6px rgba(0,0,0,0.15)" }}>
           {dateStr} · Today's Issue
         </p>
-        <h1 style={{ fontFamily: "'Fredoka', sans-serif", fontWeight: 700, fontSize: 26, color: "#fff", marginTop: 4, lineHeight: 1.15, textShadow: "0 2px 12px rgba(0,0,0,0.18)" }}>
+        <h1 style={{ fontFamily: "'Poppins', sans-serif", fontWeight: 700, fontSize: 26, color: "#fff", marginTop: 4, lineHeight: 1.15, textShadow: "0 2px 12px rgba(0,0,0,0.18)" }}>
           What should we do today?
         </h1>
         <button onClick={onHowTo} className="mt-2.5 inline-flex items-center gap-1 text-[11.5px] font-semibold px-3 py-1.5 rounded-full" style={{ background: "rgba(255,255,255,0.35)", backdropFilter: "blur(10px)", color: "#fff" }}>
@@ -4967,7 +4984,7 @@ function PremiumScreen({ onBack, onUpgrade }) {
           <div className="flex justify-center mb-2">
             <LittleDaySun size={64} />
           </div>
-          <h2 className="text-[22px] font-bold text-[#1B2A4A]" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+          <h2 className="text-[22px] font-bold text-[#1B2A4A]" style={{ fontFamily: "'Poppins', sans-serif" }}>
             Unlock the full adventure
           </h2>
           <p className="text-[13px] text-[#8A8474] mt-1.5 max-w-[290px] mx-auto">
@@ -5089,7 +5106,7 @@ function PlaceDetailScreen({ place, onBack, favorited, onToggleFavorite, checkIn
 
         <div className="flex items-start justify-between">
           <div>
-            <h2 className="text-[21px] font-bold text-[#1B2A4A]" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+            <h2 className="text-[21px] font-bold text-[#1B2A4A]" style={{ fontFamily: "'Poppins', sans-serif" }}>
               {place.name}
             </h2>
             <p className="text-[13px] text-[#8A8474] mt-0.5">
@@ -5355,7 +5372,7 @@ function WelcomeScreen({ onStart }) {
     <div className="flex flex-col h-full">
       <div className="flex-1 flex flex-col items-center justify-center px-8 text-center">
         <LittleDayLockup sunSize={88} wordSize={44} tagline />
-        <p className="text-[16px] font-semibold text-[#1B2A4A] mt-6 leading-snug max-w-[290px]" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+        <p className="text-[16px] font-semibold text-[#1B2A4A] mt-6 leading-snug max-w-[290px]" style={{ fontFamily: "'Poppins', sans-serif" }}>
           Every other app gives you a piece of the day.
         </p>
         <p className="text-[14px] text-[#8A8474] mt-2.5 leading-relaxed max-w-[290px]">
@@ -5893,7 +5910,7 @@ function InviteSheet({ open, onClose, onShared, session }) {
       <div className="absolute inset-0 bg-black/30" />
       <div className="relative w-full rounded-t-3xl bg-white p-6 pb-8 text-center" onClick={(e) => e.stopPropagation()} style={{ animation: "sheetUp 0.22s ease-out" }}>
         <div className="w-10 h-1 rounded-full bg-[#E7E1D4] mx-auto mb-4" />
-        <p className="text-[17px] font-bold text-[#1B2A4A]" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Invite a friend</p>
+        <p className="text-[17px] font-bold text-[#1B2A4A]" style={{ fontFamily: "'Poppins', sans-serif" }}>Invite a friend</p>
         <p className="text-[13px] text-[#8A8474] mt-1 max-w-[280px] mx-auto">
           {hasRealLink ? "Send your personal link — when they tap it and sign in, you'll be connected as friends automatically." : "Sign in first to get your personal invite link."}
         </p>
@@ -6087,7 +6104,7 @@ function PlanningScreen({ onDone }) {
       </div>
       <p
         className="mt-7 text-[16px] font-semibold text-[#1B2A4A] text-center"
-        style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+        style={{ fontFamily: "'Poppins', sans-serif" }}
       >
         {messages[idx]}
       </p>
@@ -6153,7 +6170,7 @@ function CelebrationOverlay({ data, onClose, onPassport, onShare }) {
       <Confetti />
       <div className="relative w-full max-w-[340px] rounded-3xl bg-white p-6 text-center" onClick={(e) => e.stopPropagation()} style={{ animation: "sunFloat 0.4s ease-out" }}>
         <div className="flex justify-center mb-2"><LittleDaySun size={64} /></div>
-        <h2 className="text-[22px] font-bold text-[#1B2A4A]" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Day complete!</h2>
+        <h2 className="text-[22px] font-bold text-[#1B2A4A]" style={{ fontFamily: "'Poppins', sans-serif" }}>Day complete!</h2>
         <p className="text-[13px] text-[#8A8474] mt-1">You earned {record.stops.length} new stamp{record.stops.length !== 1 ? "s" : ""} 🎉</p>
         <div className="flex justify-center gap-2 flex-wrap mt-4">
           {record.stops.map((s, i) => (
@@ -6225,7 +6242,7 @@ function RewardOverlay({ data, onClose }) {
       <Confetti />
       <div className="relative w-full max-w-[340px] rounded-3xl bg-white p-6 text-center" onClick={(e) => e.stopPropagation()} style={{ animation: "sunFloat 0.4s ease-out" }}>
         <div className="text-[44px]">🎁</div>
-        <h2 className="text-[22px] font-bold text-[#1B2A4A] mt-1" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Reward unlocked!</h2>
+        <h2 className="text-[22px] font-bold text-[#1B2A4A] mt-1" style={{ fontFamily: "'Poppins', sans-serif" }}>Reward unlocked!</h2>
         <p className="text-[13px] text-[#8A8474] mt-1">5 check-ins at {place.name} — nice work!</p>
         <div className="rounded-2xl p-4 mt-4 border-2 border-dashed" style={{ borderColor: "#E7B989", backgroundColor: "#FFF8EE" }}>
           <p className="text-[15px] font-bold text-[#1B2A4A]">Free drink or dessert</p>
@@ -6524,7 +6541,7 @@ function HowToOverlay({ open, onClose }) {
         </div>
         <div className="text-center px-2">
           <div className="text-[46px] mb-2">{s.emoji}</div>
-          <h2 className="text-[20px] font-bold text-[#1B2A4A] mb-2" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>{s.title}</h2>
+          <h2 className="text-[20px] font-bold text-[#1B2A4A] mb-2" style={{ fontFamily: "'Poppins', sans-serif" }}>{s.title}</h2>
           <p className="text-[14px] text-[#5C5648] leading-relaxed" style={{ minHeight: 80 }}>{s.body}</p>
         </div>
         <div className="flex justify-center gap-1.5 my-4">
@@ -6695,7 +6712,7 @@ function BetaGate({ onUnlock }) {
     <div className="min-h-screen w-full flex items-center justify-center px-6" style={{ backgroundColor: "#FFFBF5" }}>
       <div className="w-full max-w-sm text-center" style={{ animation: shake ? "shakeX 0.4s" : "none" }}>
         <div className="flex justify-center mb-3"><LittleDaySun size={64} /></div>
-        <h1 className="text-[22px] font-bold" style={{ color: "#1B2A4A", fontFamily: "'Plus Jakarta Sans', sans-serif" }}>little day memories</h1>
+        <h1 className="text-[22px] font-bold" style={{ color: "#1B2A4A", fontFamily: "'Poppins', sans-serif" }}>little day memories</h1>
         <p className="text-[12px] font-bold tracking-widest mt-1" style={{ color: "#F5B71F" }}>PRIVATE BETA</p>
         <p className="text-[14px] mt-4 mb-5" style={{ color: "#8A8474" }}>
           Little Day Memories is in early testing with a small group of Westchester families. Enter your invite code to come in.
@@ -6758,9 +6775,9 @@ function InviteWelcomeScreen({ inviterName }) {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-6 py-10" style={{ backgroundColor: "#FFFBF5", fontFamily: "'Inter', sans-serif" }}>
+    <div className="min-h-screen flex flex-col items-center justify-center px-6 py-10" style={{ backgroundColor: "#FFFBF5", fontFamily: "'Poppins', sans-serif" }}>
       <LittleDaySun size={84} />
-      <p className="text-[22px] font-bold text-[#1B2A4A] mt-3 text-center" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+      <p className="text-[22px] font-bold text-[#1B2A4A] mt-3 text-center" style={{ fontFamily: "'Poppins', sans-serif" }}>
         🎉 {inviterName ? `${inviterName} invited you` : "You've been invited"} to Little Day Memories
       </p>
       <p className="text-[13px] font-bold tracking-widest mt-1" style={{ color: "#F5B71F" }}>BIG ADVENTURES. LITTLE DAYS.</p>
@@ -6896,7 +6913,7 @@ function AuthSheet({ open, onClose, session }) {
 
         {stage === "email" && (
           <>
-            <p className="text-[17px] font-bold text-[#1B2A4A] text-center" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+            <p className="text-[17px] font-bold text-[#1B2A4A] text-center" style={{ fontFamily: "'Poppins', sans-serif" }}>
               Sign in or create your account
             </p>
             <p className="text-[13px] text-[#8A8474] text-center mt-1 mb-4 max-w-[300px] mx-auto">
@@ -6946,7 +6963,7 @@ function AuthSheet({ open, onClose, session }) {
         {stage === "sent" && (
           <div className="text-center">
             <div className="flex justify-center mb-2"><LittleDaySun size={48} /></div>
-            <p className="text-[17px] font-bold text-[#1B2A4A]" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Check your email</p>
+            <p className="text-[17px] font-bold text-[#1B2A4A]" style={{ fontFamily: "'Poppins', sans-serif" }}>Check your email</p>
             <p className="text-[13.5px] text-[#5C5648] mt-2 max-w-[300px] mx-auto leading-snug">
               We sent a sign-in link to <span className="font-semibold">{email}</span>. Open it on this device and you'll land right back here, signed in.
             </p>
@@ -6969,7 +6986,7 @@ function AuthSheet({ open, onClose, session }) {
 
         {stage === "code" && (
           <>
-            <p className="text-[17px] font-bold text-[#1B2A4A] text-center" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Enter your code</p>
+            <p className="text-[17px] font-bold text-[#1B2A4A] text-center" style={{ fontFamily: "'Poppins', sans-serif" }}>Enter your code</p>
             <p className="text-[13px] text-[#8A8474] text-center mt-1 mb-4">Type the 6-digit code from the email.</p>
             <input
               value={code}
@@ -7883,7 +7900,7 @@ export default function LittleDayApp() {
               : "linear-gradient(160deg,#FFE0B2 0%,#FFAB91 55%,#CE93D8 100%)")
           : "linear-gradient(160deg,#A8C8EC 0%,#E8B4D8 55%,#F5D6A8 100%)",
         backgroundAttachment: "fixed",
-        fontFamily: "'Inter', sans-serif",
+        fontFamily: "'Poppins', sans-serif",
         "--accent": appMode === "adult" ? (adultTimeOfDay === "night" ? "#B08AE2" : "#B8863B") : "#FF8C61",
         "--cta": appMode === "adult"
           ? (adultTimeOfDay === "night" ? "linear-gradient(135deg,#5B3A8C,#B08AE2)" : "linear-gradient(135deg,#9A6E22,#E8C674)")
@@ -7892,7 +7909,7 @@ export default function LittleDayApp() {
       }}
     >
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Fredoka:wght@400;500;600;700&family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Fredoka:wght@400;500;600;700&family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap');
         input[type="range"] { height: 4px; border-radius: 4px; background: #E7E1D4; }
         @keyframes sheetUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
         @keyframes sheetDown { from { transform: translateY(-100%); } to { transform: translateY(0); } }
@@ -7911,20 +7928,18 @@ export default function LittleDayApp() {
         @keyframes alertPulse { 0% { transform: scale(1); opacity: 0.7; } 70% { transform: scale(2.2); opacity: 0; } 100% { transform: scale(2.2); opacity: 0; } }
       `}</style>
       <div
-        className="w-full flex flex-col relative"
+        className="w-full flex relative"
         style={{ maxWidth: 420, height: "100dvh", backgroundColor: "transparent" }}
       >
-        <div className="flex-1 overflow-y-auto overscroll-contain">
-          <div key={screen} style={{ animation: "fadeSlide 0.28s ease-out" }}>
-            <ErrorBoundary key={screen + appMode}>{content}</ErrorBoundary>
+        {showNav && <SidebarNav screen={screen} setScreen={goTo} friendsBadge={friendsBadge} />}
+        <div className="flex-1 flex flex-col relative min-w-0">
+          <div className="flex-1 overflow-y-auto overscroll-contain">
+            <div key={screen} style={{ animation: "fadeSlide 0.28s ease-out" }}>
+              <ErrorBoundary key={screen + appMode}>{content}</ErrorBoundary>
+            </div>
           </div>
+          <Toast message={toast} />
         </div>
-        {showNav && (
-          <div style={{ position: "sticky", bottom: 0, zIndex: 20, flexShrink: 0 }}>
-            <BottomNav screen={screen} setScreen={goTo} friendsBadge={friendsBadge} />
-          </div>
-        )}
-        <Toast message={toast} />
         <FriendPickerSheet
           open={invitePickerOpen}
           friends={friends}
