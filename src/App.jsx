@@ -4643,7 +4643,7 @@ function FavoritesScreen({ favorites, setSelectedPlace, toggleFavorite, savedDay
   );
 }
 
-function ProfileScreen({ onOpenPremium, onOpenPassport, stats, session, onOpenAuth, onSignOut, earnedBadges, kids, activeKidId, onSetActive, onAddKid, onEditKid, sitters, onAddSitter, onEditSitter, onShareWithSitter,
+function ProfileScreen({ onOpenPremium, onOpenPassport, stats, session, onOpenAuth, onSignOut, earnedBadges, kids, activeKidId, onSetActive, onAddKid, onEditKid, sitters, onAddSitter, onEditSitter, onShareWithSitter, onHowTo,
   emergencyContacts, onAddEmergencyContact, onEditEmergencyContact,
   profileNames, onSaveProfileNames, myCaregivers, caregiverLinks, caregiverInvite, onCreateCaregiverInvite, onRemoveCaregiverAccess, activeFamilyId, onSwitchFamily,
   favorites, savedDays, onViewSaved, forceEditNameToken,
@@ -4952,8 +4952,14 @@ function ProfileScreen({ onOpenPremium, onOpenPassport, stats, session, onOpenAu
           </button>
         </div>
 
+        {onHowTo && (
+          <button onClick={onHowTo} className="w-full flex items-center justify-center gap-1.5 text-center mt-5 text-[13px] font-semibold" style={{ color: "#B08A5A" }}>
+            <HelpCircle size={14} /> Replay welcome tour
+          </button>
+        )}
+
         {session && (
-          <button onClick={onSignOut} className="w-full text-center mt-5 text-[13px] font-semibold" style={{ color: "#B08A5A" }}>
+          <button onClick={onSignOut} className="w-full text-center mt-3 text-[13px] font-semibold" style={{ color: "#B08A5A" }}>
             Sign out
           </button>
         )}
@@ -6527,6 +6533,60 @@ const HOWTO_STEPS = [
   { emoji: "🔀", title: "7. Reshuffle, save & share", body: "Not feeling a plan? Reshuffle for a fresh one. Save the days you love, and share a day card with friends and family." },
 ];
 
+function OnboardingFlow({ open, onDone }) {
+  const [step, setStep] = useState(0);
+  if (!open) return null;
+  const total = HOWTO_STEPS.length;
+  const s = HOWTO_STEPS[step];
+  const last = step === total - 1;
+  return (
+    <div
+      className="fixed inset-0 flex flex-col"
+      style={{ zIndex: 9998, background: "linear-gradient(160deg,#A8C8EC 0%,#E8B4D8 55%,#F5D6A8 100%)" }}
+    >
+      <button
+        onClick={onDone}
+        className="absolute z-10 font-semibold text-[13px]"
+        style={{ top: "calc(env(safe-area-inset-top, 20px) + 12px)", right: 20, color: "#fff", textShadow: "0 1px 4px rgba(0,0,0,0.2)", background: "none", border: "none" }}
+      >
+        Skip
+      </button>
+      <div className="flex-1 flex flex-col items-center justify-center px-8 text-center">
+        <div
+          className="flex items-center justify-center mb-7"
+          style={{
+            width: 96, height: 96, borderRadius: 28, fontSize: 44,
+            background: "rgba(255,255,255,0.35)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)",
+            border: "1px solid rgba(255,255,255,0.55)", boxShadow: "0 8px 24px rgba(80,60,100,0.15)",
+          }}
+        >
+          {s.emoji}
+        </div>
+        <p style={{ fontFamily: "'Poppins', sans-serif", fontWeight: 800, fontSize: 22, color: "#1B2A4A", lineHeight: 1.3 }}>{s.title}</p>
+        <p className="mt-3" style={{ fontSize: 14, color: "#3a3530", lineHeight: 1.55, maxWidth: 300 }}>{s.body}</p>
+      </div>
+      <div className="px-6" style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 20px) + 20px)" }}>
+        <div className="flex justify-center gap-1.5 mb-5">
+          {HOWTO_STEPS.map((_, i) => (
+            <span
+              key={i}
+              className="rounded-full"
+              style={{ width: i === step ? 22 : 7, height: 7, backgroundColor: i === step ? "#1B2A4A" : "rgba(27,42,74,0.25)", transition: "all 0.2s" }}
+            />
+          ))}
+        </div>
+        <button
+          onClick={() => (last ? onDone() : setStep(step + 1))}
+          className="w-full rounded-2xl py-4 text-white font-bold text-[15px]"
+          style={{ background: "#1B2A4A", fontFamily: "'Poppins', sans-serif" }}
+        >
+          {last ? "Let's go!" : "Next"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function HowToOverlay({ open, onClose }) {
   const [step, setStep] = useState(0);
   if (!open) return null;
@@ -7825,6 +7885,7 @@ export default function LittleDayApp() {
       activeFamilyId={activeFamilyId} onSwitchFamily={switchFamily}
       favorites={favorites} savedDays={savedDays} onViewSaved={() => goTo("favorites")}
       forceEditNameToken={forceEditNameToken}
+      onHowTo={() => setShowHowTo(true)}
       appMode={appMode} onSetMode={setAppMode}
       friendsProps={{
         onOpenInvite: () => setInviteOpen(true),
@@ -7955,7 +8016,7 @@ export default function LittleDayApp() {
         <DayCardOverlay record={dayCard} onClose={() => setDayCard(null)} onShared={() => showToast("Shared — or screenshot to send!")} />
         <RewardOverlay data={reward} onClose={() => setReward(null)} />
         <MiniCelebration data={burst} onDone={() => setBurst(null)} />
-        <HowToOverlay key={showHowTo ? "howto-open" : "howto-closed"} open={showHowTo} onClose={() => setShowHowTo(false)} />
+        <OnboardingFlow key={showHowTo ? "onboarding-open" : "onboarding-closed"} open={showHowTo} onDone={() => setShowHowTo(false)} />
         {kidEditor && (
           <KidEditorSheet key={kidEditor.id || "new"} data={kidEditor} onSave={saveKid} onDelete={deleteKid} onClose={() => setKidEditor(null)} />
         )}
