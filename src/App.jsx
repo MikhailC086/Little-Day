@@ -1757,63 +1757,64 @@ function googleToPlace(g) {
     photo: CATEGORY_ICON[cat] || "📍",
     fromGoogle: true,
     rating: g.rating,
-    coords: loc ? { lat: typeof loc.lat === "function" ? loc.lat() : loc.lat,
-                    lng: typeof loc.lng === "function" ? loc.lng() : loc.lng } : null,
+    coords: loc
+      ? {
+          lat: typeof loc.lat === "function" ? loc.lat() : (loc.lat ?? loc.latitude),
+          lng: typeof loc.lng === "function" ? loc.lng() : (loc.lng ?? loc.longitude),
+        }
+      : null,
   };
 }
 
-// Debounced Google text search. Returns [] until Maps + Places are ready.
-// Uses the classic PlacesService.textSearch — the same proven-working method as
-// the "Search any area" screen, rather than the newer Place.searchByText API
-// (which needs a separately-enabled, less broadly available API on some accounts).
+// Debounced Google text search. Calls the Places API (New) REST endpoint directly with
+// fetch() — no dependency on the Maps JS script being loaded on this particular screen,
+// which was the likely cause of earlier silent failures. Uses the confirmed-enabled
+// "Places API (New)" product directly, with the real HTTP error surfaced on failure.
 function useGoogleSearch(query, curatedCount, userCoords, skipBias) {
   const [results, setResults] = useState([]);
   const [searching, setSearching] = useState(false);
   const [errorInfo, setErrorInfo] = useState(null);
-  const serviceRef = useRef(null);
   useEffect(() => {
     const q = (query || "").trim();
     // Only reach for Google when our own list is thin — this keeps calls (and cost) low.
     if (q.length < 3 || curatedCount >= 3) { setResults([]); setSearching(false); setErrorInfo(null); return; }
+    if (!GMAPS_KEY) { setResults([]); setSearching(false); setErrorInfo("No Google Maps API key configured."); return; }
     let cancelled = false;
-    const timer = setTimeout(() => {
-      const g = window.google;
-      console.log("[LDM DEBUG] useGoogleSearch — google loaded:", !!g, "places lib:", !!g?.maps?.places, "PlacesService:", !!g?.maps?.places?.PlacesService, "query:", q);
-      if (!g?.maps?.places?.PlacesService) {
-        setResults([]); setSearching(false);
-        setErrorInfo("Google Maps Places library isn't loaded on this screen yet.");
-        return;
-      }
+    const timer = setTimeout(async () => {
       setSearching(true);
       setErrorInfo(null);
-      if (!serviceRef.current) {
-        serviceRef.current = new g.maps.places.PlacesService(document.createElement("div"));
-      }
-      // Bias toward wherever the person actually is, if we know it (e.g. they tapped
-      // "Use my location") — otherwise fall back to a loose Westchester-area nudge.
-      // Skipped entirely when the person explicitly picked a different state/city —
-      // in that case the query text itself ("... in Texas") should drive the search,
-      // not a bias toward Westchester or their real location.
-      const request = { query: q };
+      const body = { textQuery: q };
       if (!skipBias) {
         const biasCenter = userCoords || { lat: 41.2587, lng: -73.6854 };
-        request.location = new g.maps.LatLng(biasCenter.lat, biasCenter.lng);
-        request.radius = 60000;
+        body.locationBias = { circle: { center: { latitude: biasCenter.lat, longitude: biasCenter.lng }, radius: 60000 } };
       }
-      serviceRef.current.textSearch(
-        request,
-        (places, status) => {
-          console.log("[LDM DEBUG] useGoogleSearch — status:", status, "results:", places?.length);
-          if (cancelled) return;
-          if (status !== g.maps.places.PlacesServiceStatus.OK || !places) {
-            setResults([]); setSearching(false);
-            setErrorInfo(`Google returned: ${status}`);
-            return;
-          }
-          setResults(places.slice(0, 8).map(googleToPlace));
-          setSearching(false);
+      try {
+        const res = await fetch("https://places.googleapis.com/v1/places:searchText", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Goog-Api-Key": GMAPS_KEY,
+            "X-Goog-FieldMask": "places.id,places.displayName,places.formattedAddress,places.location,places.types,places.rating",
+          },
+          body: JSON.stringify(body),
+        });
+        const data = await res.json();
+        console.log("[LDM DEBUG] Places API (New) — status:", res.status, "data:", data);
+        if (cancelled) return;
+        if (!res.ok) {
+          setResults([]); setSearching(false);
+          setErrorInfo(data?.error?.message || `HTTP ${res.status}`);
+          return;
         }
-      );
+        setResults((data.places || []).slice(0, 8).map(googleToPlace));
+        setSearching(false);
+      } catch (e) {
+        console.log("[LDM DEBUG] Places API (New) — fetch failed:", e);
+        if (!cancelled) {
+          setResults([]); setSearching(false);
+          setErrorInfo(e.message || "Network request failed.");
+        }
+      }
     }, 600);
     return () => { cancelled = true; clearTimeout(timer); };
   }, [query, curatedCount, userCoords, skipBias]);
@@ -2798,12 +2799,18 @@ function PlaceCard({ place, onSelect, favorited, onToggleFavorite, nowHour, user
   return (
     <div
       onClick={() => onSelect(place)}
-      className="flex gap-3 p-3 rounded-2xl bg-white border cursor-pointer active:scale-[0.99] transition-transform"
-      style={{ borderColor: "#EFEAE0" }}
+      className="flex gap-3 p-3 rounded-2xl cursor-pointer active:scale-[0.99] transition-transform"
+      style={{
+        background: "rgba(255,255,255,0.4)",
+        backdropFilter: "blur(16px)",
+        WebkitBackdropFilter: "blur(16px)",
+        border: "1px solid rgba(255,255,255,0.6)",
+        boxShadow: "0 4px 20px rgba(80,60,100,0.08)",
+      }}
     >
       <div
         className="w-16 h-16 rounded-xl flex items-center justify-center text-3xl shrink-0"
-        style={{ backgroundColor: "#FFF3E6" }}
+        style={{ background: "rgba(255,255,255,0.5)", backdropFilter: "blur(8px)" }}
       >
         {place.photo}
       </div>
@@ -2974,10 +2981,16 @@ function AdultPlaceCard({ place, onSelect, favorited, onToggleFavorite, theme, u
   return (
     <div
       onClick={() => onSelect(place)}
-      className="flex gap-3 p-3 rounded-2xl border cursor-pointer active:scale-[0.99] transition-transform"
-      style={{ borderColor: t.cardBorder, backgroundColor: t.card }}
+      className="flex gap-3 p-3 rounded-2xl cursor-pointer active:scale-[0.99] transition-transform"
+      style={{
+        background: t.glassCard || t.card,
+        backdropFilter: "blur(16px)",
+        WebkitBackdropFilter: "blur(16px)",
+        border: `1px solid ${t.glassBorder || t.cardBorder}`,
+        boxShadow: "0 4px 20px rgba(20,10,40,0.12)",
+      }}
     >
-      <div className="w-16 h-16 rounded-xl flex items-center justify-center text-3xl shrink-0" style={{ backgroundColor: t.accentSoft }}>
+      <div className="w-16 h-16 rounded-xl flex items-center justify-center text-3xl shrink-0" style={{ background: t.glassIconBg || t.accentSoft, backdropFilter: "blur(8px)" }}>
         {place.photo}
       </div>
       <div className="flex-1 min-w-0">
@@ -3021,16 +3034,18 @@ function getAdultTheme(t) {
   if (t === "night") {
     return {
       bg: "#1E1A2E", card: "#292440", cardBorder: "rgba(255,255,255,0.1)",
-      text: "#F5F3FF", muted: "#8A81A3", accent: "#B08AE2", accentSoft: "rgba(176,138,226,0.15)",
+      text: "#F5F3FF", muted: "#D8CCEF", accent: "#B08AE2", accentSoft: "rgba(176,138,226,0.15)",
       cta: "linear-gradient(135deg,#5B3A8C,#B08AE2)", inputBg: "#292440", inputBorder: "rgba(255,255,255,0.15)",
       heartOff: "#5C5470", toggleTrack: "rgba(255,255,255,0.08)",
+      glassCard: "rgba(255,255,255,0.10)", glassBorder: "rgba(255,255,255,0.20)", glassIconBg: "rgba(255,255,255,0.14)",
     };
   }
   return {
     bg: "#F3E8D3", card: "#FFFFFF", cardBorder: "#E8D9B8",
-    text: "#2B2620", muted: "#9C8D6E", accent: "#B8863B", accentSoft: "rgba(184,134,59,0.12)",
+    text: "#2B2620", muted: "#5C4A2E", accent: "#B8863B", accentSoft: "rgba(184,134,59,0.12)",
     cta: "linear-gradient(135deg,#9A6E22,#E8C674)", inputBg: "#FFFFFF", inputBorder: "#E8D9B8",
     heartOff: "#D8C6A0", toggleTrack: "rgba(184,134,59,0.1)",
+    glassCard: "rgba(255,255,255,0.45)", glassBorder: "rgba(255,255,255,0.65)", glassIconBg: "rgba(255,255,255,0.55)",
   };
 }
 
@@ -3130,7 +3145,7 @@ function AdultHomeContent({ favorites, toggleFavorite, setSelectedPlace, setScre
   );
 
   return (
-    <div className="pb-4" style={{ backgroundColor: theme.bg, minHeight: "100%" }}>
+    <div className="pb-4" style={{ backgroundColor: theme.bg, minHeight: "auto" }}>
       {/* ===== Masthead ===== */}
       <div className="px-5 pt-5 pb-4 text-center border-b" style={{ borderColor: theme.cardBorder }}>
         <div className="text-[26px] mb-1">{isNight ? "🌙" : "☀️"}</div>
@@ -3433,42 +3448,27 @@ function HomeScreen({ setScreen, favorites, toggleFavorite, setSelectedPlace, lo
     const isNight = adultTimeOfDay === "night";
     const dateStr2 = new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
     return (
-      <div className="pb-4" style={{ backgroundColor: theme.bg, minHeight: "100%" }}>
+      <div className="pb-4" style={{ backgroundColor: "transparent" }}>
         <ModeSwitcher mode={appMode} onSetMode={onSetMode} />
 
-        <div className="px-5 pt-5 pb-4 text-center border-b" style={{ borderColor: theme.cardBorder }}>
+        <div className="px-5 pt-5 pb-4 text-center border-b" style={{ borderColor: "rgba(255,255,255,0.25)" }}>
           <div className="text-[26px] mb-1">{isNight ? "🌙" : "☀️"}</div>
-          <p className="text-[10.5px] font-bold tracking-[0.16em] uppercase" style={{ color: theme.accent }}>
+          <p className="text-[10.5px] font-bold tracking-[0.16em] uppercase" style={{ color: "#fff", textShadow: "0 1px 6px rgba(0,0,0,0.2)" }}>
             {dateStr2} · {isNight ? "Tonight's" : "Today's"} Issue
           </p>
-          <h1 style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 25, color: theme.text, marginTop: 4, lineHeight: 1.15 }}>
+          <h1 style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 25, color: "#fff", marginTop: 4, lineHeight: 1.15, textShadow: "0 2px 12px rgba(0,0,0,0.22)" }}>
             What's the plan {isNight ? "tonight" : "today"}?
           </h1>
         </div>
 
         <div className="px-5">
-          <p className="text-[10.5px] font-bold tracking-[0.16em] uppercase mb-2 mt-6" style={{ color: theme.accent }}>Today's Notes</p>
+          <p className="text-[10.5px] font-bold tracking-[0.16em] uppercase mb-2 mt-6" style={{ color: "#fff", textShadow: "0 1px 6px rgba(0,0,0,0.2)" }}>Today's Notes</p>
           <LocationBar location={effectiveLocation} onRequest={onRequestLocation} />
           <ChangeLocationControl />
         </div>
 
         <div className="px-5">
-          <p className="text-[10.5px] font-bold tracking-[0.16em] uppercase mb-2 mt-6" style={{ color: theme.accent }}>Ready?</p>
-          <div className="rounded-3xl p-5" style={{ background: theme.accentSoft, border: `2px solid ${theme.accent}` }}>
-            <TimeOfDayToggle value={adultTimeOfDay} onChange={onSetAdultTimeOfDay} />
-            <button
-              onClick={() => setScreen("adultPlanner")}
-              className="w-full rounded-2xl py-5 flex items-center justify-center gap-2 text-white font-bold text-[19px] shadow-md"
-              style={{ background: theme.cta }}
-            >
-              <Sparkles size={22} />
-              {isNight ? "Plan My Night" : "Plan My Day"}
-            </button>
-          </div>
-        </div>
-
-        <div className="px-5">
-          <p className="text-[10.5px] font-bold tracking-[0.16em] uppercase mb-2 mt-6" style={{ color: theme.accent }}>Explore Places</p>
+          <p className="text-[10.5px] font-bold tracking-[0.16em] uppercase mb-2 mt-6" style={{ color: "#fff", textShadow: "0 1px 6px rgba(0,0,0,0.2)" }}>Explore Places</p>
         </div>
         <MapScreen
           embedded
@@ -3487,6 +3487,21 @@ function HomeScreen({ setScreen, favorites, toggleFavorite, setSelectedPlace, lo
           onSetAdultTimeOfDay={onSetAdultTimeOfDay}
           onSelectGoogle={onSelectGoogle}
         />
+
+        <div className="px-5">
+          <p className="text-[10.5px] font-bold tracking-[0.16em] uppercase mb-2 mt-6" style={{ color: "#fff", textShadow: "0 1px 6px rgba(0,0,0,0.2)" }}>Ready?</p>
+          <div className="rounded-3xl p-5" style={{ background: theme.glassCard, backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", border: `1px solid ${theme.glassBorder}`, boxShadow: "0 8px 32px rgba(20,10,40,0.18)" }}>
+            <TimeOfDayToggle value={adultTimeOfDay} onChange={onSetAdultTimeOfDay} />
+            <button
+              onClick={() => setScreen("adultPlanner")}
+              className="w-full rounded-2xl py-5 flex items-center justify-center gap-2 text-white font-bold text-[19px] shadow-md"
+              style={{ background: theme.cta }}
+            >
+              <Sparkles size={22} />
+              {isNight ? "Plan My Night" : "Plan My Day"}
+            </button>
+          </div>
+        </div>
       </div>
     );
   }
@@ -3519,25 +3534,25 @@ function HomeScreen({ setScreen, favorites, toggleFavorite, setSelectedPlace, lo
   const dateStr = new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
 
   const Kicker = ({ children }) => (
-    <p className="text-[10.5px] font-bold tracking-[0.14em] uppercase mb-2 mt-6" style={{ color: "#C97A4A" }}>{children}</p>
+    <p className="text-[10.5px] font-bold tracking-[0.14em] uppercase mb-2 mt-6" style={{ color: "#fff", textShadow: "0 1px 6px rgba(0,0,0,0.18)" }}>{children}</p>
   );
 
   return (
-    <div className="pb-4" style={{ backgroundColor: "#FBF3E7" }}>
+    <div className="pb-4" style={{ backgroundColor: "transparent" }}>
       <ModeSwitcher mode={appMode} onSetMode={onSetMode} />
 
       {/* ===== Masthead ===== */}
-      <div className="px-5 pt-5 pb-4 text-center border-b-2" style={{ borderColor: "#26221E" }}>
+      <div className="px-5 pt-5 pb-4 text-center border-b-2" style={{ borderColor: "rgba(255,255,255,0.5)" }}>
         <div className="flex items-center justify-center gap-2 mb-1">
           <LittleDaySun size={30} />
         </div>
-        <p className="text-[10.5px] font-bold tracking-[0.15em] uppercase" style={{ color: "#C97A4A" }}>
+        <p className="text-[10.5px] font-bold tracking-[0.15em] uppercase" style={{ color: "#fff", textShadow: "0 1px 6px rgba(0,0,0,0.15)" }}>
           {dateStr} · Today's Issue
         </p>
-        <h1 style={{ fontFamily: "'Fredoka', sans-serif", fontWeight: 700, fontSize: 26, color: "#1B2A4A", marginTop: 4, lineHeight: 1.15 }}>
+        <h1 style={{ fontFamily: "'Fredoka', sans-serif", fontWeight: 700, fontSize: 26, color: "#fff", marginTop: 4, lineHeight: 1.15, textShadow: "0 2px 12px rgba(0,0,0,0.18)" }}>
           What should we do today?
         </h1>
-        <button onClick={onHowTo} className="mt-2.5 inline-flex items-center gap-1 text-[11.5px] font-semibold px-3 py-1.5 rounded-full" style={{ backgroundColor: "#FFF3E6", color: "#B08A5A" }}>
+        <button onClick={onHowTo} className="mt-2.5 inline-flex items-center gap-1 text-[11.5px] font-semibold px-3 py-1.5 rounded-full" style={{ background: "rgba(255,255,255,0.35)", backdropFilter: "blur(10px)", color: "#fff" }}>
           <HelpCircle size={13} /> How it works
         </button>
       </div>
@@ -3553,6 +3568,23 @@ function HomeScreen({ setScreen, favorites, toggleFavorite, setSelectedPlace, lo
         <ChangeLocationControl />
         <HomeSmartBanners kids={kids} companionKidIds={companionKidIds} schoolDistrictId={schoolDistrictId} onSetSchoolDistrict={onSetSchoolDistrict} completedDays={completedDays} onOpenBuilder={onOpenBuilder} />
       </div>
+
+      {/* ===== Explore — the one search + map + browse experience ===== */}
+      <div className="px-5">
+        <Kicker>Explore Places</Kicker>
+      </div>
+      <MapScreen
+        embedded
+        setSelectedPlace={setSelectedPlace}
+        favorites={favorites}
+        toggleFavorite={toggleFavorite}
+        location={effectiveLocation}
+        onRequestLocation={onRequestLocation}
+        setScreen={setScreen}
+        appMode={appMode}
+        onSetMode={onSetMode}
+        onSelectGoogle={onSelectGoogle}
+      />
 
       {/* ===== Plan My Day — the main event ===== */}
       <div className="px-5">
@@ -3587,7 +3619,7 @@ function HomeScreen({ setScreen, favorites, toggleFavorite, setSelectedPlace, lo
           </div>
         )}
 
-        <div className="mt-4 rounded-3xl p-5" style={{ background: "linear-gradient(160deg,#FFF3E6,#FFE8D4)", border: "2px solid #F5B71F" }}>
+        <div className="mt-4 rounded-3xl p-5" style={{ background: "rgba(255,255,255,0.35)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.55)", boxShadow: "0 8px 32px rgba(80,60,100,0.12)" }}>
           <DayNightToggle appMode={appMode} onSetMode={onSetMode} />
           <button
             onClick={() => setScreen("planner")}
@@ -3666,23 +3698,6 @@ function HomeScreen({ setScreen, favorites, toggleFavorite, setSelectedPlace, lo
           );
         })}
       </div>
-
-      {/* ===== Explore — the one search + map + browse experience ===== */}
-      <div className="px-5">
-        <Kicker>Explore Places</Kicker>
-      </div>
-      <MapScreen
-        embedded
-        setSelectedPlace={setSelectedPlace}
-        favorites={favorites}
-        toggleFavorite={toggleFavorite}
-        location={effectiveLocation}
-        onRequestLocation={onRequestLocation}
-        setScreen={setScreen}
-        appMode={appMode}
-        onSetMode={onSetMode}
-        onSelectGoogle={onSelectGoogle}
-      />
 
       {/* ===== More to Explore ===== */}
       <div className="px-5">
@@ -4369,7 +4384,7 @@ function MapScreen({ setSelectedPlace, favorites, toggleFavorite, location, onRe
   const located = location.status === "located";
 
   return (
-    <div className="pb-4" style={{ backgroundColor: isAdult ? theme.bg : "transparent", minHeight: "100%" }}>
+    <div className="pb-4" style={{ backgroundColor: "transparent", minHeight: "auto" }}>
       {!embedded && <TopBar title="Categories List" hideHome={false} dark={isAdult && adultTimeOfDay === "night"} />}
       {!embedded && <ModeSwitcher mode={appMode} onSetMode={onSetMode} />}
       {!embedded && isAdult && (
@@ -4379,7 +4394,7 @@ function MapScreen({ setSelectedPlace, favorites, toggleFavorite, location, onRe
       )}
       <div className="px-5 mb-3">
         <div className="flex items-center gap-2">
-          <div className="flex-1 flex items-center gap-2 rounded-2xl px-3.5 py-2.5 border bg-white" style={{ borderColor: "#E7E1D4" }}>
+          <div className="flex-1 flex items-center gap-2 rounded-2xl px-3.5 py-2.5" style={{ background: "rgba(255,255,255,0.4)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", border: "1px solid rgba(255,255,255,0.6)" }}>
             <Search size={17} color="#9C9484" />
             <input
               value={query}
@@ -7834,7 +7849,12 @@ export default function LittleDayApp() {
     <div
       className="min-h-screen flex justify-center"
       style={{
-        backgroundColor: appMode === "adult" ? (adultTimeOfDay === "night" ? "#1E1A2E" : "#F3E8D3") : "#EFEAE0",
+        background: appMode === "adult"
+          ? (adultTimeOfDay === "night"
+              ? "linear-gradient(160deg,#2B2350 0%,#4A3B7C 55%,#6B4E9E 100%)"
+              : "linear-gradient(160deg,#FFE0B2 0%,#FFAB91 55%,#CE93D8 100%)")
+          : "linear-gradient(160deg,#A8C8EC 0%,#E8B4D8 55%,#F5D6A8 100%)",
+        backgroundAttachment: "fixed",
         fontFamily: "'Inter', sans-serif",
         "--accent": appMode === "adult" ? (adultTimeOfDay === "night" ? "#B08AE2" : "#B8863B") : "#FF8C61",
         "--cta": appMode === "adult"
