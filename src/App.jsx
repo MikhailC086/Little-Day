@@ -3510,6 +3510,21 @@ function HomeScreen({ setScreen, favorites, toggleFavorite, setSelectedPlace, lo
         </div>
 
         <div className="px-5">
+          <p className="text-[10.5px] font-bold tracking-[0.16em] uppercase mb-2 mt-6" style={{ color: isNight ? "#fff" : "#2B2620", textShadow: isNight ? "0 1px 6px rgba(0,0,0,0.2)" : "none" }}>Ready?</p>
+          <div className="rounded-3xl p-5" style={{ background: theme.glassCard, backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", border: `1px solid ${theme.glassBorder}`, boxShadow: "0 8px 32px rgba(20,10,40,0.18)" }}>
+            <TimeOfDayToggle value={adultTimeOfDay} onChange={onSetAdultTimeOfDay} />
+            <button
+              onClick={() => setScreen("adultPlanner")}
+              className="w-full rounded-2xl py-5 flex items-center justify-center gap-2 text-white font-bold text-[19px] shadow-md"
+              style={{ background: theme.cta }}
+            >
+              <Sparkles size={22} />
+              {isNight ? "Plan My Night" : "Plan My Day"}
+            </button>
+          </div>
+        </div>
+
+        <div className="px-5">
           <p className="text-[10.5px] font-bold tracking-[0.16em] uppercase mb-2 mt-6" style={{ color: isNight ? "#fff" : "#2B2620", textShadow: isNight ? "0 1px 6px rgba(0,0,0,0.2)" : "none" }}>Today's Notes</p>
           <LocationBar location={effectiveLocation} onRequest={onRequestLocation} />
           <ChangeLocationControl />
@@ -3535,21 +3550,6 @@ function HomeScreen({ setScreen, favorites, toggleFavorite, setSelectedPlace, lo
           onSetAdultTimeOfDay={onSetAdultTimeOfDay}
           onSelectGoogle={onSelectGoogle}
         />
-
-        <div className="px-5">
-          <p className="text-[10.5px] font-bold tracking-[0.16em] uppercase mb-2 mt-6" style={{ color: isNight ? "#fff" : "#2B2620", textShadow: isNight ? "0 1px 6px rgba(0,0,0,0.2)" : "none" }}>Ready?</p>
-          <div className="rounded-3xl p-5" style={{ background: theme.glassCard, backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", border: `1px solid ${theme.glassBorder}`, boxShadow: "0 8px 32px rgba(20,10,40,0.18)" }}>
-            <TimeOfDayToggle value={adultTimeOfDay} onChange={onSetAdultTimeOfDay} />
-            <button
-              onClick={() => setScreen("adultPlanner")}
-              className="w-full rounded-2xl py-5 flex items-center justify-center gap-2 text-white font-bold text-[19px] shadow-md"
-              style={{ background: theme.cta }}
-            >
-              <Sparkles size={22} />
-              {isNight ? "Plan My Night" : "Plan My Day"}
-            </button>
-          </div>
-        </div>
       </div>
     );
   }
@@ -3602,38 +3602,8 @@ function HomeScreen({ setScreen, favorites, toggleFavorite, setSelectedPlace, lo
         </button>
       </div>
 
-      {/* ===== Today's Notes ===== */}
-      <div className="px-5">
-        <Kicker>Today's Notes</Kicker>
-        <div className="flex items-center gap-1.5 mb-1.5">
-          <Sun size={18} color="#F5B71F" />
-          <span className="text-[13px] font-medium" style={{ color: "#5C5648" }}>{WEATHER.tempF}° and sunny</span>
-        </div>
-        <LocationBar location={effectiveLocation} onRequest={onRequestLocation} />
-        <ChangeLocationControl />
-        <HomeSmartBanners kids={kids} companionKidIds={companionKidIds} schoolDistrictId={schoolDistrictId} onSetSchoolDistrict={onSetSchoolDistrict} completedDays={completedDays} onOpenBuilder={onOpenBuilder} />
-      </div>
-
-      {/* ===== Explore — the one search + map + browse experience ===== */}
-      <div className="px-5">
-        <Kicker>Explore Places</Kicker>
-      </div>
-      <MapScreen
-        embedded
-        setSelectedPlace={setSelectedPlace}
-        favorites={favorites}
-        toggleFavorite={toggleFavorite}
-        location={effectiveLocation}
-        onRequestLocation={onRequestLocation}
-        setScreen={setScreen}
-        appMode={appMode}
-        onSetMode={onSetMode}
-        onSelectGoogle={onSelectGoogle}
-      />
-
-      {/* ===== Plan My Day — the main event ===== */}
-      <div className="px-5">
-        <Kicker>Planning For</Kicker>
+      {/* ===== Plan My Day — the main event, right up top ===== */}
+      <div className="px-5 pt-4">
         {kids && kids.length > 0 && (
           <div className="flex items-center gap-2 overflow-x-auto">
             {kids.map((k) => {
@@ -3664,7 +3634,7 @@ function HomeScreen({ setScreen, favorites, toggleFavorite, setSelectedPlace, lo
           </div>
         )}
 
-        <div className="mt-4 rounded-3xl p-5" style={{ background: "rgba(255,255,255,0.35)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.55)", boxShadow: "0 8px 32px rgba(80,60,100,0.12)" }}>
+        <div className="mt-3 rounded-3xl p-5" style={{ background: "rgba(255,255,255,0.35)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.55)", boxShadow: "0 8px 32px rgba(80,60,100,0.12)" }}>
           <DayNightToggle appMode={appMode} onSetMode={onSetMode} />
           <button
             onClick={() => setScreen("planner")}
@@ -3684,6 +3654,35 @@ function HomeScreen({ setScreen, favorites, toggleFavorite, setSelectedPlace, lo
           </button>
         </div>
       </div>
+
+      {/* ===== Today's Notes ===== */}
+      <div className="px-5">
+        <Kicker>Today's Notes</Kicker>
+        <div className="flex items-center gap-1.5 mb-1.5">
+          <Sun size={18} color="#F5B71F" />
+          <span className="text-[13px] font-medium" style={{ color: "#5C5648" }}>{WEATHER.tempF}° and sunny</span>
+        </div>
+        <LocationBar location={effectiveLocation} onRequest={onRequestLocation} />
+        <ChangeLocationControl />
+        <HomeSmartBanners kids={kids} companionKidIds={companionKidIds} schoolDistrictId={schoolDistrictId} onSetSchoolDistrict={onSetSchoolDistrict} completedDays={completedDays} onOpenBuilder={onOpenBuilder} />
+      </div>
+
+      {/* ===== Explore — the one search + map + browse experience ===== */}
+      <div className="px-5">
+        <Kicker>Explore Places</Kicker>
+      </div>
+      <MapScreen
+        embedded
+        setSelectedPlace={setSelectedPlace}
+        favorites={favorites}
+        toggleFavorite={toggleFavorite}
+        location={effectiveLocation}
+        onRequestLocation={onRequestLocation}
+        setScreen={setScreen}
+        appMode={appMode}
+        onSetMode={onSetMode}
+        onSelectGoogle={onSelectGoogle}
+      />
 
       {/* ===== This Week ===== */}
       <div className="px-5">
