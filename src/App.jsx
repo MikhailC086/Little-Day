@@ -1,4 +1,29 @@
 import React, { useState, useMemo, useEffect, useContext, useRef } from "react";
+
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { error: null, errorInfo: null };
+  }
+  static getDerivedStateFromError(error) {
+    return { error };
+  }
+  componentDidCatch(error, errorInfo) {
+    this.setState({ errorInfo });
+  }
+  render() {
+    if (this.state.error) {
+      return (
+        <div style={{ padding: 20, fontFamily: "monospace", background: "#FFF5F5", color: "#900", minHeight: "100vh", boxSizing: "border-box" }}>
+          <h2 style={{ fontSize: 16, marginBottom: 10, fontFamily: "sans-serif" }}>⚠️ App crashed — screenshot this whole screen</h2>
+          <p style={{ marginBottom: 10, fontWeight: "bold", fontSize: 13, whiteSpace: "pre-wrap" }}>{String(this.state.error?.message || this.state.error)}</p>
+          <pre style={{ whiteSpace: "pre-wrap", fontSize: 10, color: "#555", lineHeight: 1.5 }}>{this.state.errorInfo?.componentStack || "(no component stack)"}</pre>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 import { supabase, backendReady } from "./supabaseClient.js";
 import { GoogleMap, Marker, useJsApiLoader } from "@react-google-maps/api";
 import {
@@ -7891,7 +7916,7 @@ export default function LittleDayApp() {
       >
         <div className="flex-1 overflow-y-auto overscroll-contain">
           <div key={screen} style={{ animation: "fadeSlide 0.28s ease-out" }}>
-            {content}
+            <ErrorBoundary key={screen + appMode}>{content}</ErrorBoundary>
           </div>
         </div>
         {showNav && (
