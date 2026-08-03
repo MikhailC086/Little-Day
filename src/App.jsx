@@ -1952,14 +1952,16 @@ function EventsScreen({ appMode, onSetMode, savedEvents, onToggleSave }) {
     .filter((e) => e.mode === "both" || e.mode === appMode || (!isAdult && e.mode === "kids"))
     .sort((a, b) => a.date.localeCompare(b.date));
 
-  // Group into simple date buckets for scannable headers, rather than a full-screen card per event.
-  const groups = [];
-  for (const ev of upcoming) {
-    const label = formatEventDate(ev.date).split(" · ")[0]; // "Today", "Tomorrow", "This Wednesday", etc.
-    let g = groups.find((x) => x.label === label);
-    if (!g) { g = { label, events: [] }; groups.push(g); }
-    g.events.push(ev);
-  }
+  // Group into clear, specific time buckets — not one group per individual date.
+  const dayMs = 86400000;
+  const buckets = [
+    { label: "Happening Today", test: (d) => d.getTime() === today.getTime() },
+    { label: "This Week", test: (d) => d > today && (d - today) / dayMs <= 7 },
+    { label: "Coming Up In The Next Few Weeks", test: (d) => (d - today) / dayMs > 7 },
+  ];
+  const groups = buckets
+    .map((b) => ({ label: b.label, events: upcoming.filter((ev) => b.test(new Date(ev.date + "T00:00:00"))) }))
+    .filter((g) => g.events.length > 0);
 
   return (
     <div className="pb-6">
@@ -1987,13 +1989,18 @@ function EventsScreen({ appMode, onSetMode, savedEvents, onToggleSave }) {
   );
 }
 
-function TravelSearchScreen({ onBack, onOpenGooglePlace, appMode, onSetMode }) {
+function VacationModeScreen({ onBack, onOpenGooglePlace, appMode, onSetMode, vacationTrips, onSaveTrip, onDeleteTrip }) {
   const isAdult = appMode === "adult";
   const { isLoaded, loadError } = useJsApiLoader({ id: "little-day-gmaps", googleMapsApiKey: GMAPS_KEY, libraries: GMAPS_LIBRARIES });
   const [query, setQuery] = useState("");
+  const [tripDate, setTripDate] = useState(() => {
+    const d = new Date(); d.setDate(d.getDate() + 7);
+    return d.toISOString().slice(0, 10);
+  });
   const [status, setStatus] = useState("idle"); // idle | searching | done | error
   const [results, setResults] = useState([]);
   const [searchedFor, setSearchedFor] = useState("");
+  const [tripPlaces, setTripPlaces] = useState([]);
   const serviceRef = useRef(null);
 
   const runSearch = () => {
@@ -2028,20 +2035,63 @@ function TravelSearchScreen({ onBack, onOpenGooglePlace, appMode, onSetMode }) {
     });
   };
 
+  const addToTrip = (r) => {
+    const place = {
+      id: r.place_id, name: r.name, address: r.formatted_address,
+      photo: travelCategoryEmoji(r.types), category: travelCategoryLabel(r.types), rating: r.rating,
+    };
+    setTripPlaces((cur) => cur.find((p) => p.id === place.id) ? cur : [...cur, place]);
+  };
+
+  const saveTrip = () => {
+    onSaveTrip({ id: Date.now().toString(), destination: searchedFor, date: tripDate, places: tripPlaces, mode: appMode });
+    setTripPlaces([]);
+    setResults([]);
+    setStatus("idle");
+    setQuery("");
+  };
+
   return (
     <div className="min-h-screen pb-8" style={{ backgroundColor: "#FFFBF5" }}>
-      <TopBar title="Search Any Area" onBack={onBack} />
+      <TopBar title="Vacation Mode" onBack={onBack} />
       <ModeSwitcher mode={appMode} onSetMode={onSetMode} />
       <div className="px-5 pt-2">
         <div className="rounded-2xl p-3.5 mb-4" style={{ backgroundColor: isAdult ? "#F3ECF7" : "#FFF3E6" }}>
           <p className="text-[12.5px] leading-snug" style={{ color: isAdult ? "#6B4E8C" : "#8A6A3D" }}>
-            {isAdult
-              ? "✈️ Heading somewhere new? Search live results from Google here — restaurants, bars, concerts, museums, movies, anywhere in the US. Real places, not yet verified by us."
-              : "✈️ Traveling or headed out of our curated area? Search live results from Google here — real places, but not yet parent-verified (no nap-time or stroller notes)."}
+            🧳 Planning ahead? Pick a destination and a date, build up a little itinerary from real live results, and save it — everything's here waiting for you when the day comes.
           </p>
         </div>
 
-        <div className="flex items-center gap-2 rounded-2xl px-3.5 py-2.5 border bg-white mb-4" style={{ borderColor: "#E7E1D4" }}>
+        {vacationTrips.length > 0 && (
+          <div className="mb-5">
+            <p className="text-[12px] font-semibold text-[#8A8474] mb-2">YOUR SAVED TRIPS</p>
+            <div className="flex flex-col gap-2">
+              {vacationTrips.map((t) => (
+                <div key={t.id} className="rounded-2xl p-3.5 bg-white border" style={{ borderColor: "#EFEAE0" }}>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-[13.5px] font-semibold text-[#1B2A4A]">{t.destination}</p>
+                      <p className="text-[11.5px] text-[#8A8474]">{new Date(t.date + "T00:00:00").toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })} · {t.places.length} stop{t.places.length === 1 ? "" : "s"}</p>
+                    </div>
+                    <button onClick={() => onDeleteTrip(t.id)} className="text-[12px] font-semibold" style={{ color: "#C05621" }}>Remove</button>
+                  </div>
+                  {t.places.length > 0 && (
+                    <div className="mt-2 flex flex-col gap-1">
+                      {t.places.map((p) => (
+                        <button key={p.id} onClick={() => onOpenGooglePlace(p)} className="text-left text-[12.5px] text-[#5C5648] flex items-center gap-1.5">
+                          <span>{p.photo}</span> {p.name}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <p className="text-[12px] font-semibold text-[#8A8474] mb-1.5">DESTINATION</p>
+        <div className="flex items-center gap-2 rounded-2xl px-3.5 py-2.5 border bg-white mb-3" style={{ borderColor: "#E7E1D4" }}>
           <Search size={17} color="#9C9484" />
           <input
             value={query}
@@ -2051,13 +2101,21 @@ function TravelSearchScreen({ onBack, onOpenGooglePlace, appMode, onSetMode }) {
             className="flex-1 text-[14px] outline-none bg-transparent text-[#1B2A4A]"
           />
         </div>
+        <p className="text-[12px] font-semibold text-[#8A8474] mb-1.5">TRIP DATE</p>
+        <input
+          type="date"
+          value={tripDate}
+          onChange={(e) => setTripDate(e.target.value)}
+          className="w-full rounded-2xl px-3.5 py-2.5 border bg-white text-[14px] text-[#1B2A4A] mb-3"
+          style={{ borderColor: "#E7E1D4" }}
+        />
         <button
           onClick={runSearch}
           disabled={!query.trim() || status === "searching" || !isLoaded}
           className="w-full rounded-2xl py-3.5 text-white font-semibold text-[14.5px] disabled:opacity-50"
           style={{ background: isAdult ? "#8B5CF6" : "var(--cta)" }}
         >
-          {status === "searching" ? "Searching…" : "Search"}
+          {status === "searching" ? "Searching…" : "Search this destination"}
         </button>
 
         {loadError && <p className="text-[13px] text-center mt-4" style={{ color: "#C05621" }}>Map couldn't load — check the Google Maps API key.</p>}
@@ -2065,35 +2123,35 @@ function TravelSearchScreen({ onBack, onOpenGooglePlace, appMode, onSetMode }) {
 
         {status === "done" && (
           <>
-            <p className="text-[12px] text-[#8A8474] mt-5 mb-2">Results near {searchedFor}</p>
-            <div className="flex flex-col gap-2">
-              {results.map((r) => (
-                <button
-                  key={r.place_id}
-                  onClick={() => onOpenGooglePlace({
-                    name: r.name,
-                    address: r.formatted_address,
-                    photo: travelCategoryEmoji(r.types),
-                    category: travelCategoryLabel(r.types),
-                    town: searchedFor,
-                    rating: r.rating,
-                  })}
-                  className="flex items-center gap-3 p-3 rounded-2xl bg-white border text-left"
-                  style={{ borderColor: "#EFEAE0" }}
-                >
-                  <div className="w-12 h-12 rounded-xl flex items-center justify-center text-[22px] shrink-0" style={{ backgroundColor: "#FFF3E6" }}>{travelCategoryEmoji(r.types)}</div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[14px] font-semibold text-[#1B2A4A] truncate">{r.name}</p>
-                    <p className="text-[12px] text-[#8A8474] truncate">
-                      {travelCategoryLabel(r.types)}{r.rating ? ` · ⭐ ${r.rating}` : ""}
-                    </p>
-                    <p className="text-[11.5px] text-[#B8B0A0] truncate">{r.formatted_address}</p>
-                  </div>
-                  <ChevronRight size={16} color="#B08A5A" className="shrink-0" />
-                </button>
-              ))}
-              {results.length === 0 && <p className="text-[13px] text-[#8A8474] text-center mt-4">No family spots found nearby — try a bigger town or city name.</p>}
+            <div className="flex items-center justify-between mt-5 mb-2">
+              <p className="text-[12px] text-[#8A8474]">Results near {searchedFor}</p>
+              {tripPlaces.length > 0 && <p className="text-[12px] font-semibold" style={{ color: "var(--accent)" }}>{tripPlaces.length} added to trip</p>}
             </div>
+            <div className="flex flex-col gap-2">
+              {results.map((r) => {
+                const added = tripPlaces.find((p) => p.id === r.place_id);
+                return (
+                  <div key={r.place_id} className="flex items-center gap-3 p-3 rounded-2xl bg-white border" style={{ borderColor: "#EFEAE0" }}>
+                    <button onClick={() => onOpenGooglePlace({ name: r.name, address: r.formatted_address, photo: travelCategoryEmoji(r.types), category: travelCategoryLabel(r.types), town: searchedFor, rating: r.rating })} className="flex items-center gap-3 flex-1 min-w-0 text-left">
+                      <div className="w-12 h-12 rounded-xl flex items-center justify-center text-[22px] shrink-0" style={{ backgroundColor: "#FFF3E6" }}>{travelCategoryEmoji(r.types)}</div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[14px] font-semibold text-[#1B2A4A] truncate">{r.name}</p>
+                        <p className="text-[12px] text-[#8A8474] truncate">{travelCategoryLabel(r.types)}{r.rating ? ` · ⭐ ${r.rating}` : ""}</p>
+                      </div>
+                    </button>
+                    <button onClick={() => addToTrip(r)} className="shrink-0 w-8 h-8 rounded-full flex items-center justify-center" style={{ backgroundColor: added ? "var(--accent)" : "#F0EEE6", color: added ? "#fff" : "#8A8474" }}>
+                      {added ? "✓" : "+"}
+                    </button>
+                  </div>
+                );
+              })}
+              {results.length === 0 && <p className="text-[13px] text-[#8A8474] text-center mt-4">No spots found nearby — try a bigger town or city name.</p>}
+            </div>
+            {tripPlaces.length > 0 && (
+              <button onClick={saveTrip} className="w-full rounded-2xl py-3.5 mt-4 text-white font-semibold text-[14.5px]" style={{ background: "var(--cta)" }}>
+                Save this trip ({tripPlaces.length} stop{tripPlaces.length === 1 ? "" : "s"})
+              </button>
+            )}
           </>
         )}
       </div>
@@ -3322,7 +3380,7 @@ function AdultHomeContent({ favorites, toggleFavorite, setSelectedPlace, setScre
             <p className="text-[13px] text-center py-6" style={{ color: theme.muted }}>
               {manualStateSelected
                 ? `We don't have a curated list for ${stateFilter} yet — head to the Categories tab, which pulls real live results for any state.`
-                : 'No matches yet for this filter — try widening it, or use "Search any area live" from Categories for real-time results anywhere.'}
+                : 'No matches yet for this filter — try widening it, or use Vacation Mode from Categories for real-time results anywhere.'}
             </p>
           )}
         </div>
@@ -3712,7 +3770,7 @@ function HomeScreen({ setScreen, favorites, toggleFavorite, setSelectedPlace, lo
         <Kicker>This Week</Kicker>
         {farFromCoverage && (
           <p className="text-[12px] mb-2" style={{ color: "#B8B0A0" }}>
-            These are Westchester-area events — about {Math.round(nearestCuratedMi)} mi from you. Check the Events tab or "Search any area live" for things closer to you.
+            These are Westchester-area events — about {Math.round(nearestCuratedMi)} mi from you. Check the Events tab or Vacation Mode for things closer to you.
           </p>
         )}
       </div>
@@ -4479,7 +4537,7 @@ function MapScreen({ setSelectedPlace, favorites, toggleFavorite, location, onRe
         </div>
         {isAdult && !query.trim() && (
           <div className="flex items-center gap-2 mt-2 overflow-x-auto pb-1">
-            {["Restaurants near me", "Movies", "Museums", "Painting or ceramics classes", "Concerts", "Comedy shows", "Live speakers"].map((q) => (
+            {["Restaurants near me", "Movie theaters near me", "Museums near me", "Painting or ceramics classes", "Live music venues", "Comedy clubs", "Speaker events near me"].map((q) => (
               <button
                 key={q}
                 onClick={() => setQuery(q)}
@@ -4496,11 +4554,11 @@ function MapScreen({ setSelectedPlace, favorites, toggleFavorite, location, onRe
           <SimpleFilterDropdown label="City" icon={MapPin} activeKey={cityFilter} options={cityOptions} onSelect={setCityFilter} />
         </div>
         <p className="text-[11px] mt-1.5" style={{ color: "#B8B0A0" }}>
-          Filters our curated list only ({stateOptions.length - 1} states covered). For anywhere else — try typing a search above, or use "Search any area live" below.
+          Filters our curated list only ({stateOptions.length - 1} states covered). For anywhere else — try typing a search above, or use Vacation Mode below.
         </p>
         {setScreen && (
           <button onClick={() => setScreen("travelSearch")} className="w-full text-center mt-2 text-[12.5px] font-semibold" style={{ color: accentColor }}>
-            ✈️ {isAdult ? "Somewhere new? Search any area live →" : "Traveling further out? Search any area live →"}
+            🧳 Planning ahead? Set up Vacation Mode →
           </button>
         )}
       </div>
@@ -7220,6 +7278,12 @@ export default function LittleDayApp() {
   const [appMode, setAppMode] = usePersistentState("appMode", "kids");
   const [adultFavorites, setAdultFavorites] = usePersistentState("adultFavorites", []);
   const [savedEvents, setSavedEvents] = usePersistentState("savedEvents", []);
+  const [vacationTrips, setVacationTrips] = usePersistentState("vacationTrips", []);
+  const saveVacationTrip = (trip) => {
+    setVacationTrips((cur) => [trip, ...cur]);
+    showToast(`Trip to ${trip.destination} saved!`);
+  };
+  const deleteVacationTrip = (id) => setVacationTrips((cur) => cur.filter((t) => t.id !== id));
   const toggleSavedEvent = (id) =>
     setSavedEvents((cur) => (cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]));
   const [adultSelectedPlace, setAdultSelectedPlace] = useState(null);
@@ -7933,7 +7997,7 @@ export default function LittleDayApp() {
       }}
     />;
   } else if (screen === "travelSearch") {
-    content = <TravelSearchScreen onBack={() => goTo("home")} onOpenGooglePlace={(p) => setGooglePlace(p)} appMode={appMode} onSetMode={setAppMode} />;
+    content = <VacationModeScreen onBack={() => goTo("home")} onOpenGooglePlace={(p) => setGooglePlace(p)} appMode={appMode} onSetMode={setAppMode} vacationTrips={vacationTrips} onSaveTrip={saveVacationTrip} onDeleteTrip={deleteVacationTrip} />;
   } else if (screen === "safety") {
     content = <SafetyScreen appMode={appMode} onSetMode={setAppMode} />;
   } else if (screen === "community") {
