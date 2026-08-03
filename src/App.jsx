@@ -65,6 +65,7 @@ const COORDS = {
   "captain-lawrence": [41.0637, -73.8140], "muse-paintbar-wp": [41.0295, -73.7764],
   "westchester-wine-warehouse": [41.0505, -73.7963], "ridgefield-playhouse-adult": [41.2822, -73.4993],
   "brooklyn-bowl": [40.7220, -73.9575], "ron-blacks-beer-hall": [41.0296, -73.7768],
+  "goosefeather": [41.0765, -73.8574], "moderne-barn": [41.1298, -73.7129], "mulinos-westchester": [41.0339, -73.7629],
   "muscoot-farm": [41.2340, -73.7160], "katonah-library": [41.2585, -73.6857],
   "john-jay": [41.2466, -73.6636], "caramoor": [41.2430, -73.6670],
   "katonah-museum": [41.2450, -73.6760], "bedford-hills-library": [41.2340, -73.6940],
@@ -1366,6 +1367,27 @@ const ADULT_PLACES = [
     website: "", price: "$$", distanceMi: 13,
     photo: "🍻", vibe: "Lively", reservations: "Walk-in — arrive early on trivia nights",
     blurb: "A lively beer hall with a real weekly Trivia Night every Tuesday at 8pm — $100 cash prize to the winning team, plus bonus prizes all night. Bring: a team (up to a handful of people) and your general-knowledge confidence. Valid ID required at the bar.",
+  },
+  {
+    id: "goosefeather", name: "Goosefeather", category: "Restaurant", timeOfDay: "both",
+    town: "Tarrytown, NY", address: "49 E Sunnyside Ln, Tarrytown, NY 10591",
+    website: "", price: "$$$", distanceMi: 15,
+    photo: "🦆", vibe: "Romantic", reservations: "Reservations recommended, book ahead for weekends",
+    blurb: "Chef Dale Talde's Cantonese-inspired restaurant at the Tarrytown House Estate — roast duck, dim sum-style small plates, and a seasonal outdoor Lawn Bar with DJ nights in summer. A genuinely special-occasion spot.",
+  },
+  {
+    id: "moderne-barn", name: "Moderne Barn", category: "Restaurant", timeOfDay: "both",
+    town: "Armonk, NY", address: "430 Bedford Rd, Armonk, NY 10504",
+    website: "", price: "$$$", distanceMi: 11,
+    photo: "🥂", vibe: "Romantic", reservations: "Reservations recommended",
+    blurb: "Country-chic modern American in a converted barn — globally-influenced dishes and a well-loved trio of crème brûlée for dessert. Popular for both date nights and special occasions.",
+  },
+  {
+    id: "mulinos-westchester", name: "Mulino's of Westchester", category: "Restaurant", timeOfDay: "both",
+    town: "White Plains, NY", address: "99 Court St, White Plains, NY 10601",
+    website: "", price: "$$$", distanceMi: 13,
+    photo: "🍝", vibe: "Romantic", reservations: "Reservations recommended, business casual dress code",
+    blurb: "Award-winning Northern Italian fine dining since 1988 — house-made pasta, an extensive wine list, and a classic elegant dining room. Valet parking available.",
   },
 ];
 
@@ -4455,6 +4477,20 @@ function MapScreen({ setSelectedPlace, favorites, toggleFavorite, location, onRe
           </div>
           <CategoryFilterButton activeKey={filter} onSelect={setFilter} groups={groups} />
         </div>
+        {isAdult && !query.trim() && (
+          <div className="flex items-center gap-2 mt-2 overflow-x-auto pb-1">
+            {["Restaurants near me", "Movies", "Museums", "Painting or ceramics classes", "Concerts", "Comedy shows", "Live speakers"].map((q) => (
+              <button
+                key={q}
+                onClick={() => setQuery(q)}
+                className="shrink-0 rounded-full px-3 py-1.5 text-[12px] font-semibold"
+                style={{ background: "rgba(255,255,255,0.4)", backdropFilter: "blur(10px)", border: "1px solid rgba(255,255,255,0.55)", color: "#5C4A2E" }}
+              >
+                {q}
+              </button>
+            ))}
+          </div>
+        )}
         <div className="flex items-center gap-2 mt-2">
           <SimpleFilterDropdown label="State" icon={MapPin} activeKey={stateFilter} options={stateOptions} onSelect={handleSetState} />
           <SimpleFilterDropdown label="City" icon={MapPin} activeKey={cityFilter} options={cityOptions} onSelect={setCityFilter} />
